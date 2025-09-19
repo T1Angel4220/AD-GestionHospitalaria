@@ -1,12 +1,26 @@
-import express from "express";
-import cors from "cors";
+import express, { Request, Response } from "express";
+import { pool } from "./src/config/db";
+import dotenv from "dotenv";
+import consultasRouter from "./src/routes/consultas";
+
+dotenv.config();
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use("/api/consultas", consultasRouter);
 
-app.get("/api/pacientes", (_, res) => {
-  res.json([{ id: 1, nombre: "Juan Pérez" }, { id: 2, nombre: "Ana López" }]);
+// Ruta de prueba para verificar conexión
+app.get("/ping", async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query("SELECT NOW() AS now");
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "DB connection failed" });
+  }
 });
 
-app.listen(4000, () => console.log("Servidor backend en http://localhost:4000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Admin-service listening on port ${PORT}`);
+});

@@ -1,20 +1,16 @@
--- Crear base de datos (ejecutar fuera del esquema si es necesario)
--- CREATE DATABASE hospital_db;
+USE hospital_central;
 
--- ============================
--- Esquema hospitalario
--- ============================
-
-DROP TABLE IF EXISTS consulta CASCADE;
-DROP TABLE IF EXISTS usuario CASCADE;
-DROP TABLE IF EXISTS medico CASCADE;
-DROP TABLE IF EXISTS empleado CASCADE;
-DROP TABLE IF EXISTS especialidad CASCADE;
-DROP TABLE IF EXISTS centro_medico CASCADE;
+-- Eliminar si existían
+DROP TABLE IF EXISTS usuario;
+DROP TABLE IF EXISTS medico;
+DROP TABLE IF EXISTS empleado;
+DROP TABLE IF EXISTS especialidad;
+DROP TABLE IF EXISTS centro_medico;
+DROP TABLE IF EXISTS consulta;
 
 -- Tabla Centros Médicos
 CREATE TABLE centro_medico (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
     ciudad VARCHAR(100) NOT NULL,
     direccion VARCHAR(200)
@@ -22,83 +18,54 @@ CREATE TABLE centro_medico (
 
 -- Tabla Especialidades
 CREATE TABLE especialidad (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- Tabla Médicos
 CREATE TABLE medico (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     id_especialidad INT NOT NULL,
     id_centro INT NOT NULL,
-    CONSTRAINT fk_especialidad FOREIGN KEY (id_especialidad) REFERENCES especialidad(id) ON DELETE CASCADE,
-    CONSTRAINT fk_centro_medico FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    FOREIGN KEY (id_especialidad) REFERENCES especialidad(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
 );
 
--- Tabla Empleados (no médicos)
+-- Tabla Empleados
 CREATE TABLE empleado (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     cargo VARCHAR(100) NOT NULL,
     id_centro INT NOT NULL,
-    CONSTRAINT fk_centro_empleado FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
 );
 
--- Tabla Usuarios (login del sistema)
+-- Tabla Usuarios (para login)
 CREATE TABLE usuario (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin', 'medico')),
+    rol ENUM('admin','medico') NOT NULL,
     id_centro INT NOT NULL,
     id_medico INT,
-    CONSTRAINT fk_centro_usuario FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE,
-    CONSTRAINT fk_medico_usuario FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE SET NULL
+    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE SET NULL
 );
 
 -- Tabla Consultas Médicas
 CREATE TABLE consulta (
-    id SERIAL PRIMARY KEY,
-    id_medico INT NOT NULL,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     id_centro INT NOT NULL,
-    paciente VARCHAR(150) NOT NULL,
-    fecha_hora TIMESTAMP NOT NULL DEFAULT NOW(),
+    id_medico INT NOT NULL,
+    paciente_nombre VARCHAR(150) NOT NULL,
+    fecha DATETIME NOT NULL,
     motivo TEXT,
     diagnostico TEXT,
     tratamiento TEXT,
-    costo NUMERIC(10,2),
-    CONSTRAINT fk_medico_consulta FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE CASCADE,
-    CONSTRAINT fk_centro_consulta FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE CASCADE
 );
-
--- ============================
--- Datos de ejemplo mínimos
--- ============================
-
-INSERT INTO centro_medico (nombre, ciudad, direccion)
-VALUES ('Hospital Quito', 'Quito', 'Av. Amazonas 123'),
-       ('Hospital Guayaquil', 'Guayaquil', 'Malecón 2000'),
-       ('Hospital Cuenca', 'Cuenca', 'Av. Solano 456');
-
-INSERT INTO especialidad (nombre)
-VALUES ('Cardiología'), ('Pediatría'), ('Neurología');
-
-INSERT INTO medico (nombres, apellidos, id_especialidad, id_centro)
-VALUES ('Ana', 'Perez', 1, 1),
-       ('Carlos', 'Gomez', 2, 2),
-       ('Maria', 'Lopez', 3, 3);
-
-INSERT INTO empleado (nombres, apellidos, cargo, id_centro)
-VALUES ('Jorge', 'Ramos', 'Administrador', 1),
-       ('Lucia', 'Torres', 'Enfermera', 2);
-
--- Un admin global
-INSERT INTO usuario (email, password_hash, rol, id_centro)
-VALUES ('admin@hospital.com', 'HASH_AQUI', 'admin', 1);
-
--- Un médico con cuenta de usuario
-INSERT INTO usuario (email, password_hash, rol, id_centro, id_medico)
-VALUES ('ana.perez@hospital.com', 'HASH_AQUI', 'medico', 1, 1);
