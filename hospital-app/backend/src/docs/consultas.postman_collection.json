@@ -38,7 +38,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"id_medico\": 1,\n  \"paciente_nombre\": \"Juan Pérez\",\n  \"fecha\": \"2025-09-19 10:30:00\",\n  \"motivo\": \"Dolor de cabeza\",\n  \"diagnostico\": \"Migraña\",\n  \"tratamiento\": \"Analgésicos\"\n}"
+          "raw": "{\n  \"id_medico\": 1,\n  \"paciente_nombre\": \"Juan\",\n  \"paciente_apellido\": \"Pérez\",\n  \"fecha\": \"2025-09-19 10:30:00\",\n  \"motivo\": \"Dolor de cabeza\",\n  \"diagnostico\": \"Migraña\",\n  \"tratamiento\": \"Analgésicos\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/consultas",

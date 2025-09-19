@@ -1,15 +1,15 @@
 USE hospital_central;
 
 -- Eliminar si existían
-DROP TABLE IF EXISTS usuario;
-DROP TABLE IF EXISTS medico;
-DROP TABLE IF EXISTS empleado;
-DROP TABLE IF EXISTS especialidad;
-DROP TABLE IF EXISTS centro_medico;
-DROP TABLE IF EXISTS consulta;
+DROP TABLE IF EXISTS usuarios;
+DROP TABLE IF EXISTS medicos;
+DROP TABLE IF EXISTS empleados;
+DROP TABLE IF EXISTS especialidades;
+DROP TABLE IF EXISTS centros_medicos;
+DROP TABLE IF EXISTS consultas;
 
 -- Tabla Centros Médicos
-CREATE TABLE centro_medico (
+CREATE TABLE centros_medicos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
     ciudad VARCHAR(100) NOT NULL,
@@ -17,55 +17,56 @@ CREATE TABLE centro_medico (
 );
 
 -- Tabla Especialidades
-CREATE TABLE especialidad (
+CREATE TABLE especialidades (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- Tabla Médicos
-CREATE TABLE medico (
+CREATE TABLE medicos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     id_especialidad INT NOT NULL,
     id_centro INT NOT NULL,
-    FOREIGN KEY (id_especialidad) REFERENCES especialidad(id) ON DELETE CASCADE,
-    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    FOREIGN KEY (id_especialidad) REFERENCES especialidades(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE
 );
 
 -- Tabla Empleados
-CREATE TABLE empleado (
+CREATE TABLE empleados (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     cargo VARCHAR(100) NOT NULL,
     id_centro INT NOT NULL,
-    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE
 );
 
 -- Tabla Usuarios (para login)
-CREATE TABLE usuario (
+CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     rol ENUM('admin','medico') NOT NULL,
     id_centro INT NOT NULL,
     id_medico INT,
-    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE,
-    FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE SET NULL
+    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_medico) REFERENCES medicos(id) ON DELETE SET NULL
 );
 
 -- Tabla Consultas Médicas
-CREATE TABLE consulta (
+CREATE TABLE consultas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_centro INT NOT NULL,
     id_medico INT NOT NULL,
-    paciente_nombre VARCHAR(150) NOT NULL,
+    paciente_nombre VARCHAR(100) NOT NULL,
+    paciente_apellido VARCHAR(100) NOT NULL,
     fecha DATETIME NOT NULL,
     motivo TEXT,
     diagnostico TEXT,
     tratamiento TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE,
-    FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE CASCADE
+    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_medico) REFERENCES medicos(id) ON DELETE CASCADE
 );
