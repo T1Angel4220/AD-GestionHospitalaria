@@ -1,69 +1,70 @@
-# React + TypeScript + Vite
+# Sistema de Gestión Hospitalaria - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Descripción
+Frontend del sistema de gestión hospitalaria construido con React, TypeScript y Vite. Incluye módulos de reportes y gestión de usuarios con roles diferenciados.
 
-Currently, two official plugins are available:
+## Estructura del Proyecto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── api/                    # Llamadas axios/fetch
+├── components/             # UI reusables
+│   ├── ui/                # Componentes base
+│   └── reports/           # Componentes específicos de reportes
+├── layouts/              # Estructuras de páginas
+├── pages/                # Componentes de páginas
+│   ├── admin/           # CRUDS: centros, médicos, especialidades, empleados
+│   └── medico/          # Consultas del médico
+├── routes/              # React Router config
+├── store/               # Zustand para estado global (user, auth)
+├── types/               # Tipos TypeScript
+├── lib/                 # Utilidades
+├── config/              # Configuración
+├── App.tsx              # Componente principal
+└── main.tsx             # Punto de entrada
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Tecnologías
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **React 19.1.1** - Framework principal
+- **TypeScript** - Tipado estático
+- **Vite** - Build tool y dev server
+- **Tailwind CSS 4.1.12** - Estilos utilitarios
+- **React Router DOM 7.8.2** - Enrutamiento
+- **Zustand** - Estado global
+- **Recharts** - Gráficos y visualizaciones
+- **Lucide React** - Iconos
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Instalación
+
+```bash
+npm install
 ```
+
+## Desarrollo
+
+```bash
+npm run dev
+```
+
+## Construcción
+
+```bash
+npm run build
+```
+
+## Funcionalidades
+
+### Admin UI
+- Tablas con datos de reportes
+- Formularios CRUD
+- Reportes con Chart.js (Recharts)
+- Dashboard con estadísticas
+
+### Médico UI
+- Agenda de consultas
+- CRUD propio
+- Dashboard pequeño
+
+### Control de Rutas
+- Basado en roles (ej: si rol === 'medico' → solo rutas de médico)
