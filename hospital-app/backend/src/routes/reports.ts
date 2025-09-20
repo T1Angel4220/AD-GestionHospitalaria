@@ -4,6 +4,9 @@ import { getResumenConsultas, getDetalleConsultasMedico } from "../controllers/r
 
 const router = Router();
 
+router.get("/health", (_req, res) => {
+    res.json({ ok: true, module: "reports" });
+  });
 /**
  * GET /api/reports/consultas
  * Resumen por médico (conteo, primera/última consulta) dentro de un centro.

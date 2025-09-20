@@ -39,6 +39,8 @@ app.get("/ping-db", async (_req: Request, res: Response) => {
 /* ========= Rutas ========= */
 app.use("/api/consultas", consultasRouter);
 app.use("/api/reports", reportsRouter);
+console.log("[ROUTER] /api/reports montado");
+
 
 // app.use("/api/reports", reportsRouter);
 
