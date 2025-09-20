@@ -1,10 +1,23 @@
 import { Router, Request, Response } from "express";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import { pool } from "../config/db";
 import { authenticateToken, requireRole } from "../middlewares/auth";
-import emailService from "../services/emailService";
+
+// Extender el tipo Request para incluir user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        email: string;
+        rol: 'admin' | 'medico';
+        id_centro: number;
+        id_medico?: number;
+      };
+    }
+  }
+}
 
 const router = Router();
 
@@ -28,10 +41,6 @@ const generateToken = (user: any) => {
   );
 };
 
-// Generar token de recuperación
-const generateResetToken = () => {
-  return crypto.randomBytes(32).toString('hex');
-};
 
 // Login
 router.post('/login', async (req: Request, res: Response) => {
@@ -182,8 +191,6 @@ router.post('/register', authenticateToken, requireRole(['admin']), async (req: 
     // @ts-ignore
     const newUser = newUserRows[0];
 
-    // Enviar email de bienvenida
-    await emailService.sendWelcomeEmail(email, `${newUser.medico_nombres || 'Usuario'} ${newUser.medico_apellidos || ''}`, password);
 
     const userResponse = {
       id: newUser.id,
@@ -215,124 +222,6 @@ router.post('/register', authenticateToken, requireRole(['admin']), async (req: 
   }
 });
 
-// Solicitar recuperación de contraseña
-router.post('/forgot-password', async (req: Request, res: Response) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Email es requerido' });
-    }
-
-    // Buscar usuario
-    const [rows] = await pool.query(`
-      SELECT u.*, m.nombres, m.apellidos 
-      FROM usuarios u
-      LEFT JOIN medicos m ON u.id_medico = m.id
-      WHERE u.email = ?
-    `, [email]);
-
-    // @ts-ignore
-    const user = rows[0];
-
-    if (!user) {
-      // Por seguridad, no revelar si el email existe o no
-      return res.json({ message: 'Si el email existe, se enviará un enlace de recuperación' });
-    }
-
-    // Generar token de recuperación
-    const resetToken = generateResetToken();
-    const resetExpires = new Date(Date.now() + 3600000); // 1 hora
-
-    // Guardar token en la base de datos
-    await pool.execute(
-      'UPDATE usuarios SET reset_token = ?, reset_expires = ? WHERE id = ?',
-      [resetToken, resetExpires, user.id]
-    );
-
-    // Enviar email
-    const userName = user.nombres && user.apellidos 
-      ? `${user.nombres} ${user.apellidos}` 
-      : 'Usuario';
-
-    await emailService.sendPasswordResetEmail(email, resetToken, userName);
-
-    res.json({ message: 'Si el email existe, se enviará un enlace de recuperación' });
-
-  } catch (error) {
-    console.error('Error en forgot-password:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Resetear contraseña
-router.post('/reset-password', async (req: Request, res: Response) => {
-  try {
-    const { token, newPassword } = req.body;
-
-    if (!token || !newPassword) {
-      return res.status(400).json({ error: 'Token y nueva contraseña son requeridos' });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-    }
-
-    // Buscar usuario con token válido
-    const [rows] = await pool.query(
-      'SELECT id FROM usuarios WHERE reset_token = ? AND reset_expires > NOW()',
-      [token]
-    );
-
-    // @ts-ignore
-    const user = rows[0];
-
-    if (!user) {
-      return res.status(400).json({ error: 'Token inválido o expirado' });
-    }
-
-    // Hash de la nueva contraseña
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
-
-    // Actualizar contraseña y limpiar token
-    await pool.execute(
-      'UPDATE usuarios SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
-      [passwordHash, user.id]
-    );
-
-    res.json({ message: 'Contraseña actualizada exitosamente' });
-
-  } catch (error) {
-    console.error('Error en reset-password:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Verificar token de recuperación
-router.get('/verify-reset-token/:token', async (req: Request, res: Response) => {
-  try {
-    const { token } = req.params;
-
-    const [rows] = await pool.query(
-      'SELECT id FROM usuarios WHERE reset_token = ? AND reset_expires > NOW()',
-      [token]
-    );
-
-    // @ts-ignore
-    const user = rows[0];
-
-    if (!user) {
-      return res.status(400).json({ error: 'Token inválido o expirado' });
-    }
-
-    res.json({ message: 'Token válido' });
-
-  } catch (error) {
-    console.error('Error verificando token:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
 
 // Obtener perfil del usuario autenticado
 router.get('/profile', authenticateToken, async (req: Request, res: Response) => {

@@ -1,19 +1,19 @@
 # Hospital Central - Backend (Sistema de Gestión Hospitalaria)
 
-Servicio web en Node.js + Express + MySQL (mysql2) con autenticación JWT, recuperación de contraseña y gestión de consultas médicas por centro hospitalario.
+Servicio web en Node.js + Express + MySQL (mysql2) con autenticación JWT y gestión completa de médicos, usuarios y consultas médicas por centro hospitalario.
 
 ## Características
 
 - 🔐 **Autenticación JWT** con roles (admin, médico)
-- 📧 **Recuperación de contraseña** con Nodemailer
 - 🏥 **Gestión de consultas médicas** por centro
+- 👨‍⚕️ **Gestión de médicos** (crear, listar)
 - 👥 **Control de acceso** basado en roles y centros médicos
 - 🔒 **Seguridad** con bcrypt y validaciones
+- 📋 **Flujo completo** admin → médicos → usuarios → consultas
 
 ## Requisitos
 - Node.js 18+
 - MySQL/MariaDB 10+
-- Gmail (para envío de emails)
 
 ## Configuración
 1. Instala dependencias:
@@ -33,21 +33,10 @@ DB_NAME=hospital_central
 # JWT
 JWT_SECRET=tu_jwt_secret_muy_seguro_aqui
 
-# Email (Nodemailer)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=tu_email@gmail.com
-SMTP_PASS=tu_app_password
-
 # URLs
 FRONTEND_URL=http://localhost:5173
 PORT=3000
 ```
-
-3. Configura Gmail:
-- Habilita autenticación de 2 factores
-- Genera una "Contraseña de aplicación"
-- Usa esa contraseña en `SMTP_PASS`
 
 ## Base de Datos
 
@@ -84,9 +73,7 @@ node test_auth.js
 
 ### Autenticación
 - `POST /api/auth/login` - Iniciar sesión
-- `POST /api/auth/register` - Registrar usuario (solo admin)
-- `POST /api/auth/forgot-password` - Solicitar recuperación
-- `POST /api/auth/reset-password` - Resetear contraseña
+- `POST /api/auth/register` - Registrar usuario médico (solo admin)
 - `GET /api/auth/profile` - Obtener perfil
 - `POST /api/auth/change-password` - Cambiar contraseña
 
@@ -94,6 +81,23 @@ node test_auth.js
 Todas requieren headers: `Authorization: Bearer <token>` y `X-Centro-Id: <id>`
 
 Base URL: `http://localhost:3000/api/consultas`
+
+- Crear médico (solo admin)
+  - `POST /medicos`
+  - Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`
+  - Body ejemplo:
+```json
+{
+  "nombres": "Dr. Juan",
+  "apellidos": "Pérez",
+  "id_especialidad": 1,
+  "id_centro": 1
+}
+```
+
+- Listar médicos del centro
+  - `GET /medicos`
+  - Headers: `Authorization: Bearer <token>`, `X-Centro-Id: <id>`
 
 - Crear consulta
   - `POST /`
@@ -150,23 +154,50 @@ src/
 ├── config/
 │   └── db.js          # Configuración de base de datos
 ├── middlewares/
-│   └── auth.js        # Middleware de autenticación
+│   └── auth.js        # Middleware de autenticación JWT
 ├── routes/
-│   ├── auth.ts        # Rutas de autenticación
-│   └── consultas.ts   # Rutas de consultas
-├── services/
-│   └── emailService.js # Servicio de emails
+│   ├── auth.ts        # Rutas de autenticación (login, register)
+│   └── consultas.ts   # Rutas de consultas y médicos
 └── index.ts           # Punto de entrada
 ```
+
+## Flujo de Trabajo
+
+### 1. Admin crea médicos
+```
+POST /api/consultas/medicos
+```
+- Solo administradores pueden crear médicos
+- Se asigna especialidad y centro médico
+
+### 2. Admin registra usuarios médicos
+```
+POST /api/auth/register
+```
+- Asigna email y contraseña a médicos existentes
+- Vincula usuario con médico específico
+
+### 3. Médicos hacen login
+```
+POST /api/auth/login
+```
+- Acceden con sus credenciales asignadas
+- Solo pueden ver su centro médico
+
+### 4. Gestión de consultas
+- Médicos crean/editan consultas de su centro
+- Control de acceso por centro médico
 
 ## Roles y Permisos
 
 ### Admin
-- Crear usuarios
-- Acceso a todos los centros
-- Gestión completa
+- ✅ Crear médicos
+- ✅ Crear usuarios médicos
+- ✅ Acceso a todos los centros
+- ✅ Gestión completa del sistema
 
 ### Médico
-- Solo su centro médico
-- No puede crear usuarios
-- Acceso limitado
+- ❌ No puede crear médicos
+- ❌ No puede crear usuarios
+- ✅ Solo su centro médico
+- ✅ Gestionar consultas de su centro

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../config/db";
-import { authenticateToken, requireCentroAccess } from "../middlewares/auth";
+import { authenticateToken, requireCentroAccess, requireRole } from "../middlewares/auth";
 
 const router = Router();
 
@@ -192,6 +192,56 @@ router.delete("/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo eliminar la consulta" });
+  }
+});
+
+// Crear médico (solo admin)
+router.post("/medicos", requireRole(['admin']), async (req: Request, res: Response) => {
+  try {
+    const { nombres, apellidos, id_especialidad, id_centro } = req.body;
+
+    if (!nombres || !apellidos || !id_especialidad || !id_centro) {
+      return res.status(400).json({ error: 'nombres, apellidos, id_especialidad e id_centro son requeridos' });
+    }
+
+    // Verificar que la especialidad existe
+    const [especialidadRows] = await pool.query('SELECT id FROM especialidades WHERE id = ?', [id_especialidad]);
+    // @ts-ignore
+    if (!especialidadRows[0]) {
+      return res.status(400).json({ error: 'La especialidad no existe' });
+    }
+
+    // Verificar que el centro existe
+    const [centroRows] = await pool.query('SELECT id FROM centros_medicos WHERE id = ?', [id_centro]);
+    // @ts-ignore
+    if (!centroRows[0]) {
+      return res.status(400).json({ error: 'El centro médico no existe' });
+    }
+
+    // Crear médico
+    const [result] = await pool.execute(
+      'INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro) VALUES (?, ?, ?, ?)',
+      [nombres, apellidos, id_especialidad, id_centro]
+    );
+
+    // @ts-ignore
+    const medicoId = result.insertId;
+
+    // Obtener el médico creado con datos relacionados
+    const [rows] = await pool.query(`
+      SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+      FROM medicos m
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id
+      LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+      WHERE m.id = ?
+    `, [medicoId]);
+
+    // @ts-ignore
+    res.status(201).json(rows[0]);
+
+  } catch (error) {
+    console.error('Error creando médico:', error);
+    res.status(500).json({ error: 'No se pudo crear el médico' });
   }
 });
 

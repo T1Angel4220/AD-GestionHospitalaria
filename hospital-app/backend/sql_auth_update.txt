@@ -1,10 +1,6 @@
 -- Actualización del esquema para agregar campos de recuperación de contraseña
 USE hospital_central;
 
--- Agregar campos para recuperación de contraseña a la tabla usuarios
-ALTER TABLE usuarios 
-ADD COLUMN reset_token VARCHAR(255) NULL,
-ADD COLUMN reset_expires DATETIME NULL;
 
 -- Crear índice para mejorar performance en búsquedas de tokens
 CREATE INDEX idx_reset_token ON usuarios(reset_token);
