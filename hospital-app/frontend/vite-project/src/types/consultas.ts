@@ -33,6 +33,8 @@ export interface ConsultaCreate {
 export interface ConsultaUpdate {
   paciente_nombre?: string;
   paciente_apellido?: string;
+  id_medico?: number;
+  id_centro?: number;
   fecha?: string;
   motivo?: string;
   diagnostico?: string;
