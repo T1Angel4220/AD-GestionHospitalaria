@@ -10,6 +10,12 @@ export interface Consulta {
   tratamiento?: string;
   estado: 'pendiente' | 'programada' | 'completada' | 'cancelada';
   created_at: string;
+  // Datos relacionados
+  medico_nombres?: string;
+  medico_apellidos?: string;
+  especialidad_nombre?: string;
+  centro_nombre?: string;
+  centro_ciudad?: string;
 }
 
 export interface ConsultaCreate {
@@ -40,6 +46,12 @@ export interface Medico {
   apellidos: string;
   id_especialidad: number;
   id_centro: number;
+  especialidad_nombre?: string;
+}
+
+export interface Especialidad {
+  id: number;
+  nombre: string;
 }
 
 export interface CentroMedico {

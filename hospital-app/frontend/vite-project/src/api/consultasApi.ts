@@ -1,4 +1,4 @@
-import type { Consulta, ConsultaCreate, ConsultaUpdate } from '../types/consultas';
+import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, Especialidad, CentroMedico } from '../types/consultas';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -48,5 +48,17 @@ export class ConsultasApi {
     return this.request<void>(`/consultas/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  static async getMedicos(): Promise<Medico[]> {
+    return this.request<Medico[]>('/consultas/medicos');
+  }
+
+  static async getEspecialidades(): Promise<Especialidad[]> {
+    return this.request<Especialidad[]>('/consultas/especialidades');
+  }
+
+  static async getCentros(): Promise<CentroMedico[]> {
+    return this.request<CentroMedico[]>('/consultas/centros');
   }
 }

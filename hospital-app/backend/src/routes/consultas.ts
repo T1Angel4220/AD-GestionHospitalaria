@@ -48,7 +48,7 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// Listar consultas del centro
+// Listar consultas del centro con datos relacionados
 router.get("/", async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
@@ -56,29 +56,49 @@ router.get("/", async (req: Request, res: Response) => {
 
     const { medico, desde, hasta, q } = req.query as Record<string, string>;
 
-    const conditions: string[] = ["id_centro = ?"]; 
+    const conditions: string[] = ["c.id_centro = ?"]; 
     const params: any[] = [idCentro];
 
     if (medico) {
-      conditions.push("id_medico = ?");
+      conditions.push("c.id_medico = ?");
       params.push(Number(medico));
     }
     if (desde) {
-      conditions.push("fecha >= ?");
+      conditions.push("c.fecha >= ?");
       params.push(desde);
     }
     if (hasta) {
-      conditions.push("fecha <= ?");
+      conditions.push("c.fecha <= ?");
       params.push(hasta);
     }
     if (q) {
-      conditions.push("(paciente_nombre LIKE ? OR paciente_apellido LIKE ? OR motivo LIKE ? OR diagnostico LIKE ?)");
+      conditions.push("(c.paciente_nombre LIKE ? OR c.paciente_apellido LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ?)");
       params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-    const sql = `SELECT * FROM consultas ${where} ORDER BY fecha DESC, id DESC`;
+    const sql = `
+      SELECT 
+        c.*,
+        m.nombres as medico_nombres,
+        m.apellidos as medico_apellidos,
+        e.nombre as especialidad_nombre,
+        cm.nombre as centro_nombre,
+        cm.ciudad as centro_ciudad
+      FROM consultas c
+      LEFT JOIN medicos m ON c.id_medico = m.id
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id
+      LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
+      ${where} 
+      ORDER BY c.fecha DESC, c.id DESC
+    `;
+    
+    console.log('SQL Query:', sql);
+    console.log('Params:', params);
+    
     const [rows] = await pool.query(sql, params);
+    console.log('Query result:', rows);
+    
     res.json(rows);
   } catch (error) {
     console.error(error);
@@ -167,6 +187,54 @@ router.delete("/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudo eliminar la consulta" });
+  }
+});
+
+// Obtener médicos del centro
+router.get("/medicos", async (req: Request, res: Response) => {
+  try {
+    const idCentro = getCentroId(req);
+    if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
+
+    console.log('Obteniendo médicos para centro:', idCentro);
+    
+    const [rows] = await pool.query(`
+      SELECT m.*, e.nombre as especialidad_nombre 
+      FROM medicos m 
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+      WHERE m.id_centro = ? 
+      ORDER BY m.nombres, m.apellidos
+    `, [idCentro]);
+    
+    console.log('Médicos encontrados:', rows);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener los médicos" });
+  }
+});
+
+// Obtener especialidades
+router.get("/especialidades", async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM especialidades ORDER BY nombre");
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener las especialidades" });
+  }
+});
+
+// Obtener centros médicos
+router.get("/centros", async (req: Request, res: Response) => {
+  try {
+    console.log('Obteniendo centros médicos...');
+    const [rows] = await pool.query("SELECT * FROM centros_medicos ORDER BY nombre");
+    console.log('Centros encontrados:', rows);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener los centros médicos" });
   }
 });
 
