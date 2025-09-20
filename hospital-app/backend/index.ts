@@ -6,6 +6,8 @@ import cors from "cors";
 import { CONFIG } from "./src/config/env";
 import { testDB } from "./src/config/db";
 import consultasRouter from "./src/routes/consultas";
+import reportsRouter from "./src/routes/reports";
+
 // import reportsRouter from "./src/routes/reports"; // cuando lo agregues
 
 const app = express();
@@ -36,6 +38,8 @@ app.get("/ping-db", async (_req: Request, res: Response) => {
 
 /* ========= Rutas ========= */
 app.use("/api/consultas", consultasRouter);
+app.use("/api/reports", reportsRouter);
+
 // app.use("/api/reports", reportsRouter);
 
 /* ========= 404 ========= */
