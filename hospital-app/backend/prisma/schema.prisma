@@ -1,0 +1,73 @@
+generator client { provider = "prisma-client-js" }
+datasource db    { provider = "postgresql"; url = env("DATABASE_URL") }
+
+enum Rol { admin medico }
+
+model CentroMedico {
+  id        Int          @id @default(autoincrement())
+  nombre    String
+  ciudad    String
+  direccion String?
+  medicos   Medico[]
+  empleados Empleado[]
+  usuarios  Usuario[]
+  consultas Consulta[]
+  @@map("centro_medico")
+}
+
+model Especialidad {
+  id      Int      @id @default(autoincrement())
+  nombre  String   @unique
+  medicos Medico[]
+  @@map("especialidad")
+}
+
+model Medico {
+  id             Int           @id @default(autoincrement())
+  nombres        String
+  apellidos      String
+  especialidadId Int           @map("id_especialidad")
+  centroId       Int           @map("id_centro")
+  especialidad   Especialidad  @relation(fields: [especialidadId], references: [id], onDelete: Cascade)
+  centro         CentroMedico  @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  usuarios       Usuario[]
+  consultas      Consulta[]
+  @@map("medico")
+}
+
+model Empleado {
+  id        Int          @id @default(autoincrement())
+  nombres   String
+  apellidos String
+  cargo     String
+  centroId  Int          @map("id_centro")
+  centro    CentroMedico @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  @@map("empleado")
+}
+
+model Usuario {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  passwordHash String       @map("password_hash")
+  rol          Rol
+  centroId     Int          @map("id_centro")
+  medicoId     Int?         @map("id_medico")
+  centro       CentroMedico @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  medico       Medico?      @relation(fields: [medicoId], references: [id], onDelete: SetNull)
+  @@map("usuario")
+}
+
+model Consulta {
+  id         Int          @id @default(autoincrement())
+  medicoId   Int          @map("id_medico")
+  centroId   Int          @map("id_centro")
+  paciente   String
+  fechaHora  DateTime     @default(now()) @map("fecha_hora")
+  motivo     String?
+  diagnostico String?
+  tratamiento String?
+  costo      Decimal?
+  medico     Medico       @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+  centro     CentroMedico @relation(fields: [centroId], references: [id], onDelete: Cascade)
+  @@map("consulta")
+}

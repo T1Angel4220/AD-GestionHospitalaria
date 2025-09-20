@@ -1,20 +1,21 @@
--- Crear base de datos (ejecutar fuera del esquema si es necesario)
+-- Crear base de datos (ejecutar una sola vez si no existe)
 -- CREATE DATABASE hospital_db;
+-- USE hospital_db;
 
 -- ============================
 -- Esquema hospitalario
 -- ============================
 
-DROP TABLE IF EXISTS consulta CASCADE;
-DROP TABLE IF EXISTS usuario CASCADE;
-DROP TABLE IF EXISTS medico CASCADE;
-DROP TABLE IF EXISTS empleado CASCADE;
-DROP TABLE IF EXISTS especialidad CASCADE;
-DROP TABLE IF EXISTS centro_medico CASCADE;
+DROP TABLE IF EXISTS consulta;
+DROP TABLE IF EXISTS usuario;
+DROP TABLE IF EXISTS medico;
+DROP TABLE IF EXISTS empleado;
+DROP TABLE IF EXISTS especialidad;
+DROP TABLE IF EXISTS centro_medico;
 
 -- Tabla Centros Médicos
 CREATE TABLE centro_medico (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
     ciudad VARCHAR(100) NOT NULL,
     direccion VARCHAR(200)
@@ -22,56 +23,63 @@ CREATE TABLE centro_medico (
 
 -- Tabla Especialidades
 CREATE TABLE especialidad (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- Tabla Médicos
 CREATE TABLE medico (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     id_especialidad INT NOT NULL,
     id_centro INT NOT NULL,
-    CONSTRAINT fk_especialidad FOREIGN KEY (id_especialidad) REFERENCES especialidad(id) ON DELETE CASCADE,
-    CONSTRAINT fk_centro_medico FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    CONSTRAINT fk_especialidad FOREIGN KEY (id_especialidad) 
+        REFERENCES especialidad(id) ON DELETE CASCADE,
+    CONSTRAINT fk_centro_medico FOREIGN KEY (id_centro) 
+        REFERENCES centro_medico(id) ON DELETE CASCADE
 );
 
 -- Tabla Empleados (no médicos)
 CREATE TABLE empleado (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     cargo VARCHAR(100) NOT NULL,
     id_centro INT NOT NULL,
-    CONSTRAINT fk_centro_empleado FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    CONSTRAINT fk_centro_empleado FOREIGN KEY (id_centro) 
+        REFERENCES centro_medico(id) ON DELETE CASCADE
 );
 
 -- Tabla Usuarios (login del sistema)
 CREATE TABLE usuario (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin', 'medico')),
+    rol ENUM('admin','medico') NOT NULL,
     id_centro INT NOT NULL,
     id_medico INT,
-    CONSTRAINT fk_centro_usuario FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE,
-    CONSTRAINT fk_medico_usuario FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE SET NULL
+    CONSTRAINT fk_centro_usuario FOREIGN KEY (id_centro) 
+        REFERENCES centro_medico(id) ON DELETE CASCADE,
+    CONSTRAINT fk_medico_usuario FOREIGN KEY (id_medico) 
+        REFERENCES medico(id) ON DELETE SET NULL
 );
 
 -- Tabla Consultas Médicas
 CREATE TABLE consulta (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     id_medico INT NOT NULL,
     id_centro INT NOT NULL,
     paciente VARCHAR(150) NOT NULL,
-    fecha_hora TIMESTAMP NOT NULL DEFAULT NOW(),
+    fecha_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     motivo TEXT,
     diagnostico TEXT,
     tratamiento TEXT,
-    costo NUMERIC(10,2),
-    CONSTRAINT fk_medico_consulta FOREIGN KEY (id_medico) REFERENCES medico(id) ON DELETE CASCADE,
-    CONSTRAINT fk_centro_consulta FOREIGN KEY (id_centro) REFERENCES centro_medico(id) ON DELETE CASCADE
+    costo DECIMAL(10,2),
+    CONSTRAINT fk_medico_consulta FOREIGN KEY (id_medico) 
+        REFERENCES medico(id) ON DELETE CASCADE,
+    CONSTRAINT fk_centro_consulta FOREIGN KEY (id_centro) 
+        REFERENCES centro_medico(id) ON DELETE CASCADE
 );
 
 -- ============================
