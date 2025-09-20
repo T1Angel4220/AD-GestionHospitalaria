@@ -6,6 +6,14 @@ export async function list(_req: Request, res: Response) {
   res.json(rows);
 }
 
+export async function getOne(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'id inválido' });
+  const row = await prisma.centroMedico.findUnique({ where: { id } });
+  if (!row) return res.status(404).json({ error: 'Centro no encontrado' });
+  res.json(row);
+}
+
 export async function create(req: Request, res: Response) {
   const { nombre, ciudad, direccion } = req.body ?? {};
   if (!nombre || !ciudad) return res.status(400).json({ error: 'nombre y ciudad son obligatorios' });
