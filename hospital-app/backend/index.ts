@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import cors from "cors";
 import { pool } from "./src/config/db";
 import dotenv from "dotenv";
 import consultasRouter from "./src/routes/consultas";
@@ -6,6 +7,15 @@ import consultasRouter from "./src/routes/consultas";
 dotenv.config();
 
 const app = express();
+
+// Configurar CORS
+app.use(cors({
+  origin: 'http://localhost:5173', // URL del frontend
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Centro-Id', 'x-centro-id']
+}));
+
 app.use(express.json());
 app.use("/api/consultas", consultasRouter);
 
