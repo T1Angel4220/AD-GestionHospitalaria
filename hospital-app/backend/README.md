@@ -55,7 +55,7 @@ npm start
 - Salud: `GET /ping`
 
 ## API Consultas (todas requieren header `X-Centro-Id`)
-Base URL: `http://localhost:3000/api/consultas`
+Base URL: `http://localhost:4000/api/consultas`
 
 - Crear consulta
   - `POST /`
