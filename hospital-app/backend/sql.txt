@@ -70,3 +70,7 @@ CREATE TABLE consultas (
     FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE,
     FOREIGN KEY (id_medico) REFERENCES medicos(id) ON DELETE CASCADE
 );
+
+ALTER TABLE consultas
+ADD COLUMN estado ENUM('pendiente','programada','completada','cancelada') 
+DEFAULT 'pendiente';

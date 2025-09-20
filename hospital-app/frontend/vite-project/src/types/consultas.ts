@@ -8,6 +8,7 @@ export interface Consulta {
   motivo?: string;
   diagnostico?: string;
   tratamiento?: string;
+  estado: 'pendiente' | 'programada' | 'completada' | 'cancelada';
   created_at: string;
 }
 
@@ -20,6 +21,7 @@ export interface ConsultaCreate {
   motivo?: string;
   diagnostico?: string;
   tratamiento?: string;
+  estado?: 'pendiente' | 'programada' | 'completada' | 'cancelada';
 }
 
 export interface ConsultaUpdate {
@@ -29,6 +31,7 @@ export interface ConsultaUpdate {
   motivo?: string;
   diagnostico?: string;
   tratamiento?: string;
+  estado?: 'pendiente' | 'programada' | 'completada' | 'cancelada';
 }
 
 export interface Medico {

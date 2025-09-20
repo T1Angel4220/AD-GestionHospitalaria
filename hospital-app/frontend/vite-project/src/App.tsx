@@ -1,9 +1,8 @@
 import ConsultasPage from './pages/ConsultasPage'
-import './App.css'
 
 function App() {
   return (
-    <div className="app">
+    <div className="min-h-screen">
       <ConsultasPage />
     </div>
   )
