@@ -3,6 +3,7 @@ import cors from "cors";
 import { pool } from "./src/config/db";
 import dotenv from "dotenv";
 import consultasRouter from "./src/routes/consultas";
+import authRouter from "./src/routes/auth";
 
 dotenv.config();
 
@@ -17,6 +18,11 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Rutas de autenticación
+app.use("/api/auth", authRouter);
+
+// Rutas protegidas
 app.use("/api/consultas", consultasRouter);
 
 // Ruta de prueba para verificar conexión

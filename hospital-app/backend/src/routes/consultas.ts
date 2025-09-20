@@ -1,7 +1,12 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../config/db";
+import { authenticateToken, requireCentroAccess } from "../middlewares/auth";
 
 const router = Router();
+
+// Aplicar autenticación a todas las rutas
+router.use(authenticateToken);
+router.use(requireCentroAccess);
 
 function getCentroId(req: Request): number | null {
   const headerValue = req.header("X-Centro-Id") || req.header("x-centro-id");

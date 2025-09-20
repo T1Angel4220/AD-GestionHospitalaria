@@ -1,60 +1,98 @@
-# Hospital Central - Backend (Consultas Médicas)
+# Hospital Central - Backend (Sistema de Gestión Hospitalaria)
 
-Servicio web en Node.js + Express + MySQL (mysql2) que permite a los hospitales crear, consultar, actualizar y eliminar registros de consultas médicas, con aislamiento por hospital mediante `id_centro`.
+Servicio web en Node.js + Express + MySQL (mysql2) con autenticación JWT, recuperación de contraseña y gestión de consultas médicas por centro hospitalario.
+
+## Características
+
+- 🔐 **Autenticación JWT** con roles (admin, médico)
+- 📧 **Recuperación de contraseña** con Nodemailer
+- 🏥 **Gestión de consultas médicas** por centro
+- 👥 **Control de acceso** basado en roles y centros médicos
+- 🔒 **Seguridad** con bcrypt y validaciones
 
 ## Requisitos
 - Node.js 18+
 - MySQL/MariaDB 10+
+- Gmail (para envío de emails)
 
 ## Configuración
 1. Instala dependencias:
 ```bash
 npm install
 ```
+
 2. Crea `.env` en `backend/`:
 ```ini
-PORT=3000
+# Base de datos
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=tu_usuario
 DB_PASS=tu_password
 DB_NAME=hospital_central
+
+# JWT
+JWT_SECRET=tu_jwt_secret_muy_seguro_aqui
+
+# Email (Nodemailer)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_email@gmail.com
+SMTP_PASS=tu_app_password
+
+# URLs
+FRONTEND_URL=http://localhost:5173
+PORT=3000
 ```
 
-## Esquema SQL
-El archivo [`sql.txt`](./sql.txt) contiene el esquema completo. Si ya tienes datos, evita los `DROP TABLE` y ejecuta solo los bloques necesarios.
+3. Configura Gmail:
+- Habilita autenticación de 2 factores
+- Genera una "Contraseña de aplicación"
+- Usa esa contraseña en `SMTP_PASS`
 
-Crear solo la tabla `consultas` (seguro):
-```sql
-USE hospital_central;
+## Base de Datos
 
-CREATE TABLE IF NOT EXISTS consultas (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  id_centro INT NOT NULL,
-  id_medico INT NOT NULL,
-  paciente_nombre VARCHAR(100) NOT NULL,
-  paciente_apellido VARCHAR(100) NOT NULL,
-  fecha DATETIME NOT NULL,
-  motivo TEXT,
-  diagnostico TEXT,
-  tratamiento TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE,
-  FOREIGN KEY (id_medico) REFERENCES medicos(id) ON DELETE CASCADE
-);
-
--- Índices recomendados
-CREATE INDEX IF NOT EXISTS idx_consultas_centro_fecha ON consultas (id_centro, fecha);
-CREATE INDEX IF NOT EXISTS idx_consultas_medico ON consultas (id_medico);
+1. **Ejecuta el esquema principal:**
+```bash
+# Ejecuta sql.txt en tu base de datos MySQL
+mysql -u tu_usuario -p hospital_central < sql.txt
 ```
+
+2. **Ejecuta las actualizaciones de autenticación:**
+```bash
+# Ejecuta sql_auth_update.txt para agregar campos de autenticación
+mysql -u tu_usuario -p hospital_central < sql_auth_update.txt
+```
+
+Esto creará:
+- Tablas de centros médicos, especialidades, médicos, empleados
+- Tabla de usuarios con autenticación
+- Tabla de consultas médicas
+- Datos de ejemplo para testing
 
 ## Ejecutar
 ```bash
 npm start
 ```
-- Salud: `GET /ping`
 
-## API Consultas (todas requieren header `X-Centro-Id`)
+## Pruebas
+```bash
+# Ejecutar script de pruebas de autenticación
+node test_auth.js
+```
+
+## API Endpoints
+
+### Autenticación
+- `POST /api/auth/login` - Iniciar sesión
+- `POST /api/auth/register` - Registrar usuario (solo admin)
+- `POST /api/auth/forgot-password` - Solicitar recuperación
+- `POST /api/auth/reset-password` - Resetear contraseña
+- `GET /api/auth/profile` - Obtener perfil
+- `POST /api/auth/change-password` - Cambiar contraseña
+
+### Consultas (Protegidas)
+Todas requieren headers: `Authorization: Bearer <token>` y `X-Centro-Id: <id>`
+
 Base URL: `http://localhost:3000/api/consultas`
 
 - Crear consulta
@@ -96,7 +134,39 @@ Importa el collection: [`src/docs/consultas.postman_collection.json`](./src/docs
 - Variables: `baseUrl` (ej. `http://localhost:3000`) y `centroId` (ej. `1`).
 - Incluye: Ping, Crear, Listar, Obtener, Actualizar, Eliminar.
 
-## Próximos pasos (opcional)
-- Autenticación JWT y derivar `id_centro` del token.
-- Swagger/OpenAPI.
-- Paginación y reportes por centro.
+## Usuarios de Prueba
+
+- **Admin:** admin@hospital.com / admin123
+- **Médicos:** Ver `sql_auth_update.txt` para más usuarios
+
+## Documentación
+
+Ver `API_DOCUMENTATION.md` para detalles completos de la API.
+
+## Estructura del Proyecto
+
+```
+src/
+├── config/
+│   └── db.js          # Configuración de base de datos
+├── middlewares/
+│   └── auth.js        # Middleware de autenticación
+├── routes/
+│   ├── auth.ts        # Rutas de autenticación
+│   └── consultas.ts   # Rutas de consultas
+├── services/
+│   └── emailService.js # Servicio de emails
+└── index.ts           # Punto de entrada
+```
+
+## Roles y Permisos
+
+### Admin
+- Crear usuarios
+- Acceso a todos los centros
+- Gestión completa
+
+### Médico
+- Solo su centro médico
+- No puede crear usuarios
+- Acceso limitado
