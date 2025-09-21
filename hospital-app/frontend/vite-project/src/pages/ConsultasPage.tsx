@@ -20,6 +20,7 @@ import {
   Trash2,
   X,
   AlertCircle,
+  CheckCircle,
   User,
   Stethoscope,
   Clock,
@@ -60,10 +61,40 @@ export default function MedicalConsultationsPage() {
     estado: "pendiente",
   })
 
+  // Estado para la especialidad seleccionada
+  const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>("")
+  // Estado para el centro seleccionado
+  const [selectedCentro, setSelectedCentro] = useState<string>("")
+  // Estado para la información del médico actual (si el usuario es médico)
+  const [medicoActual, setMedicoActual] = useState<Medico | null>(null)
+  // Estado para el modal de confirmación
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
   useEffect(() => {
     loadConsultas()
     loadRelatedData()
+    loadMedicoActual()
   }, [])
+
+  const loadMedicoActual = async () => {
+    if (user?.rol === 'medico' && user.id_medico && medicos.length > 0) {
+      try {
+        const medico = medicos.find(m => m.id === user.id_medico)
+        if (medico) {
+          setMedicoActual(medico)
+          setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
+          setSelectedCentro(medico.centro_nombre || 'Sin centro')
+        }
+      } catch (error) {
+        console.error('Error cargando médico actual:', error)
+      }
+    }
+  }
+
+  // Cargar médico actual cuando se carguen los médicos
+  useEffect(() => {
+    loadMedicoActual()
+  }, [medicos, user])
 
   const loadConsultas = async () => {
     try {
@@ -122,12 +153,26 @@ export default function MedicalConsultationsPage() {
           estado: formData.estado!,
         }
         await ConsultasApi.createConsulta(newData)
+        setShowSuccessModal(true)
       }
       await loadConsultas()
       resetForm()
     } catch (err) {
       setError("Error al guardar la consulta")
       console.error(err)
+    }
+  }
+
+  const handleMedicoChange = (medicoId: number) => {
+    const medico = medicos.find(m => m.id === medicoId)
+    if (medico) {
+      setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
+      setSelectedCentro(medico.centro_nombre || 'Sin centro')
+      // Actualizar también el id_centro en el formulario
+      setFormData((prev) => ({ ...prev, id_centro: medico.id_centro }))
+    } else {
+      setSelectedEspecialidad("")
+      setSelectedCentro("")
     }
   }
 
@@ -144,6 +189,12 @@ export default function MedicalConsultationsPage() {
       tratamiento: consulta.tratamiento,
       estado: consulta.estado,
     })
+    // Cargar especialidad y centro del médico seleccionado
+    if (consulta.id_medico) {
+      const medico = medicos.find(m => m.id === consulta.id_medico)
+      setSelectedEspecialidad(medico?.especialidad_nombre || 'Sin especialidad')
+      setSelectedCentro(medico?.centro_nombre || 'Sin centro')
+    }
     setIsDialogOpen(true)
   }
 
@@ -183,11 +234,23 @@ export default function MedicalConsultationsPage() {
       tratamiento: "",
       estado: "pendiente",
     })
+    setSelectedEspecialidad("")
+    setSelectedCentro("")
     setIsDialogOpen(false)
   }
 
   const handleNewConsulta = () => {
     resetForm()
+    
+    // Si el usuario es médico, pre-llenar con su información
+    if (user?.rol === 'medico' && medicoActual) {
+      setFormData(prev => ({
+        ...prev,
+        id_medico: medicoActual.id,
+        id_centro: medicoActual.id_centro
+      }))
+    }
+    
     setIsDialogOpen(true)
   }
 
@@ -236,351 +299,369 @@ export default function MedicalConsultationsPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className={`
-        fixed top-0 left-0 h-full w-80 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out z-40
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:inset-0
-      `}>
-        <div className="flex flex-col h-full">
-          {/* Header del Sidebar */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-700">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
-                <Activity className="h-7 w-7" />
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-gray-900 to-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl`}>
+        {/* Logo Section */}
+        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-green-600 to-green-700">
+          <div className="flex items-center">
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
+              <Activity className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold">HospitalApp</h2>
+            <div>
+              <span className="text-white text-xl font-bold">HospitalApp</span>
+              <p className="text-green-100 text-xs">Sistema Médico</p>
+            </div>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-white"
+            className="lg:hidden text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
             >
-              <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Navegación */}
-          <nav className="flex-1 px-6 py-8 space-y-4">
-            <a href="#" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium bg-blue-600 text-white shadow-lg">
-              <Home className="h-6 w-6" />
-              Dashboard
-            </a>
-            <a href="#" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-200">
-              <Activity className="h-6 w-6" />
-              Consultas
-            </a>
-            <a href="#" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-200">
-              <Users className="h-6 w-6" />
-              Pacientes
-            </a>
-            <a href="#" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-200">
-              <Calendar className="h-6 w-6" />
-              Citas
-            </a>
-            <a href="#" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-200">
-              <FileText className="h-6 w-6" />
-              Reportes
-            </a>
-            {user?.rol === 'admin' && (
-              <a href="/admin" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-200">
-                <Users className="h-6 w-6" />
-                Administración
-              </a>
-            )}
-          </nav>
-
-          {/* User Info */}
-          <div className="p-6 border-t border-gray-700">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-600">
-                <User className="h-5 w-5" />
+        {/* Navigation */}
+        <nav className="mt-8 px-4">
+          <div className="space-y-2">
+            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Home className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-medium">{user?.email}</p>
-                <p className="text-xs text-gray-400 capitalize">{user?.rol}</p>
-                <p className="text-xs text-gray-500">{user?.centro?.nombre}</p>
+                <div className="font-medium">Dashboard</div>
+                <div className="text-xs text-gray-400">Panel principal</div>
+              </div>
+            </a>
+            <a href="/consultas" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg">
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
+                <Calendar className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <div className="font-medium">Consultas</div>
+                <div className="text-xs text-green-100">Citas médicas</div>
+              </div>
+            </a>
+            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Stethoscope className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Médicos</div>
+                <div className="text-xs text-gray-400">Personal médico</div>
+              </div>
+            </a>
+            <a href="/usuarios" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Usuarios</div>
+                <div className="text-xs text-gray-400">Gestión usuarios</div>
+              </div>
+            </a>
+          </div>
+          </nav>
+
+        {/* User Section */}
+        <div className="absolute bottom-0 w-full p-4">
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div className="flex items-center mb-3">
+              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center mr-3">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="text-white text-base font-medium">{user?.email}</div>
+                <div className="text-gray-400 text-xs">Administrador</div>
               </div>
             </div>
             <button
               onClick={logout}
-              className="flex items-center gap-4 px-4 py-4 w-full text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200"
+              className="w-full flex items-center justify-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
             >
-              <LogOut className="h-6 w-6" />
+              <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
               Cerrar Sesión
             </button>
           </div>
         </div>
       </div>
 
-      {/* Overlay para móvil */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Main Content */}
-      <div className="lg:ml-80">
+      <div className="lg:ml-72">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-600 hover:text-gray-900 mr-2">
+        <div className="bg-gradient-to-r from-green-600 to-green-700 shadow-lg">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-8">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="lg:hidden p-2 rounded-md text-white hover:bg-green-500 transition-colors"
+                >
                   <Menu className="h-6 w-6" />
                 </button>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-                  <Activity className="h-5 w-5" />
+                <div className="ml-4">
+                  <h1 className="text-3xl font-bold text-white">Gestión de Consultas</h1>
+                  <p className="text-green-100 mt-1">Administra las consultas médicas del hospital</p>
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">API de Consultas Médicas</h1>
-                  <p className="text-sm text-gray-600">Gestión independiente por hospital</p>
                 </div>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-white font-medium">{user?.email}</p>
+                  <p className="text-green-100 text-base">Administrador</p>
               </div>
-              <button
-                onClick={handleNewConsulta}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Nueva Consulta
-              </button>
+                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-white" />
             </div>
           </div>
-        </header>
+            </div>
+          </div>
+        </div>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Content */}
+        <div className="p-6">
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-              <strong className="font-bold">Error:</strong>
-              <span className="block sm:inline"> {error}</span>
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span className="text-base">{error}</span>
             </div>
           )}
 
           {/* Stats Cards */}
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500 text-white">
-                      <FileText className="h-5 w-5" />
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <FileText className="h-8 w-8 text-green-600" />
                     </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Total Consultas</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.total}</dd>
-                    </dl>
-                  </div>
+                <div className="ml-4">
+                  <p className="text-base font-medium text-gray-600">Total Consultas</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-green-500 text-white">
-                      <Activity className="h-5 w-5" />
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Activity className="h-8 w-8 text-blue-600" />
                     </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Completadas</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.completada}</dd>
-                    </dl>
-                  </div>
+                <div className="ml-4">
+                  <p className="text-base font-medium text-gray-600">Completadas</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.completada}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500 text-white">
-                      <Calendar className="h-5 w-5" />
+                <div className="p-3 bg-yellow-100 rounded-lg">
+                  <Calendar className="h-8 w-8 text-yellow-600" />
                     </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Programadas</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.programada}</dd>
-                    </dl>
-                  </div>
+                <div className="ml-4">
+                  <p className="text-base font-medium text-gray-600">Programadas</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.programada}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-red-500 text-white">
-                      <Users className="h-5 w-5" />
+                <div className="p-3 bg-red-100 rounded-lg">
+                  <Clock className="h-8 w-8 text-red-600" />
                     </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Canceladas</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.cancelada}</dd>
-                    </dl>
-                  </div>
+                <div className="ml-4">
+                  <p className="text-base font-medium text-gray-600">Canceladas</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.cancelada}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="bg-white shadow rounded-lg mb-6">
-            <div className="px-6 py-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Filtros y Búsqueda</h3>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          {/* Search and Add Button */}
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-lg">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
                     <input
                       type="text"
-                      placeholder="Buscar por paciente, médico, especialidad o hospital..."
+                placeholder="Buscar consultas por paciente, médico..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     />
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
+            <div className="mt-4 sm:mt-0 sm:ml-4 flex items-center space-x-4">
                   <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4 text-gray-400" />
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  className="px-3 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
                     >
-                      <option value="all">Todos los estado</option>
+                  <option value="all">Todos los estados</option>
                       <option value="pendiente">Pendientes</option>
                       <option value="programada">Programadas</option>
                       <option value="completada">Completadas</option>
                       <option value="cancelada">Canceladas</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <select className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                      <option value="all">Todas las especialidad</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
+              <button
+                onClick={handleNewConsulta}
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform hover:scale-105"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Nueva Consulta
+              </button>
             </div>
           </div>
 
           {/* Consultas List */}
-          <div className="space-y-4">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Lista de Consultas
+              </h3>
+              <p className="mt-1 text-base text-gray-600">
+                Gestiona las consultas médicas del hospital
+              </p>
+            </div>
+            <div>
             {filteredConsultas.map((consulta) => (
-              <div key={consulta.id} className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-                          <User className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-medium text-gray-900">
-                            {consulta.paciente_nombre} {consulta.paciente_apellido}
-                          </h3>
-                          <p className="text-sm text-gray-500">ID: {consulta.id}</p>
-                        </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(consulta.estado)}`}>
-                          {getStatusText(consulta.estado)}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Stethoscope className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-gray-700">Médico:</span>
-                          <span className="text-gray-600">
-                            {consulta.medico_nombres && consulta.medico_apellidos
-                              ? `Dr. ${consulta.medico_nombres} ${consulta.medico_apellidos}`
-                              : `ID: ${consulta.id_medico}`
-                            }
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-gray-700">Fecha:</span>
-                          <span className="text-gray-600">{new Date(consulta.fecha).toLocaleDateString("es-ES")}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Clock className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-gray-700">Hora:</span>
-                          <span className="text-gray-600">
-                            {new Date(consulta.fecha).toLocaleTimeString("es-ES", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Building2 className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-gray-700">Centro:</span>
-                          <span className="text-gray-600">
-                            {consulta.centro_nombre
-                              ? `${consulta.centro_nombre}${consulta.centro_ciudad ? ` - ${consulta.centro_ciudad}` : ''}`
-                              : `ID: ${consulta.id_centro}`
-                            }
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm mb-4">
-                        <Activity className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-700">Especialidad:</span>
-                        <span className="text-gray-600">
-                          {consulta.especialidad_nombre || 'No especificada'}
-                        </span>
-                      </div>
-
-                      {consulta.motivo && (
-                        <div className="bg-gray-50 rounded-md p-3 mb-3">
-                          <p className="text-sm font-medium text-gray-700 mb-1">Motivo de la consulta:</p>
-                          <p className="text-sm text-gray-600">{consulta.motivo}</p>
-                        </div>
-                      )}
-
-                      {consulta.diagnostico && (
-                        <div className="bg-green-50 rounded-md p-3 mb-3">
-                          <p className="text-sm font-medium text-gray-700 mb-1">Diagnóstico:</p>
-                          <p className="text-sm text-gray-600">{consulta.diagnostico}</p>
-                        </div>
-                      )}
-
-                      {consulta.tratamiento && (
-                        <div className="bg-blue-50 rounded-md p-3 mb-3">
-                          <p className="text-sm font-medium text-gray-700 mb-1">Tratamiento:</p>
-                          <p className="text-sm text-gray-600">{consulta.tratamiento}</p>
-                        </div>
-                      )}
-
-                      <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
-                        Creado: {new Date(consulta.created_at).toLocaleString("es-ES")}
-                      </div>
+              <div key={consulta.id} className="p-6 hover:bg-gray-50 transition-colors border border-gray-200 rounded-xl mb-4 shadow-sm bg-white">
+                {/* Header mejorado */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gradient-to-r from-green-100 to-green-200 rounded-full flex items-center justify-center shadow-sm">
+                      <User className="h-5 w-5 text-green-700" />
                     </div>
-
-                    <div className="flex gap-2 ml-4">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-xl">
+                        {consulta.paciente_nombre} {consulta.paciente_apellido}
+                      </h3>
+                      <p className="text-base text-gray-500 font-medium">ID: {consulta.id}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-base font-semibold ${getStatusColor(consulta.estado)}`}>
+                      {getStatusText(consulta.estado)}
+                    </span>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => handleEdit(consulta)}
-                        className="inline-flex items-center p-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors shadow-sm"
+                        title="Editar consulta"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => handleDeleteClick(consulta)}
-                        className="inline-flex items-center p-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors shadow-sm"
+                        title="Eliminar consulta"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </div>
+                  </div>
+                </div>
+
+                {/* Información principal mejorada */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Stethoscope className="h-4 w-4 text-blue-600" />
+                      <p className="text-base text-gray-600 font-semibold">Médico</p>
+                    </div>
+                    <p className="text-base text-gray-800 font-medium">
+                      {consulta.medico_nombres && consulta.medico_apellidos
+                        ? `Dr. ${consulta.medico_nombres} ${consulta.medico_apellidos}`
+                        : `ID: ${consulta.id_medico}`
+                      }
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="h-4 w-4 text-purple-600" />
+                      <p className="text-base text-gray-600 font-semibold">Especialidad</p>
+                    </div>
+                    <p className="text-base text-gray-800 font-medium">
+                      {consulta.especialidad_nombre || 'No especificada'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4 text-green-600" />
+                      <p className="text-base text-gray-600 font-semibold">Fecha</p>
+                    </div>
+                    <p className="text-base text-gray-800 font-medium">
+                      {new Date(consulta.fecha).toLocaleDateString("es-ES")}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-4 w-4 text-purple-600" />
+                      <p className="text-base text-gray-600 font-semibold">Hora</p>
+                    </div>
+                    <p className="text-base text-gray-800 font-medium">
+                      {new Date(consulta.fecha).toLocaleTimeString("es-ES", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 className="h-4 w-4 text-orange-600" />
+                      <p className="text-base text-gray-600 font-semibold">Centro</p>
+                    </div>
+                    <p className="text-base text-gray-800 font-medium">
+                      {consulta.centro_nombre
+                        ? `${consulta.centro_nombre}${consulta.centro_ciudad ? ` - ${consulta.centro_ciudad}` : ''}`
+                        : `ID: ${consulta.id_centro}`
+                      }
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* Motivo mejorado */}
+                {consulta.motivo && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-4 w-4 text-indigo-600" />
+                      <p className="text-base text-gray-600 font-semibold">Motivo de la Consulta</p>
+                    </div>
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                      <p className="text-base text-gray-800 font-medium">{consulta.motivo}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Diagnóstico y Tratamiento mejorados */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center mb-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></div>
+                      <p className="text-base font-bold text-emerald-800">Diagnóstico</p>
+                    </div>
+                    <p className="text-base text-emerald-700 pl-4 font-medium">
+                      {consulta.diagnostico || "Sin diagnóstico"}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center mb-2">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full mr-2"></div>
+                      <p className="text-base font-bold text-amber-800">Tratamiento</p>
+                    </div>
+                    <p className="text-base text-amber-700 pl-4 font-medium">
+                      {consulta.tratamiento || "Sin tratamiento"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer mejorado */}
+                <div className="flex items-center justify-center pt-3 border-t border-gray-200">
+                  <div className="flex items-center gap-2 text-base text-gray-500">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-medium">Creado: {new Date(consulta.created_at).toLocaleString("es-ES")}</span>
                   </div>
                 </div>
               </div>
@@ -599,7 +680,7 @@ export default function MedicalConsultationsPage() {
                   {!searchTerm && filterStatus === "all" && (
                     <button
                       onClick={handleNewConsulta}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Crear Primera Consulta
@@ -609,35 +690,48 @@ export default function MedicalConsultationsPage() {
               </div>
             )}
           </div>
-        </main>
+          </div>
+        </div>
       </div>
 
-      {/* Modal de Consulta - INCLUIDO DIRECTAMENTE */}
+      {/* Modal de Consulta */}
       {isDialogOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-4xl bg-white shadow-xl rounded-lg">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={resetForm}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full transform transition-all duration-300 scale-100 max-h-[85vh] overflow-y-auto">
+            {/* Header del modal */}
+            <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <Calendar className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
                   {editingConsulta ? "Editar Consulta" : "Nueva Consulta Médica"}
                 </h3>
+                    <p className="text-green-100 text-base">
+                      {editingConsulta ? "Modifica los datos de la consulta" : "Registra una nueva consulta médica"}
+                    </p>
+                  </div>
+                </div>
                 <button
                   onClick={resetForm}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-              <p className="text-sm text-gray-600 mb-6">
-                {editingConsulta
-                  ? "Modifica los datos de la consulta médica."
-                  : "Registra una nueva consulta médica en el sistema."}
-              </p>
+            </div>
+            
+            {/* Contenido del modal */}
+            <div className="px-6 py-4">
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="paciente_nombre" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="paciente_nombre" className="block text-base font-semibold text-gray-700 mb-1">
                       Nombre del Paciente
                     </label>
                     <input
@@ -646,11 +740,11 @@ export default function MedicalConsultationsPage() {
                       value={formData.paciente_nombre || ''}
                       onChange={(e) => setFormData((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
                       required
-                      className="block w-full px-3 py-2 border-2 border-blue-200 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     />
                   </div>
                   <div>
-                    <label htmlFor="paciente_apellido" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="paciente_apellido" className="block text-base font-semibold text-gray-700 mb-1">
                       Apellido del Paciente
                     </label>
                     <input
@@ -659,77 +753,93 @@ export default function MedicalConsultationsPage() {
                       value={formData.paciente_apellido || ''}
                       onChange={(e) => setFormData((prev) => ({ ...prev, paciente_apellido: e.target.value }))}
                       required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="medico" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="medico" className="block text-base font-semibold text-gray-700 mb-1">
                       Médico
                     </label>
-                    <select
-                      id="medico"
-                      value={formData.id_medico || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, id_medico: Number(e.target.value) }))}
-                      required
-                      disabled={editingConsulta?.estado === 'completada'}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <option value="">Seleccionar médico</option>
-                      {medicos.map((medico) => (
-                        <option key={medico.id} value={medico.id}>
-                          Dr. {medico.nombres} {medico.apellidos} - {medico.especialidad_nombre || 'Sin especialidad'}
-                        </option>
-                      ))}
-                    </select>
+                    {user?.rol === 'medico' ? (
+                      <input
+                        type="text"
+                        value={medicoActual ? `Dr. ${medicoActual.nombres} ${medicoActual.apellidos}` : ''}
+                        readOnly
+                        className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700 cursor-not-allowed"
+                      />
+                    ) : (
+                      <select
+                        id="medico"
+                        value={formData.id_medico || ''}
+                        onChange={(e) => {
+                          const medicoId = Number(e.target.value)
+                          setFormData((prev) => ({ ...prev, id_medico: medicoId }))
+                          handleMedicoChange(medicoId)
+                        }}
+                        required
+                        disabled={editingConsulta?.estado === 'completada'}
+                        className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
+                      >
+                        <option value="">Seleccionar médico</option>
+                        {medicos.map((medico) => (
+                          <option key={medico.id} value={medico.id}>
+                            Dr. {medico.nombres} {medico.apellidos}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {user?.rol === 'medico' && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Como médico, solo puedes crear consultas para ti mismo
+                      </p>
+                    )}
                     {editingConsulta?.estado === 'completada' && (
-                      <p className="mt-1 text-sm text-amber-600 flex items-center">
+                      <p className="mt-1 text-base text-amber-600 flex items-center">
                         <AlertCircle className="h-4 w-4 mr-1" />
                         No se puede cambiar el médico en consultas completadas por temas de auditoría
                       </p>
                     )}
                   </div>
                   <div>
-                    <label htmlFor="especialidad" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="especialidad" className="block text-base font-semibold text-gray-700 mb-1">
                       Especialidad
                     </label>
-                    <select
+                    <input
+                      type="text"
                       id="especialidad"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">Seleccionar especialidad</option>
-                      <option value="medicina_general">Medicina General</option>
-                      <option value="cardiologia">Cardiología</option>
-                      <option value="neurologia">Neurología</option>
-                      <option value="pediatria">Pediatría</option>
-                    </select>
+                      value={selectedEspecialidad}
+                      readOnly
+                      placeholder="Selecciona un médico primero"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700 cursor-not-allowed"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      La especialidad se carga automáticamente al seleccionar un médico
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="centro" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="centro" className="block text-base font-semibold text-gray-700 mb-1">
                       Centro Médico
                     </label>
-                    <select
+                    <input
+                      type="text"
                       id="centro"
-                      value={formData.id_centro || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, id_centro: Number(e.target.value) }))}
-                      required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">Seleccionar centro</option>
-                      {centros.map((centro) => (
-                        <option key={centro.id} value={centro.id}>
-                          {centro.nombre} - {centro.ciudad}
-                        </option>
-                      ))}
-                    </select>
+                      value={selectedCentro}
+                      readOnly
+                      placeholder="Selecciona un médico primero"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700 cursor-not-allowed"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      El centro se carga automáticamente al seleccionar un médico
+                    </p>
                   </div>
                   <div>
-                    <label htmlFor="fecha" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="fecha" className="block text-base font-medium text-gray-700 mb-1">
                       Fecha y Hora
                     </label>
                     <div className="relative">
@@ -750,9 +860,9 @@ export default function MedicalConsultationsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="estado" className="block text-base font-medium text-gray-700 mb-1">
                       Estado
                     </label>
                     <select
@@ -771,7 +881,7 @@ export default function MedicalConsultationsPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="motivo" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="motivo" className="block text-base font-medium text-gray-700 mb-1">
                     Motivo de la Consulta
                   </label>
                   <textarea
@@ -785,7 +895,7 @@ export default function MedicalConsultationsPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="diagnostico" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="diagnostico" className="block text-base font-medium text-gray-700 mb-1">
                     Diagnóstico
                   </label>
                   <textarea
@@ -799,7 +909,7 @@ export default function MedicalConsultationsPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="tratamiento" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="tratamiento" className="block text-base font-medium text-gray-700 mb-1">
                     Tratamiento
                   </label>
                   <textarea
@@ -812,17 +922,17 @@ export default function MedicalConsultationsPage() {
                   />
                 </div>
 
-                <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl transition-all duration-200 transform hover:scale-105"
                   >
                     {editingConsulta ? "Actualizar" : "Crear"} Consulta
                   </button>
@@ -835,39 +945,44 @@ export default function MedicalConsultationsPage() {
 
       {/* Modal de Eliminación - INCLUIDO DIRECTAMENTE */}
       {isDeleteModalOpen && consultaToDelete && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-1/3 shadow-lg rounded-lg bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-medium text-gray-900">Confirmar Eliminación</h3>
-                <button
-                  onClick={handleDeleteCancel}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex items-center mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 mr-4">
-                    <AlertCircle className="h-6 w-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={handleDeleteCancel}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+            {/* Header del modal */}
+            <div className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <AlertCircle className="h-6 w-6 text-red-600" />
                   </div>
                   <div>
-                    <p className="text-gray-700 font-medium">
-                      ¿Estás seguro de que quieres eliminar esta consulta?
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Esta acción no se puede deshacer.
-                    </p>
+                    <h3 className="text-xl font-bold text-white">Confirmar Eliminación</h3>
+                    <p className="text-red-100 text-base">Esta acción no se puede deshacer</p>
                   </div>
                 </div>
+                <button
+                  onClick={handleDeleteCancel}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Contenido del modal */}
+            <div className="px-6 py-6">
 
-                <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
+              <div className="text-center mb-6">
+                <p className="text-gray-600 mb-4">
+                  ¿Estás seguro de que quieres eliminar esta consulta?
+                </p>
+                
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-2">
                     {consultaToDelete.paciente_nombre} {consultaToDelete.paciente_apellido}
                   </h4>
-                  <div className="text-sm text-gray-600 space-y-1">
+                  <div className="text-base text-gray-600 space-y-1">
                     <p><strong>Médico:</strong> {consultaToDelete.medico_nombres && consultaToDelete.medico_apellidos
                       ? `Dr. ${consultaToDelete.medico_nombres} ${consultaToDelete.medico_apellidos}${consultaToDelete.especialidad_nombre ? ` (${consultaToDelete.especialidad_nombre})` : ''}`
                       : `ID: ${consultaToDelete.id_medico}`
@@ -881,18 +996,63 @@ export default function MedicalConsultationsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+              <div className="flex justify-center space-x-4">
                 <button
                   onClick={handleDeleteCancel}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 transform hover:scale-105"
                 >
                   Eliminar Consulta
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Éxito */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setShowSuccessModal(false)}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+            <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 rounded-t-2xl">
+              <div className="flex items-center justify-center">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-white">¡Consulta Creada!</h3>
+                  <p className="text-green-100 text-base">La consulta se ha registrado exitosamente</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-6 text-center">
+              <p className="text-gray-600 mb-6">
+                La consulta médica ha sido creada correctamente y ya está disponible en la lista.
+              </p>
+              
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                >
+                  Cerrar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false)
+                    handleNewConsulta()
+                  }}
+                  className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  Crear Otra
                 </button>
               </div>
             </div>

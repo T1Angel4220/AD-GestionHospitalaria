@@ -24,30 +24,55 @@ router.post("/", requireCentroAccess, async (req: Request, res: Response) => {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
-    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento } = req.body || {};
+    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado } = req.body || {};
     if (!id_medico || !paciente_nombre || !paciente_apellido || !fecha) {
       return res.status(400).json({ error: "id_medico, paciente_nombre, paciente_apellido y fecha son obligatorios" });
     }
 
-    // Validar que el médico pertenece al mismo centro
-    const [medicoRows] = await pool.query(
-      "SELECT id FROM medicos WHERE id = ? AND id_centro = ?",
-      [id_medico, idCentro]
-    );
-    // @ts-ignore
-    if (!medicoRows[0]) {
-      return res.status(400).json({ error: "El médico no pertenece al centro indicado" });
+    // Obtener información del usuario autenticado
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Token requerido" });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const userRole = decoded.rol;
+
+    // Si es admin, puede asignar cualquier médico a cualquier centro
+    // Si es médico, solo puede crear consultas en su centro
+    let centroConsulta = idCentro;
+    
+    if (userRole === 'admin') {
+      // Para admin, obtener el centro del médico seleccionado
+      const [medicoRows] = await pool.query(
+        "SELECT id_centro FROM medicos WHERE id = ?",
+        [id_medico]
+      );
+      // @ts-ignore
+      if (!medicoRows[0]) {
+        return res.status(400).json({ error: "Médico no encontrado" });
+      }
+      // @ts-ignore
+      centroConsulta = medicoRows[0].id_centro;
+    } else {
+      // Para médico, validar que el médico pertenece a su centro
+      const [medicoRows] = await pool.query(
+        "SELECT id FROM medicos WHERE id = ? AND id_centro = ?",
+        [id_medico, idCentro]
+      );
+      // @ts-ignore
+      if (!medicoRows[0]) {
+        return res.status(400).json({ error: "El médico no pertenece al centro indicado" });
+      }
     }
 
     const [result] = await pool.execute(
-      `INSERT INTO consultas (id_centro, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [idCentro, id_medico, paciente_nombre, paciente_apellido, fecha, motivo ?? null, diagnostico ?? null, tratamiento ?? null]
+      `INSERT INTO consultas (id_centro, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [centroConsulta, id_medico, paciente_nombre, paciente_apellido, fecha, motivo ?? null, diagnostico ?? null, tratamiento ?? null, estado ?? 'pendiente']
     );
 
     // @ts-ignore - mysql2 returns OkPacket
     const insertedId = result.insertId as number;
-    const [rows] = await pool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [insertedId, idCentro]);
+    const [rows] = await pool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [insertedId, centroConsulta]);
     // @ts-ignore
     res.status(201).json(rows[0]);
   } catch (error) {
@@ -62,10 +87,23 @@ router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
+    // Verificar si es admin para mostrar todas las consultas
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+      } catch (err) {
+        // Token inválido, continuar como no admin
+      }
+    }
+
     const { medico, desde, hasta, q } = req.query as Record<string, string>;
 
-    const conditions: string[] = ["c.id_centro = ?"]; 
-    const params: any[] = [idCentro];
+    const conditions: string[] = isAdmin ? [] : ["c.id_centro = ?"]; 
+    const params: any[] = isAdmin ? [] : [idCentro];
 
     if (medico) {
       conditions.push("c.id_medico = ?");
