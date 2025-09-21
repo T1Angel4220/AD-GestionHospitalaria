@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../config/db";
 import { authenticateToken, requireCentroAccess, requireRole } from "../middlewares/auth";
+import jwt from "jsonwebtoken";
 
 const router = Router();
 
@@ -117,17 +118,46 @@ router.get("/medicos", async (req: Request, res: Response) => {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
-    console.log('Obteniendo médicos para centro:', idCentro);
+    // Verificar si es admin para mostrar todos los médicos
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
     
-    const [rows] = await pool.query(`
-      SELECT m.*, e.nombre as especialidad_nombre 
-      FROM medicos m 
-      LEFT JOIN especialidades e ON m.id_especialidad = e.id 
-      WHERE m.id_centro = ? 
-      ORDER BY m.nombres, m.apellidos
-    `, [idCentro]);
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+      } catch (err) {
+        // Token inválido, continuar como no admin
+      }
+    }
+
+    console.log('Obteniendo médicos para centro:', idCentro, 'isAdmin:', isAdmin);
     
-    console.log('Médicos encontrados:', rows);
+    let sql, params;
+    if (isAdmin) {
+      // Admin ve todos los médicos de todos los centros
+      sql = `
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        ORDER BY m.nombres, m.apellidos
+      `;
+      params = [];
+    } else {
+      // Usuario normal ve solo médicos de su centro
+      sql = `
+        SELECT m.*, e.nombre as especialidad_nombre 
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        WHERE m.id_centro = ? 
+        ORDER BY m.nombres, m.apellidos
+      `;
+      params = [idCentro];
+    }
+    
+    const [rows] = await pool.query(sql, params);
+    console.log('Médicos encontrados:', (rows as any[]).length);
     res.json(rows);
   } catch (error) {
     console.error(error);
@@ -302,6 +332,70 @@ router.post("/medicos", requireRole(['admin']), async (req: Request, res: Respon
   } catch (error) {
     console.error('Error creando médico:', error);
     res.status(500).json({ error: 'No se pudo crear el médico' });
+  }
+});
+
+// Crear usuario (solo admin)
+router.post("/usuarios", requireRole(['admin']), async (req: Request, res: Response) => {
+  try {
+    const { email, password, rol, id_centro, id_medico } = req.body;
+
+    if (!email || !password || !rol || !id_centro) {
+      return res.status(400).json({ error: 'email, password, rol e id_centro son requeridos' });
+    }
+
+    // Verificar que el centro existe
+    const [centroRows] = await pool.query('SELECT id FROM centros_medicos WHERE id = ?', [id_centro]);
+    // @ts-ignore
+    if (!centroRows[0]) {
+      return res.status(400).json({ error: 'El centro médico no existe' });
+    }
+
+    // Si es médico, verificar que el médico existe y pertenece al centro
+    if (rol === 'medico' && id_medico) {
+      const [medicoRows] = await pool.query('SELECT id FROM medicos WHERE id = ? AND id_centro = ?', [id_medico, id_centro]);
+      // @ts-ignore
+      if (!medicoRows[0]) {
+        return res.status(400).json({ error: 'El médico no existe o no pertenece al centro' });
+      }
+    }
+
+    // Verificar que el email no existe
+    const [emailRows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
+    // @ts-ignore
+    if (emailRows[0]) {
+      return res.status(400).json({ error: 'El email ya está registrado' });
+    }
+
+    // Hash de la contraseña
+    const bcrypt = require('bcrypt');
+    const saltRounds = 12;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Crear usuario
+    const [result] = await pool.execute(
+      'INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) VALUES (?, ?, ?, ?, ?)',
+      [email, password_hash, rol, id_centro, id_medico || null]
+    );
+
+    // @ts-ignore
+    const userId = result.insertId;
+
+    // Obtener el usuario creado
+    const [rows] = await pool.query(`
+      SELECT u.*, cm.nombre as centro_nombre, m.nombres as medico_nombres, m.apellidos as medico_apellidos
+      FROM usuarios u
+      LEFT JOIN centros_medicos cm ON u.id_centro = cm.id
+      LEFT JOIN medicos m ON u.id_medico = m.id
+      WHERE u.id = ?
+    `, [userId]);
+
+    // @ts-ignore
+    res.status(201).json(rows[0]);
+
+  } catch (error) {
+    console.error('Error creando usuario:', error);
+    res.status(500).json({ error: 'No se pudo crear el usuario' });
   }
 });
 

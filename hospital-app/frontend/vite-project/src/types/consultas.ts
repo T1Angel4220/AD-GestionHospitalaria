@@ -49,6 +49,7 @@ export interface Medico {
   id_especialidad: number;
   id_centro: number;
   especialidad_nombre?: string;
+  centro_nombre?: string;
 }
 
 export interface Especialidad {
