@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage'
 import ConsultasPage from './pages/ConsultasPage'
 import AdminPage from './pages/AdminPage'
 import UsuariosPage from './pages/UsuariosPage'
+import { ReportesPage } from './pages/admin/ReportesPage'
 
 function App() {
   return (
@@ -31,6 +32,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/reportes" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ReportesPage />
                 </ProtectedRoute>
               } 
             />

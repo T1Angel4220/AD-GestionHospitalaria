@@ -9,6 +9,7 @@ export interface ApiResponse<T> {
 }
 
 export interface ConsultaResumen {
+  id: number;
   medico_id: number;
   nombres: string;
   apellidos: string;
@@ -26,6 +27,7 @@ export interface ConsultaDetalle {
   motivo: string | null;
   diagnostico: string | null;
   tratamiento: string | null;
+  estado: 'pendiente' | 'programada' | 'completada' | 'cancelada';
 }
 
 export interface ReporteFiltros {

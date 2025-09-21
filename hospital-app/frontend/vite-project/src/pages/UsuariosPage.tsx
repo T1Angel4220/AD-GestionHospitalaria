@@ -120,7 +120,7 @@ export default function UsuariosPage() {
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+            <a href="/admin/reportes" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
               <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                 <Home className="h-5 w-5" />
               </div>

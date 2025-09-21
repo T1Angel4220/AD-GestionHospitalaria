@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
-import { Consulta } from '../types/consultas';
+import type { Consulta } from '../types/consultas';
 import ConsultaCard from './ConsultaCard';
 
 interface ConsultasListProps {

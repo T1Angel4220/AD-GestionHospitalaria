@@ -1,7 +1,7 @@
-// components/reports/ChartsSection.tsx
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import type { ConsultaResumen } from '../../types/reports';
+import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import type { ConsultaResumen } from '../../api/reports';
 
 interface ChartsSectionProps {
   data: ConsultaResumen[];
@@ -33,24 +33,22 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({ data, loading = fa
     return acc;
   }, [] as Array<{ name: string; value: number }>);
 
-  // Colores profesionales en escala de grises
-  const COLORS = ['#000000', '#404040', '#737373', '#a3a3a3', '#d4d4d4', '#e5e5e5'];
+  // Colores profesionales
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
 
   if (loading) {
     return (
-      <div className="grid-professional grid-2 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {[1, 2].map((i) => (
-          <div key={i} className="card-elevated p-6">
+          <div key={i} className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
             <div className="flex items-center gap-4 mb-6">
-              <div className="icon-container">
-                <div className="w-6 h-6 bg-gray-200 rounded loading-skeleton"></div>
-              </div>
+              <div className="w-12 h-12 bg-gray-200 rounded-lg animate-pulse"></div>
               <div>
-                <div className="h-6 bg-gray-200 rounded w-1/3 mb-2 loading-skeleton"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 loading-skeleton"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-2 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
               </div>
             </div>
-            <div className="h-80 bg-gray-200 rounded loading-skeleton"></div>
+            <div className="h-80 bg-gray-200 rounded animate-pulse"></div>
           </div>
         ))}
       </div>
@@ -59,66 +57,66 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({ data, loading = fa
 
   if (data.length === 0) {
     return (
-      <div className="card-elevated mb-8 p-8 text-center">
-        <div className="icon-container mx-auto mb-4">
-          <div className="w-6 h-6 bg-gray-200 rounded"></div>
+      <div className="bg-white rounded-xl shadow-lg p-8 text-center border border-gray-200 mb-8">
+        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <BarChart3 className="w-8 h-8 text-gray-400" />
         </div>
-        <p className="text-body text-gray-500">No hay datos suficientes para mostrar gráficos</p>
+        <p className="text-gray-500">No hay datos suficientes para mostrar gráficos</p>
       </div>
     );
   }
 
   return (
-    <div className="grid-professional grid-2 mb-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       {/* Gráfico de barras - Top médicos */}
-      <div className="card-elevated p-6 animate-fade-in">
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
         <div className="flex items-center gap-4 mb-6">
-          <div className="icon-container">
-            <div className="w-6 h-6 bg-white rounded"></div>
+          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+            <BarChart3 className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-subheading font-semibold">Top 10 Médicos</h3>
-            <p className="text-caption">Médicos con más consultas</p>
+            <h3 className="text-lg font-semibold text-gray-900">Top 10 Médicos</h3>
+            <p className="text-sm text-gray-600">Médicos con más consultas</p>
           </div>
         </div>
         
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={topMedicos} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis 
                 dataKey="nombre" 
-                stroke="#737373"
+                stroke="#6b7280"
                 fontSize={12}
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
-              <YAxis stroke="#737373" fontSize={12} />
+              <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip 
                 contentStyle={{
                   backgroundColor: '#ffffff',
-                  border: '1px solid #e5e5e5',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
-                labelStyle={{ color: '#404040', fontWeight: '600' }}
+                labelStyle={{ color: '#374151', fontWeight: '600' }}
               />
-              <Bar dataKey="consultas" fill="#000000" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="consultas" fill="#3B82F6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Gráfico de pie - Especialidades */}
-      <div className="card-elevated p-6 animate-fade-in">
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
         <div className="flex items-center gap-4 mb-6">
-          <div className="icon-container">
-            <div className="w-6 h-6 bg-white rounded-full"></div>
+          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+            <PieChartIcon className="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <h3 className="text-subheading font-semibold">Distribución por Especialidades</h3>
-            <p className="text-caption">Consultas por especialidad médica</p>
+            <h3 className="text-lg font-semibold text-gray-900">Distribución por Especialidades</h3>
+            <p className="text-sm text-gray-600">Consultas por especialidad médica</p>
           </div>
         </div>
         
@@ -130,25 +128,25 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({ data, loading = fa
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={(props: any) => `${props.name} ${(props.percent * 100).toFixed(0)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
                 stroke="#ffffff"
                 strokeWidth={2}
               >
-                {especialidadesData.map((entry, index) => (
+                {especialidadesData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip 
                 contentStyle={{
                   backgroundColor: '#ffffff',
-                  border: '1px solid #e5e5e5',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
-                labelStyle={{ color: '#404040', fontWeight: '600' }}
+                labelStyle={{ color: '#374151', fontWeight: '600' }}
               />
             </PieChart>
           </ResponsiveContainer>

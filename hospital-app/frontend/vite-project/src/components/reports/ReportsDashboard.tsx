@@ -7,7 +7,7 @@ import { ConsultasTable } from './ConsultasTable';
 import type { ReporteFiltros, ConsultaResumen } from '../../types/reports';
 import { apiService } from '../../api/reports';
 import { config } from '../../config/env';
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 
 export const ReportsDashboard: React.FC = () => {
   const [filtros, setFiltros] = useState<ReporteFiltros>({
@@ -87,9 +87,9 @@ export const ReportsDashboard: React.FC = () => {
     }
   };
 
-  const handleError = (errorMessage: string) => {
-    setError(errorMessage);
-  };
+  // const handleError = (errorMessage: string) => {
+  //   setError(errorMessage);
+  // };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -176,7 +176,6 @@ export const ReportsDashboard: React.FC = () => {
           data={data} 
           loading={loading} 
           onError={setError}
-          centroId={filtros.centroId}
         />
 
         {/* Información adicional */}

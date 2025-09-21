@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Activity, 
   Users, 
@@ -8,6 +9,7 @@ import {
   LogOut,
   Home
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,14 +17,26 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const location = useLocation();
+  const { logout } = useAuth();
+  
   const menuItems = [
-    { icon: Home, label: 'Dashboard', href: '/', active: true },
-    { icon: Activity, label: 'Consultas', href: '/consultas', active: false },
-    { icon: Users, label: 'Pacientes', href: '/pacientes', active: false },
-    { icon: Calendar, label: 'Citas', href: '/citas', active: false },
-    { icon: FileText, label: 'Reportes', href: '/reportes', active: false },
-    { icon: Settings, label: 'Configuración', href: '/configuracion', active: false },
+    { 
+      icon: Home, 
+      label: 'Dashboard', 
+      subtitle: 'Panel principal',
+      href: '/admin/reportes' 
+    },
+    { icon: Activity, label: 'Consultas', href: '/consultas' },
+    { icon: Users, label: 'Pacientes', href: '/pacientes' },
+    { icon: Calendar, label: 'Citas', href: '/citas' },
+    { icon: FileText, label: 'Reportes', href: '/admin/reportes' },
+    { icon: Settings, label: 'Configuración', href: '/configuracion' },
   ];
+
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <>
@@ -63,28 +77,40 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <nav className="flex-1 px-6 py-8 space-y-4">
             {menuItems.map((item) => {
               const Icon = item.icon;
+              const isActive = location.pathname === item.href;
               return (
-                <a
+                <Link
                   key={item.label}
-                  href={item.href}
+                  to={item.href}
+                  onClick={onClose}
                   className={`
                     flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium transition-all duration-200
-                    ${item.active 
+                    ${isActive 
                       ? 'bg-blue-600 text-white shadow-lg' 
                       : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                     }
                   `}
                 >
-                  <Icon className="h-6 w-6" />
-                  {item.label}
-                </a>
+                  <div className="flex-shrink-0 w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-base font-medium">{item.label}</div>
+                    {item.subtitle && (
+                      <div className="text-sm opacity-75">{item.subtitle}</div>
+                    )}
+                  </div>
+                </Link>
               );
             })}
           </nav>
 
           {/* Footer del Sidebar */}
           <div className="p-6 border-t border-gray-700">
-            <button className="flex items-center gap-4 px-4 py-4 w-full text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200">
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-4 px-4 py-4 w-full text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200"
+            >
               <LogOut className="h-6 w-6" />
               Cerrar Sesión
             </button>

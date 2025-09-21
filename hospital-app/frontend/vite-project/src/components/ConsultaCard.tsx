@@ -9,7 +9,7 @@ import {
   Edit, 
   Trash2 
 } from 'lucide-react';
-import { Consulta } from '../types/consultas';
+import type { Consulta } from '../types/consultas';
 
 interface ConsultaCardProps {
   consulta: Consulta;

@@ -1,8 +1,6 @@
-// components/reports/ReportFilters.tsx
 import React from 'react';
-import { Button } from '../ui/Button';
-import { Search, Calendar, Filter, Download } from 'lucide-react';
-import type { ReporteFiltros } from '../../types/reports';
+import { Search, Calendar, Filter, Download, X } from 'lucide-react';
+import type { ReporteFiltros } from '../../api/reports';
 
 interface ReportFiltersProps {
   filtros: ReporteFiltros;
@@ -38,50 +36,41 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   const tieneFiltros = filtros.desde || filtros.hasta || filtros.q;
 
   return (
-    <div className="card-elevated section-spacing animate-fade-in">
-      <div className="flex items-center gap-4 mb-6">
-        <div className="icon-container">
-          <Filter className="icon-professional" />
-        </div>
-        <div>
-          <h3 className="text-heading">Filtros de Reporte</h3>
-          <p className="text-caption">Configure los parámetros para generar el reporte</p>
-        </div>
-      </div>
-
-      <div className="grid-professional grid-2 lg:grid-4 gap-6 mb-6">
+    <div className="space-y-6">
+      {/* Filtros principales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Fecha Desde */}
         <div className="space-y-2">
-          <label className="text-caption font-semibold flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
+          <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-500" />
             Fecha Desde
           </label>
           <input
             type="date"
             value={filtros.desde || ''}
             onChange={(e) => handleInputChange('desde', e.target.value)}
-            className="input-professional"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           />
         </div>
 
         {/* Fecha Hasta */}
         <div className="space-y-2">
-          <label className="text-caption font-semibold flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
+          <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-500" />
             Fecha Hasta
           </label>
           <input
             type="date"
             value={filtros.hasta || ''}
             onChange={(e) => handleInputChange('hasta', e.target.value)}
-            className="input-professional"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           />
         </div>
 
         {/* Búsqueda */}
         <div className="space-y-2">
-          <label className="text-caption font-semibold flex items-center gap-2">
-            <Search className="w-4 h-4" />
+          <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+            <Search className="w-4 h-4 text-gray-500" />
             Buscar
           </label>
           <input
@@ -89,13 +78,13 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             placeholder="Paciente, motivo, diagnóstico..."
             value={filtros.q || ''}
             onChange={(e) => handleInputChange('q', e.target.value)}
-            className="input-professional"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           />
         </div>
 
         {/* Centro Médico */}
         <div className="space-y-2">
-          <label className="text-caption font-semibold">
+          <label className="block text-sm font-medium text-gray-700">
             Centro Médico
           </label>
           <input
@@ -103,7 +92,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             placeholder="ID del Centro"
             value={filtros.centroId || ''}
             onChange={(e) => handleInputChange('centroId', (parseInt(e.target.value) || 1).toString())}
-            className="input-professional"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           />
         </div>
       </div>
@@ -113,26 +102,27 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
         <button
           onClick={onGenerarReporte}
           disabled={loading}
-          className="btn-professional"
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <Filter className="icon-professional" />
+          <Filter className="w-4 h-4 mr-2" />
           {loading ? 'Generando...' : 'Generar Reporte'}
         </button>
 
         <button
           onClick={onExportarReporte}
           disabled={loading}
-          className="btn-outline"
+          className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <Download className="icon-professional" />
+          <Download className="w-4 h-4 mr-2" />
           Exportar CSV
         </button>
 
         {tieneFiltros && (
           <button
             onClick={limpiarFiltros}
-            className="btn-outline"
+            className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
           >
+            <X className="w-4 h-4 mr-2" />
             Limpiar Filtros
           </button>
         )}
@@ -140,33 +130,33 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
 
       {/* Resumen de filtros activos */}
       {tieneFiltros && (
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-            <h4 className="text-body font-semibold">Filtros Activos</h4>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+            <h4 className="text-sm font-semibold text-blue-900">Filtros Activos</h4>
           </div>
-          <div className="grid-professional grid-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
             {filtros.desde && (
               <div className="flex items-center gap-2">
-                <span className="text-caption font-medium">Desde:</span>
-                <span className="text-body">{filtros.desde}</span>
+                <span className="font-medium text-blue-700">Desde:</span>
+                <span className="text-blue-900">{filtros.desde}</span>
               </div>
             )}
             {filtros.hasta && (
               <div className="flex items-center gap-2">
-                <span className="text-caption font-medium">Hasta:</span>
-                <span className="text-body">{filtros.hasta}</span>
+                <span className="font-medium text-blue-700">Hasta:</span>
+                <span className="text-blue-900">{filtros.hasta}</span>
               </div>
             )}
             {filtros.q && (
               <div className="flex items-center gap-2">
-                <span className="text-caption font-medium">Búsqueda:</span>
-                <span className="text-body">"{filtros.q}"</span>
+                <span className="font-medium text-blue-700">Búsqueda:</span>
+                <span className="text-blue-900">"{filtros.q}"</span>
               </div>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-caption font-medium">Centro:</span>
-              <span className="text-body">ID {filtros.centroId}</span>
+              <span className="font-medium text-blue-700">Centro:</span>
+              <span className="text-blue-900">ID {filtros.centroId}</span>
             </div>
           </div>
         </div>
