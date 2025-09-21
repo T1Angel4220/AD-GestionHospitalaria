@@ -6,6 +6,8 @@ import { ConsultasTable } from '../../components/reports/ConsultasTable';
 import type { ReporteFiltros, ConsultaResumen } from '../../api/reports';
 import { apiService } from '../../api/reports';
 import { config } from '../../config/env';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { 
   AlertCircle, 
   CheckCircle, 
@@ -112,14 +114,14 @@ export const ReportesPage: React.FC = () => {
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-gray-900 to-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl`}>
         {/* Logo Section */}
-        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-orange-600 to-orange-700">
+        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-amber-500 to-orange-500">
           <div className="flex items-center">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
-              <Activity className="h-8 w-8 text-blue-600" />
+              <Activity className="h-8 w-8 text-amber-600" />
             </div>
             <div>
               <span className="text-white text-xl font-bold">HospitalApp</span>
-              <p className="text-blue-100 text-xs">Sistema Médico</p>
+              <p className="text-amber-100 text-xs">Sistema Médico</p>
             </div>
           </div>
           <button
@@ -133,13 +135,13 @@ export const ReportesPage: React.FC = () => {
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            <a href="/admin/reportes" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-orange-600 to-orange-700 rounded-xl shadow-lg">
+            <a href="/admin/reportes" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-lg">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
-                <BarChart3 className="h-5 w-5 text-orange-600" />
+                <BarChart3 className="h-5 w-5 text-amber-600" />
               </div>
               <div>
                 <div className="font-medium">Dashboard</div>
-                <div className="text-xs text-orange-100">Panel principal</div>
+                <div className="text-xs text-amber-100">Panel principal</div>
               </div>
             </a>
             <a href="/consultas" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
@@ -198,7 +200,7 @@ export const ReportesPage: React.FC = () => {
       {/* Main Content */}
       <div className="lg:ml-72">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-600 to-orange-700 shadow-lg">
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-8">
               <div className="flex items-center">
@@ -213,15 +215,15 @@ export const ReportesPage: React.FC = () => {
                     <BarChart3 className="h-8 w-8 mr-3" />
                     Dashboard de Reportes
                   </h1>
-                  <p className="text-gray-200 mt-1">Sistema de gestión hospitalaria - Análisis de consultas médicas</p>
+                  <p className="text-amber-100 mt-1">Sistema de gestión hospitalaria - Análisis de consultas médicas</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-right">
                   <p className="text-white font-medium">{user?.email}</p>
-                  <p className="text-gray-200 text-sm">Administrador</p>
+                  <p className="text-amber-100 text-sm">Administrador</p>
                 </div>
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
                   <Stethoscope className="h-6 w-6 text-white" />
                 </div>
               </div>

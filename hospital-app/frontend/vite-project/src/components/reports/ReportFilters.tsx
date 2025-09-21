@@ -49,7 +49,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             type="date"
             value={filtros.desde || ''}
             onChange={(e) => handleInputChange('desde', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
           />
         </div>
 
@@ -63,7 +63,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             type="date"
             value={filtros.hasta || ''}
             onChange={(e) => handleInputChange('hasta', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
           />
         </div>
 
@@ -78,7 +78,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             placeholder="Paciente, motivo, diagnóstico..."
             value={filtros.q || ''}
             onChange={(e) => handleInputChange('q', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
           />
         </div>
 
@@ -92,7 +92,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             placeholder="ID del Centro"
             value={filtros.centroId || ''}
             onChange={(e) => handleInputChange('centroId', (parseInt(e.target.value) || 1).toString())}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
           />
         </div>
       </div>
@@ -102,7 +102,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
         <button
           onClick={onGenerarReporte}
           disabled={loading}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg hover:from-amber-600 hover:to-orange-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
         >
           <Filter className="w-4 h-4 mr-2" />
           {loading ? 'Generando...' : 'Generar Reporte'}
@@ -111,7 +111,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
         <button
           onClick={onExportarReporte}
           disabled={loading}
-          className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white rounded-lg hover:from-amber-500 hover:to-yellow-600 focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
         >
           <Download className="w-4 h-4 mr-2" />
           Exportar CSV
@@ -120,7 +120,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
         {tieneFiltros && (
           <button
             onClick={limpiarFiltros}
-            className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors shadow-lg"
           >
             <X className="w-4 h-4 mr-2" />
             Limpiar Filtros
@@ -130,33 +130,33 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
 
       {/* Resumen de filtros activos */}
       {tieneFiltros && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-            <h4 className="text-sm font-semibold text-blue-900">Filtros Activos</h4>
+            <div className="w-2 h-2 bg-amber-600 rounded-full"></div>
+            <h4 className="text-sm font-semibold text-amber-900">Filtros Activos</h4>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
             {filtros.desde && (
               <div className="flex items-center gap-2">
-                <span className="font-medium text-blue-700">Desde:</span>
-                <span className="text-blue-900">{filtros.desde}</span>
+                <span className="font-medium text-amber-700">Desde:</span>
+                <span className="text-amber-900">{filtros.desde}</span>
               </div>
             )}
             {filtros.hasta && (
               <div className="flex items-center gap-2">
-                <span className="font-medium text-blue-700">Hasta:</span>
-                <span className="text-blue-900">{filtros.hasta}</span>
+                <span className="font-medium text-amber-700">Hasta:</span>
+                <span className="text-amber-900">{filtros.hasta}</span>
               </div>
             )}
             {filtros.q && (
               <div className="flex items-center gap-2">
-                <span className="font-medium text-blue-700">Búsqueda:</span>
-                <span className="text-blue-900">"{filtros.q}"</span>
+                <span className="font-medium text-amber-700">Búsqueda:</span>
+                <span className="text-amber-900">"{filtros.q}"</span>
               </div>
             )}
             <div className="flex items-center gap-2">
-              <span className="font-medium text-blue-700">Centro:</span>
-              <span className="text-blue-900">ID {filtros.centroId}</span>
+              <span className="font-medium text-amber-700">Centro:</span>
+              <span className="text-amber-900">ID {filtros.centroId}</span>
             </div>
           </div>
         </div>
