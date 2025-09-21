@@ -8,7 +8,6 @@ import {
   Activity, 
   Users, 
   LogOut,
-  Home,
   Plus,
   Menu,
   Search,

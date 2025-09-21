@@ -69,7 +69,7 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({ data, loading = fa
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       {/* Gráfico de barras - Top médicos */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200" data-chart="bar-chart">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
             <BarChart3 className="w-6 h-6 text-blue-600" />
@@ -109,7 +109,7 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({ data, loading = fa
       </div>
 
       {/* Gráfico de pie - Especialidades */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200" data-chart="pie-chart">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
             <PieChartIcon className="w-6 h-6 text-green-600" />

@@ -11,7 +11,6 @@ import {
   Calendar, 
   FileText, 
   LogOut,
-  Home,
   Plus,
   Menu,
   Search,

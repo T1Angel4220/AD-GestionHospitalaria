@@ -114,7 +114,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
           className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white rounded-lg hover:from-amber-500 hover:to-yellow-600 focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
         >
           <Download className="w-4 h-4 mr-2" />
-          Exportar CSV
+          Exportar PDF
         </button>
 
         {tieneFiltros && (

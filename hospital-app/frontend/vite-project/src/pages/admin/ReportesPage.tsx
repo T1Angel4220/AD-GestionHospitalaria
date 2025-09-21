@@ -7,7 +7,7 @@ import type { ReporteFiltros, ConsultaResumen } from '../../api/reports';
 import { apiService } from '../../api/reports';
 import { config } from '../../config/env';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { 
   AlertCircle, 
   CheckCircle, 
@@ -52,7 +52,7 @@ export const ReportesPage: React.FC = () => {
 
     try {
       const response = await apiService.getResumenConsultas(filtros);
-
+      
       if (response.error) {
         setError(response.error);
         setData([]);
@@ -68,40 +68,300 @@ export const ReportesPage: React.FC = () => {
     }
   };
 
-  const exportarReporte = () => {
+  const exportarReporte = async () => {
     if (data.length === 0) {
       setError('No hay datos para exportar');
       return;
     }
 
     try {
-      // Crear CSV
-      const headers = ['Médico', 'Especialidad', 'Total Consultas', 'Primera Consulta', 'Última Consulta'];
-      const csvContent = [
-        headers.join(','),
-        ...data.map(medico => [
-          `"${medico.nombres} ${medico.apellidos}"`,
-          `"${medico.especialidad}"`,
-          medico.total_consultas,
-          `"${medico.primera_consulta || 'N/A'}"`,
-          `"${medico.ultima_consulta || 'N/A'}"`
-        ].join(','))
-      ].join('\n');
+      // Crear nuevo documento PDF
+      const doc = new jsPDF();
+      
+      // Configurar colores del tema
+      const primaryColor = [245, 158, 11]; // amber-500
+      const textColor = [55, 65, 81]; // gray-700
+      const lightGray = [243, 244, 246]; // gray-100
 
-      // Descargar archivo
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `reporte_consultas_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Función para agregar texto con estilo
+      const addText = (text: string, x: number, y: number, options: any = {}) => {
+        doc.setFontSize(options.fontSize || 12);
+        if (options.color && Array.isArray(options.color) && options.color.length === 3) {
+          doc.setTextColor(options.color[0], options.color[1], options.color[2]);
+        } else if (typeof options.color === 'number') {
+          doc.setTextColor(options.color);
+        } else {
+          doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+        }
+        doc.text(text, x, y);
+      };
 
-      setSuccess('Reporte exportado exitosamente');
+      // Función para agregar línea
+      const addLine = (x1: number, y1: number, x2: number, y2: number, color: number[] = primaryColor) => {
+        doc.setDrawColor(color[0], color[1], color[2]);
+        doc.setLineWidth(0.5);
+        doc.line(x1, y1, x2, y2);
+      };
+
+      // Función para agregar rectángulo
+      const addRect = (x: number, y: number, width: number, height: number, color: number[] = lightGray) => {
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.rect(x, y, width, height, 'F');
+      };
+
+      let yPosition = 20;
+
+      // Encabezado principal
+      addRect(0, 0, 210, 30, primaryColor);
+      addText('HOSPITALAPP', 20, 15, { fontSize: 20, color: [255, 255, 255] });
+      addText('Sistema de Gestión Hospitalaria', 20, 22, { fontSize: 10, color: [255, 255, 255] });
+      
+      // Fecha de generación
+      const fechaActual = new Date().toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      addText(`Generado el: ${fechaActual}`, 150, 15, { fontSize: 10, color: [255, 255, 255] });
+
+      yPosition = 40;
+
+      // Título del reporte
+      addText('REPORTE DE CONSULTAS MÉDICAS', 20, yPosition, { fontSize: 16, color: primaryColor });
+      yPosition += 10;
+
+      // Información de filtros
+      addText('Parámetros del Reporte:', 20, yPosition, { fontSize: 12, color: textColor });
+      yPosition += 8;
+
+      const filtrosInfo = [
+        `Período: ${filtros.desde && filtros.hasta ? `${filtros.desde} - ${filtros.hasta}` : filtros.desde ? `Desde ${filtros.desde}` : filtros.hasta ? `Hasta ${filtros.hasta}` : 'Todos los registros'}`,
+        `Centro Médico: ID ${filtros.centroId}`,
+        `Búsqueda: ${filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}`,
+        `Total de registros: ${data.length} médico${data.length !== 1 ? 's' : ''}`
+      ];
+
+      filtrosInfo.forEach(info => {
+        addText(`• ${info}`, 25, yPosition, { fontSize: 10, color: textColor });
+        yPosition += 6;
+      });
+
+      yPosition += 10;
+
+      // Estadísticas resumidas
+      const totalConsultas = data.reduce((sum, medico) => sum + medico.total_consultas, 0);
+      const promedioConsultas = data.length > 0 ? (totalConsultas / data.length).toFixed(1) : 0;
+      const especialidadesUnicas = new Set(data.map(medico => medico.especialidad)).size;
+
+      addText('Resumen Estadístico:', 20, yPosition, { fontSize: 12, color: textColor });
+      yPosition += 8;
+
+      const estadisticas = [
+        `Total de Consultas: ${totalConsultas.toLocaleString()}`,
+        `Médicos Activos: ${data.length}`,
+        `Promedio por Médico: ${promedioConsultas}`,
+        `Especialidades: ${especialidadesUnicas}`
+      ];
+
+      estadisticas.forEach(stat => {
+        addText(`• ${stat}`, 25, yPosition, { fontSize: 10, color: textColor });
+        yPosition += 6;
+      });
+
+      yPosition += 15;
+
+      // Tabla de datos
+      addText('Detalle por Médico:', 20, yPosition, { fontSize: 12, color: textColor });
+      yPosition += 10;
+
+      // Preparar datos para la tabla
+      const tableData = data.map(medico => [
+        `${medico.nombres} ${medico.apellidos}`,
+        medico.especialidad,
+        medico.total_consultas.toString(),
+        medico.primera_consulta ? new Date(medico.primera_consulta).toLocaleDateString('es-ES') : 'N/A',
+        medico.ultima_consulta ? new Date(medico.ultima_consulta).toLocaleDateString('es-ES') : 'N/A'
+      ]);
+
+      // Agregar tabla usando autoTable
+      autoTable(doc, {
+        head: [['Médico', 'Especialidad', 'Total Consultas', 'Primera Consulta', 'Última Consulta']],
+        body: tableData,
+        startY: yPosition,
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+          overflow: 'linebreak',
+          halign: 'left'
+        },
+        headStyles: {
+          fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251] // gray-50
+        },
+        columnStyles: {
+          0: { cellWidth: 50 }, // Médico
+          1: { cellWidth: 35 }, // Especialidad
+          2: { cellWidth: 25, halign: 'center' }, // Total Consultas
+          3: { cellWidth: 30, halign: 'center' }, // Primera Consulta
+          4: { cellWidth: 30, halign: 'center' }  // Última Consulta
+        },
+        margin: { left: 20, right: 20 }
+      });
+
+      // Obtener la posición final después de la tabla
+      const finalY = (doc as any).lastAutoTable.finalY || yPosition + 50;
+      let currentY = finalY + 20;
+
+      // Agregar gráficos si hay datos
+      if (data.length > 0) {
+        try {
+          // Paleta de colores bonitos
+          const colors = [
+            [59, 130, 246],    // azul
+            [16, 185, 129],    // verde
+            [245, 158, 11],    // ámbar
+            [239, 68, 68],     // rojo
+            [139, 92, 246],    // púrpura
+            [6, 182, 212],     // cian
+            [132, 204, 22],    // lima
+            [249, 115, 22],    // naranja
+            [236, 72, 153],    // rosa
+            [34, 197, 94]      // verde esmeralda
+          ];
+          
+          // Crear gráfico de barras mejorado
+          addText('Top 10 Médicos - Consultas por Médico:', 20, currentY, { fontSize: 12, color: textColor });
+          currentY += 10;
+          
+          // Obtener top 10 médicos
+          const topMedicos = data
+            .sort((a, b) => b.total_consultas - a.total_consultas)
+            .slice(0, 10);
+          
+          const maxConsultas = Math.max(...topMedicos.map(m => m.total_consultas));
+          const chartWidth = 120;
+          const chartHeight = 60;
+          const barWidth = chartWidth / Math.min(topMedicos.length, 10);
+          
+          // Dibujar ejes
+          addLine(20, currentY + chartHeight, 20 + chartWidth, currentY + chartHeight, [107, 114, 128]); // eje X
+          addLine(20, currentY, 20, currentY + chartHeight, [107, 114, 128]); // eje Y
+          
+          // Dibujar barras con colores diferentes
+          topMedicos.forEach((medico, index) => {
+            const barHeight = (medico.total_consultas / maxConsultas) * chartHeight;
+            const x = 20 + (index * barWidth);
+            const y = currentY + chartHeight - barHeight;
+            const color = colors[index % colors.length];
+            
+            // Dibujar barra
+            doc.setFillColor(color[0], color[1], color[2]);
+            doc.rect(x + 1, y, barWidth - 2, barHeight, 'F');
+            
+            // Agregar valor encima de la barra
+            addText(medico.total_consultas.toString(), x + barWidth/2 - 5, y - 2, { fontSize: 8, color: textColor });
+            
+            // Agregar nombre del médico (abreviado) debajo del eje
+            const nombreAbreviado = `${medico.nombres.split(' ')[0].charAt(0)}. ${medico.apellidos.split(' ')[0]}`;
+            addText(nombreAbreviado, x + 2, currentY + chartHeight + 8, { fontSize: 7, color: textColor });
+          });
+          
+          currentY += chartHeight + 25;
+          
+          // Verificar si necesitamos una nueva página
+          const pageHeight = doc.internal.pageSize.height;
+          const availableSpace = pageHeight - currentY - 50; // 50px para el pie de página
+          
+          console.log('Posición actual Y:', currentY);
+          console.log('Altura de página:', pageHeight);
+          console.log('Espacio disponible:', availableSpace);
+          
+          if (availableSpace < 100) { // Si hay menos de 100px disponibles
+            console.log('Agregando nueva página');
+            doc.addPage();
+            currentY = 20;
+          }
+          
+          // Crear gráfico de especialidades simplificado
+          console.log('Creando gráfico de especialidades en Y:', currentY);
+          addText('Distribución por Especialidades:', 20, currentY, { fontSize: 12, color: textColor });
+          currentY += 10;
+          
+          // Agrupar por especialidades
+          const especialidadesData = data.reduce((acc, medico) => {
+            const existing = acc.find(item => item.especialidad === medico.especialidad);
+            if (existing) {
+              existing.total += medico.total_consultas;
+            } else {
+              acc.push({
+                especialidad: medico.especialidad,
+                total: medico.total_consultas
+              });
+            }
+            return acc;
+          }, [] as Array<{ especialidad: string; total: number }>);
+          
+          const totalConsultas = especialidadesData.reduce((sum, item) => sum + item.total, 0);
+          const sortedEspecialidades = especialidadesData.sort((a, b) => b.total - a.total);
+          
+          // Crear gráfico de barras horizontales para especialidades
+          const maxEspecialidad = Math.max(...sortedEspecialidades.map(e => e.total));
+          const horizontalBarWidth = 80;
+          const barHeight = 8;
+          const barSpacing = 12;
+          
+          console.log('Procesando especialidades:', sortedEspecialidades.length);
+          sortedEspecialidades.forEach((item, index) => {
+            const barLength = (item.total / maxEspecialidad) * horizontalBarWidth;
+            const color = colors[index % colors.length];
+            const percentage = ((item.total / totalConsultas) * 100).toFixed(1);
+            
+            console.log(`Dibujando especialidad ${index + 1}: ${item.especialidad} en Y: ${currentY}`);
+            
+            // Dibujar barra horizontal
+            doc.setFillColor(color[0], color[1], color[2]);
+            doc.rect(20, currentY, barLength, barHeight, 'F');
+            
+            // Agregar texto de la especialidad
+            addText(item.especialidad, 25, currentY + 6, { fontSize: 9, color: textColor });
+            
+            // Agregar valor y porcentaje
+            addText(`${item.total} (${percentage}%)`, 20 + horizontalBarWidth + 5, currentY + 6, { fontSize: 9, color: textColor });
+            
+            currentY += barSpacing;
+          });
+          
+          currentY += 10;
+          
+        } catch (chartError) {
+          console.warn('Error al crear gráficos:', chartError);
+          addText('Nota: Los gráficos no pudieron ser incluidos en este reporte.', 20, currentY, { fontSize: 10, color: [107, 114, 128] });
+          currentY += 10;
+        }
+      }
+
+      // Pie de página
+      const pageHeight = doc.internal.pageSize.height;
+      const footerY = Math.max(currentY + 20, pageHeight - 20);
+
+      addLine(20, footerY - 5, 190, footerY - 5, [209, 213, 219]); // gray-300
+      addText('HospitalApp - Sistema de Gestión Hospitalaria', 20, footerY, { fontSize: 8, color: [107, 114, 128] });
+      addText(`Página ${doc.internal.pages.length}`, 150, footerY, { fontSize: 8, color: [107, 114, 128] });
+
+      // Guardar el PDF
+      const fileName = `reporte_consultas_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      setSuccess('Reporte PDF exportado exitosamente');
     } catch (err) {
-      setError('Error al exportar el reporte');
+      console.error('Error al generar PDF:', err);
+      setError('Error al exportar el reporte PDF');
     }
   };
 
@@ -119,7 +379,7 @@ export const ReportesPage: React.FC = () => {
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
               <Activity className="h-8 w-8 text-amber-600" />
             </div>
-            <div>
+    <div>
               <span className="text-white text-xl font-bold">HospitalApp</span>
               <p className="text-amber-100 text-xs">Sistema Médico</p>
             </div>
@@ -130,8 +390,8 @@ export const ReportesPage: React.FC = () => {
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
-        
+      </div>
+
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
@@ -254,8 +514,8 @@ export const ReportesPage: React.FC = () => {
             <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center">
               <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin mr-2"></div>
               <span className="text-sm">Generando reporte...</span>
-            </div>
-          )}
+        </div>
+      )}
 
           {/* Filters */}
           <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
@@ -269,36 +529,36 @@ export const ReportesPage: React.FC = () => {
               </div>
             </div>
             
-            <ReportFilters
-              filtros={filtros}
-              onFiltrosChange={setFiltros}
-              onGenerarReporte={generarReporte}
-              onExportarReporte={exportarReporte}
-              loading={loading}
-            />
+      <ReportFilters
+        filtros={filtros}
+        onFiltrosChange={setFiltros}
+        onGenerarReporte={generarReporte}
+        onExportarReporte={exportarReporte}
+        loading={loading}
+      />
           </div>
 
           {/* Stats Cards */}
           <div className="mb-6">
-            <StatsCards data={data} loading={loading} />
+      <StatsCards data={data} loading={loading} />
           </div>
 
           {/* Charts */}
           <div className="mb-6">
-            <ChartsSection data={data} loading={loading} />
+      <ChartsSection data={data} loading={loading} />
           </div>
 
           {/* Table */}
           <div className="bg-white rounded-xl shadow-lg">
-            <ConsultasTable
-              data={data}
-              loading={loading}
-              onError={handleError}
-            />
+      <ConsultasTable
+        data={data}
+        loading={loading}
+        onError={handleError}
+      />
           </div>
 
-          {/* Información adicional */}
-          {data.length > 0 && (
+      {/* Información adicional */}
+      {data.length > 0 && (
             <div className="mt-6 bg-white rounded-xl shadow-lg p-6 animate-fade-in">
               <div className="flex items-center mb-4">
                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
@@ -310,33 +570,33 @@ export const ReportesPage: React.FC = () => {
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-500">Período de análisis:</p>
                   <p className="text-sm text-gray-900">
-                    {filtros.desde && filtros.hasta
-                      ? `${filtros.desde} - ${filtros.hasta}`
-                      : filtros.desde
-                      ? `Desde ${filtros.desde}`
-                      : filtros.hasta
-                      ? `Hasta ${filtros.hasta}`
-                      : 'Todos los registros'
-                    }
-                  </p>
-                </div>
+                {filtros.desde && filtros.hasta 
+                  ? `${filtros.desde} - ${filtros.hasta}`
+                  : filtros.desde 
+                  ? `Desde ${filtros.desde}`
+                  : filtros.hasta
+                  ? `Hasta ${filtros.hasta}`
+                  : 'Todos los registros'
+                }
+              </p>
+            </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-500">Centro médico:</p>
                   <p className="text-sm text-gray-900">ID {filtros.centroId}</p>
-                </div>
+            </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-500">Filtro de búsqueda:</p>
                   <p className="text-sm text-gray-900">
-                    {filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}
-                  </p>
-                </div>
+                {filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}
+              </p>
+            </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-500">Total de registros:</p>
                   <p className="text-sm text-gray-900">{data.length} médico{data.length !== 1 ? 's' : ''}</p>
                 </div>
-              </div>
-            </div>
-          )}
+          </div>
+        </div>
+      )}
         </main>
       </div>
     </div>
