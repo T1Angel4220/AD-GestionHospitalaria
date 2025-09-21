@@ -89,6 +89,10 @@ export class ConsultasApi {
     return this.request<any[]>('/consultas/usuarios');
   }
 
+  static async getMedicosDisponibles(): Promise<Medico[]> {
+    return this.request<Medico[]>('/consultas/medicos-disponibles');
+  }
+
   static async createUsuario(usuario: {
     email: string;
     password: string;

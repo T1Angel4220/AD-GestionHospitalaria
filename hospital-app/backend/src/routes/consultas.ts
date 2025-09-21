@@ -115,6 +115,26 @@ router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
 });
 
 // Obtener médicos del centro
+// Obtener médicos disponibles para asociar (solo admin)
+router.get("/medicos-disponibles", requireRole(['admin']), async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+      FROM medicos m
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id
+      LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+      WHERE m.id NOT IN (
+        SELECT id_medico FROM usuarios WHERE id_medico IS NOT NULL
+      )
+      ORDER BY m.nombres, m.apellidos
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error obteniendo médicos disponibles:', error);
+    res.status(500).json({ error: 'No se pudieron obtener los médicos disponibles' });
+  }
+});
+
 router.get("/medicos", async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
