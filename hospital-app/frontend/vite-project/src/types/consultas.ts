@@ -63,3 +63,14 @@ export interface CentroMedico {
   ciudad: string;
   direccion?: string;
 }
+
+export interface Usuario {
+  id: number;
+  email: string;
+  rol: 'admin' | 'medico';
+  id_centro: number;
+  id_medico?: number;
+  centro_nombre?: string;
+  medico_nombres?: string;
+  medico_apellidos?: string;
+}

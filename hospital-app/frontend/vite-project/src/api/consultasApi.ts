@@ -85,6 +85,10 @@ export class ConsultasApi {
     });
   }
 
+  static async getUsuarios(): Promise<any[]> {
+    return this.request<any[]>('/consultas/usuarios');
+  }
+
   static async createUsuario(usuario: {
     email: string;
     password: string;

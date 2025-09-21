@@ -7,7 +7,9 @@ const router = Router();
 
 // Aplicar autenticación a todas las rutas
 router.use(authenticateToken);
-router.use(requireCentroAccess);
+
+// Aplicar requireCentroAccess solo a rutas que lo necesiten
+// (no a /usuarios porque los admins pueden ver todos los usuarios)
 
 function getCentroId(req: Request): number | null {
   const headerValue = req.header("X-Centro-Id") || req.header("x-centro-id");
@@ -17,7 +19,7 @@ function getCentroId(req: Request): number | null {
 }
 
 // Crear consulta
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", requireCentroAccess, async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
@@ -55,7 +57,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // Listar consultas del centro con datos relacionados
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
@@ -189,8 +191,28 @@ router.get("/centros", async (req: Request, res: Response) => {
   }
 });
 
+// Obtener usuarios (solo admin)
+router.get("/usuarios", requireRole(['admin']), async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT u.*, 
+             cm.nombre as centro_nombre, 
+             m.nombres as medico_nombres, 
+             m.apellidos as medico_apellidos
+      FROM usuarios u
+      LEFT JOIN centros_medicos cm ON u.id_centro = cm.id
+      LEFT JOIN medicos m ON u.id_medico = m.id
+      ORDER BY u.email
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error obteniendo usuarios:', error);
+    res.status(500).json({ error: 'No se pudieron obtener los usuarios' });
+  }
+});
+
 // Obtener una consulta por id (scoped)
-router.get("/:id", async (req: Request, res: Response) => {
+router.get("/:id", requireCentroAccess, async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
@@ -212,7 +234,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 // Actualizar una consulta
-router.put("/:id", async (req: Request, res: Response) => {
+router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
@@ -265,7 +287,7 @@ router.put("/:id", async (req: Request, res: Response) => {
 });
 
 // Eliminar una consulta
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete("/:id", requireCentroAccess, async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });

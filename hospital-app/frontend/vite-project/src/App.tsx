@@ -1,4 +1,3 @@
-import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -6,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ConsultasPage from './pages/ConsultasPage'
 import AdminPage from './pages/AdminPage'
+import UsuariosPage from './pages/UsuariosPage'
 
 function App() {
   return (
@@ -31,6 +31,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/usuarios" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <UsuariosPage />
                 </ProtectedRoute>
               } 
             />
