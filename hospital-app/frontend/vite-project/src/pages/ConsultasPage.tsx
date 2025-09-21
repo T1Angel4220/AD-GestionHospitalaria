@@ -364,15 +364,20 @@ export default function MedicalConsultationsPage() {
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-              <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                <Home className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Dashboard</div>
-                <div className="text-xs text-gray-400">Panel principal</div>
-              </div>
-            </a>
+            {/* Solo mostrar Dashboard para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <Home className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Dashboard</div>
+                  <div className="text-xs text-gray-400">Panel principal</div>
+                </div>
+              </a>
+            )}
+            
+            {/* Consultas - visible para todos */}
             <a href="/consultas" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
                 <Calendar className="h-5 w-5 text-green-600" />
@@ -382,24 +387,32 @@ export default function MedicalConsultationsPage() {
                 <div className="text-xs text-green-100">Citas médicas</div>
               </div>
             </a>
-            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-              <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                <Stethoscope className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Médicos</div>
-                <div className="text-xs text-gray-400">Personal médico</div>
-              </div>
-            </a>
-            <a href="/usuarios" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-              <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                <Users className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-medium">Usuarios</div>
-                <div className="text-xs text-gray-400">Gestión usuarios</div>
-              </div>
-            </a>
+            
+            {/* Solo mostrar Médicos para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <Stethoscope className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Médicos</div>
+                  <div className="text-xs text-gray-400">Personal médico</div>
+                </div>
+              </a>
+            )}
+            
+            {/* Solo mostrar Usuarios para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/usuarios" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Usuarios</div>
+                  <div className="text-xs text-gray-400">Gestión usuarios</div>
+                </div>
+              </a>
+            )}
           </div>
           </nav>
 
@@ -412,7 +425,7 @@ export default function MedicalConsultationsPage() {
               </div>
               <div className="flex-1">
                 <div className="text-white text-base font-medium">{user?.email}</div>
-                <div className="text-gray-400 text-xs">
+                <div className="text-gray-400 text-sm font-medium">
                   {user?.rol === 'admin' ? 'Administrador' : 
                    medicoActual ? `Dr. ${medicoActual.nombres} ${medicoActual.apellidos}` : 'Médico'}
                 </div>
@@ -449,8 +462,8 @@ export default function MedicalConsultationsPage() {
                 </div>
               <div className="flex items-center space-x-4">
                 <div className="text-right">
-                  <p className="text-white font-medium">{user?.email}</p>
-                  <p className="text-green-100 text-base">
+                  <p className="text-white font-medium"></p>
+                  <p className="text-green-100 text-lg font-semibold">
                     {user?.rol === 'admin' ? 'Administrador' : 
                      medicoActual ? `Dr. ${medicoActual.nombres} ${medicoActual.apellidos}` : 'Médico'}
                   </p>
