@@ -93,14 +93,14 @@ src/
 
 ## Configuración
 
-El frontend se conecta automáticamente al backend en `http://localhost:3000/api`.
+El frontend se conecta automáticamente al backend en `http://localhost:4000/api`.
 
 ### Variables de Entorno
 
 Crea un archivo `.env.local` si necesitas configurar:
 
 ```env
-VITE_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:4000/api
 ```
 
 ## Uso

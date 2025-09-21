@@ -1,6 +1,7 @@
 import type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, User, ChangePasswordRequest } from '../types/auth';
+import { config } from '../config/env';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = config.apiUrl;
 
 export class AuthApi {
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

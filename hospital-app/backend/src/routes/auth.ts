@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from "../config/db";
+import { CONFIG } from "../config/env";
 import { authenticateToken, requireRole } from "../middlewares/auth";
 
 // Extender el tipo Request para incluir user
@@ -23,11 +24,6 @@ const router = Router();
 
 // Generar token JWT
 const generateToken = (user: any) => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_SECRET no configurado');
-  }
-  
   return jwt.sign(
     {
       id: user.id,
@@ -36,7 +32,7 @@ const generateToken = (user: any) => {
       id_centro: user.id_centro,
       id_medico: user.id_medico
     },
-    secret,
+    CONFIG.JWT_SECRET,
     { expiresIn: '24h' }
   );
 };

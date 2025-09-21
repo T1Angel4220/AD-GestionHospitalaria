@@ -1,6 +1,7 @@
 import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, Especialidad, CentroMedico } from '../types/consultas';
+import { config } from '../config/env';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = config.apiUrl;
 
 export class ConsultasApi {
   private static getAuthHeaders(): HeadersInit {

@@ -34,6 +34,7 @@ export const CONFIG = {
   DB_NAME:        required("DB_NAME", process.env),
 
   PORT:           asNumber("PORT", process.env, 4000),
+  JWT_SECRET:     required("JWT_SECRET", process.env),
 } as const;
 
 // (opcional) log breve de entorno sin secretos
