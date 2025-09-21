@@ -1,76 +1,42 @@
-// backend/index.ts  (entrypoint FUERA de src)
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
-
-// Como este archivo está fuera de src, importamos desde ./src/...
-import { CONFIG } from "./src/config/env";
-import { testDB } from "./src/config/db";
+import { pool } from "./src/config/db";
+import dotenv from "dotenv";
 import consultasRouter from "./src/routes/consultas";
-import reportsRouter from "./src/routes/reports";
+import authRouter from "./src/routes/auth";
 
-// import reportsRouter from "./src/routes/reports"; // cuando lo agregues
+dotenv.config();
 
 const app = express();
 
-/* ========= Middlewares ========= */
-app.use(cors());
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
+// Configurar CORS
+app.use(cors({
+  origin: 'http://localhost:5173', // URL del frontend
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Centro-Id', 'x-centro-id']
+}));
 
-/* ========= Healthchecks ========= */
-app.get("/ping", (_req: Request, res: Response) => {
-  res.json({ ok: true, now: new Date().toISOString(), port: CONFIG.PORT });
-});
+app.use(express.json());
 
-app.get("/ping-db", async (_req: Request, res: Response) => {
-  try {
-    await testDB();
-    res.json({ ok: true, db: `${CONFIG.DB_HOST}:${CONFIG.DB_PORT}/${CONFIG.DB_NAME}` });
-  } catch (e: any) {
-    console.error("DB PING ERROR:", e?.code || e?.name, e?.message);
-    res.status(500).json({
-      ok: false,
-      error: "DB_ERROR",
-      message: "No se pudo conectar a la base de datos",
-    });
-  }
-});
+// Rutas de autenticación
+app.use("/api/auth", authRouter);
 
-/* ========= Rutas ========= */
+// Rutas protegidas
 app.use("/api/consultas", consultasRouter);
-app.use("/api/reports", reportsRouter);
-console.log("[ROUTER] /api/reports montado");
 
-
-// app.use("/api/reports", reportsRouter);
-
-/* ========= 404 ========= */
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ error: "Ruta no encontrada", path: req.originalUrl });
-});
-
-/* ========= Error global ========= */
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({ error: "Error interno del servidor" });
-});
-
-/* ========= Arranque ========= */
-async function bootstrap() {
+// Ruta de prueba para verificar conexión
+app.get("/ping", async (req: Request, res: Response) => {
   try {
-    await testDB(); // verifica BD antes de escuchar
-    const server = app.listen(CONFIG.PORT, () => {
-      console.log(`API escuchando en http://localhost:${CONFIG.PORT}`);
-    });
-
-    const graceful = () => server.close(() => process.exit(0));
-    process.on("SIGINT", graceful);
-    process.on("SIGTERM", graceful);
+    const [rows] = await pool.query("SELECT NOW() AS now");
+    res.json(rows[0]);
   } catch (err) {
-    console.error("[DB] Error al conectar antes de iniciar el servidor:", err);
-    process.exit(1);
+    console.error(err);
+    res.status(500).json({ error: "DB connection failed" });
   }
-}
-bootstrap();
+});
 
-export default app;
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Admin-service listening on port ${PORT}`);
+});
