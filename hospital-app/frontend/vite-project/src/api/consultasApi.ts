@@ -3,12 +3,23 @@ import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, Especialidad, Ce
 const API_BASE_URL = 'http://localhost:3000/api';
 
 export class ConsultasApi {
+  private static getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    return {
+      'Content-Type': 'application/json',
+      'X-Centro-Id': user?.id_centro?.toString() || '1',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+  }
+
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
-        'X-Centro-Id': '1', // Por ahora usamos centro 1, en una app real esto vendría del contexto del usuario
+        ...this.getAuthHeaders(),
         ...options.headers,
       },
       ...options,

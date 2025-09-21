@@ -111,6 +111,54 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
+// Obtener médicos del centro
+router.get("/medicos", async (req: Request, res: Response) => {
+  try {
+    const idCentro = getCentroId(req);
+    if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
+
+    console.log('Obteniendo médicos para centro:', idCentro);
+    
+    const [rows] = await pool.query(`
+      SELECT m.*, e.nombre as especialidad_nombre 
+      FROM medicos m 
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+      WHERE m.id_centro = ? 
+      ORDER BY m.nombres, m.apellidos
+    `, [idCentro]);
+    
+    console.log('Médicos encontrados:', rows);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener los médicos" });
+  }
+});
+
+// Obtener especialidades
+router.get("/especialidades", async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM especialidades ORDER BY nombre");
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener las especialidades" });
+  }
+});
+
+// Obtener centros médicos
+router.get("/centros", async (req: Request, res: Response) => {
+  try {
+    console.log('Obteniendo centros médicos...');
+    const [rows] = await pool.query("SELECT * FROM centros_medicos ORDER BY nombre");
+    console.log('Centros encontrados:', rows);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener los centros médicos" });
+  }
+});
+
 // Obtener una consulta por id (scoped)
 router.get("/:id", async (req: Request, res: Response) => {
   try {
@@ -118,6 +166,10 @@ router.get("/:id", async (req: Request, res: Response) => {
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
     const id = Number(req.params.id);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "ID de consulta inválido" });
+    }
+
     const [rows] = await pool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [id, idCentro]);
     // @ts-ignore
     const item = rows[0];
@@ -134,7 +186,11 @@ router.put("/:id", async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
+    
     const id = Number(req.params.id);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "ID de consulta inválido" });
+    }
 
     const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento } = req.body || {};
 
@@ -183,7 +239,11 @@ router.delete("/:id", async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
+    
     const id = Number(req.params.id);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "ID de consulta inválido" });
+    }
 
     const [result] = await pool.execute("DELETE FROM consultas WHERE id = ? AND id_centro = ?", [id, idCentro]);
     // @ts-ignore
@@ -242,54 +302,6 @@ router.post("/medicos", requireRole(['admin']), async (req: Request, res: Respon
   } catch (error) {
     console.error('Error creando médico:', error);
     res.status(500).json({ error: 'No se pudo crear el médico' });
-  }
-});
-
-// Obtener médicos del centro
-router.get("/medicos", async (req: Request, res: Response) => {
-  try {
-    const idCentro = getCentroId(req);
-    if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
-
-    console.log('Obteniendo médicos para centro:', idCentro);
-    
-    const [rows] = await pool.query(`
-      SELECT m.*, e.nombre as especialidad_nombre 
-      FROM medicos m 
-      LEFT JOIN especialidades e ON m.id_especialidad = e.id 
-      WHERE m.id_centro = ? 
-      ORDER BY m.nombres, m.apellidos
-    `, [idCentro]);
-    
-    console.log('Médicos encontrados:', rows);
-    res.json(rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "No se pudieron obtener los médicos" });
-  }
-});
-
-// Obtener especialidades
-router.get("/especialidades", async (req: Request, res: Response) => {
-  try {
-    const [rows] = await pool.query("SELECT * FROM especialidades ORDER BY nombre");
-    res.json(rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "No se pudieron obtener las especialidades" });
-  }
-});
-
-// Obtener centros médicos
-router.get("/centros", async (req: Request, res: Response) => {
-  try {
-    console.log('Obteniendo centros médicos...');
-    const [rows] = await pool.query("SELECT * FROM centros_medicos ORDER BY nombre");
-    console.log('Centros encontrados:', rows);
-    res.json(rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "No se pudieron obtener los centros médicos" });
   }
 });
 

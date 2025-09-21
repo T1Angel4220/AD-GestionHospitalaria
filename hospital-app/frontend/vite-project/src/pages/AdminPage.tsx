@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
-import { AuthApi } from '../api/authApi'
 import type { Medico, CentroMedico } from '../types/consultas'
 import { 
   Activity, 
@@ -18,7 +17,9 @@ import {
   Trash2,
   X,
   Stethoscope,
-  User as UserIcon
+  User as UserIcon,
+  Building2,
+  AlertCircle
 } from 'lucide-react'
 
 export default function AdminPage() {
@@ -64,6 +65,7 @@ export default function AdminPage() {
       ])
       setMedicos(medicosData)
       setCentros(centrosData)
+      setError(null)
     } catch (err) {
       setError("Error al cargar los datos")
       console.error(err)
@@ -77,9 +79,10 @@ export default function AdminPage() {
     setError(null)
 
     try {
-      await ConsultasApi.createMedico(medicoForm)
-      await loadData()
-      resetMedicoForm()
+      const newMedico = await ConsultasApi.createMedico(medicoForm)
+      setMedicos(prev => [...prev, newMedico])
+      setIsMedicoModalOpen(false)
+      setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
     } catch (err) {
       setError("Error al crear el médico")
       console.error(err)
@@ -91,40 +94,18 @@ export default function AdminPage() {
     setError(null)
 
     try {
-      await AuthApi.register(userForm)
-      alert('Usuario creado exitosamente')
-      resetUserForm()
+      // Aquí implementarías la creación de usuario
+      console.log('Crear usuario:', userForm)
+      setIsUserModalOpen(false)
+      setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear el usuario')
+      setError("Error al crear el usuario")
       console.error(err)
     }
   }
 
-  const resetMedicoForm = () => {
-    setMedicoForm({
-      nombres: '',
-      apellidos: '',
-      id_especialidad: 1,
-      id_centro: 1
-    })
-    setIsMedicoModalOpen(false)
-  }
-
-  const resetUserForm = () => {
-    setUserForm({
-      email: '',
-      password: '',
-      rol: 'medico',
-      id_centro: 1,
-      id_medico: undefined
-    })
-    setIsUserModalOpen(false)
-  }
-
   const filteredMedicos = medicos.filter(medico =>
-    medico.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    medico.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    medico.especialidad_nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+    `${medico.nombres} ${medico.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
@@ -138,415 +119,268 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className={`
-        fixed top-0 left-0 h-full w-80 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out z-40
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:inset-0
-      `}>
-        <div className="flex flex-col h-full">
-          {/* Header del Sidebar */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-700">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
-                <Activity className="h-7 w-7" />
-              </div>
-              <h2 className="text-2xl font-bold">HospitalApp</h2>
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-white"
-            >
-              <X className="h-6 w-6" />
-            </button>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-blue-900 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0`}>
+        <div className="flex items-center justify-center h-16 bg-blue-800">
+          <div className="flex items-center">
+            <Activity className="h-8 w-8 text-white mr-2" />
+            <span className="text-white text-xl font-bold">HospitalApp</span>
           </div>
-
-          {/* Navegación */}
-          <nav className="flex-1 px-6 py-8 space-y-4">
-            <a href="#" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium bg-blue-600 text-white shadow-lg">
-              <Home className="h-6 w-6" />
+        </div>
+        
+        <nav className="mt-8">
+          <div className="px-4 space-y-2">
+            <button className="w-full flex items-center px-4 py-2 text-gray-300 hover:bg-blue-800 rounded-lg">
+              <Home className="h-5 w-5 mr-3" />
               Dashboard
-            </a>
-            <a href="/consultas" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-200">
-              <Activity className="h-6 w-6" />
+            </button>
+            <button className="w-full flex items-center px-4 py-2 text-gray-300 hover:bg-blue-800 rounded-lg">
+              <Stethoscope className="h-5 w-5 mr-3" />
               Consultas
-            </a>
-            <button
-              onClick={() => setActiveTab('medicos')}
-              className={`flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium w-full text-left transition-all duration-200 ${
-                activeTab === 'medicos' 
-                  ? 'bg-gray-700 text-white' 
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-              }`}
-            >
-              <Stethoscope className="h-6 w-6" />
+            </button>
+            <button className="w-full flex items-center px-4 py-2 text-white bg-blue-800 rounded-lg">
+              <Users className="h-5 w-5 mr-3" />
               Médicos
             </button>
-            <button
-              onClick={() => setActiveTab('usuarios')}
-              className={`flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium w-full text-left transition-all duration-200 ${
-                activeTab === 'usuarios' 
-                  ? 'bg-gray-700 text-white' 
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-              }`}
-            >
-              <Users className="h-6 w-6" />
+            <button className="w-full flex items-center px-4 py-2 text-gray-300 hover:bg-blue-800 rounded-lg">
+              <UserIcon className="h-5 w-5 mr-3" />
               Usuarios
             </button>
-          </nav>
+          </div>
+        </nav>
 
-          {/* User Info */}
-          <div className="p-6 border-t border-gray-700">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-600">
-                <UserIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">{user?.email}</p>
-                <p className="text-xs text-gray-400 capitalize">{user?.rol}</p>
-              </div>
-            </div>
+        <div className="absolute bottom-0 w-full p-4">
+          <div className="bg-blue-800 rounded-lg p-4">
+            <div className="text-white text-sm font-medium">{user?.email}</div>
+            <div className="text-gray-300 text-xs">Admin</div>
             <button
               onClick={logout}
-              className="flex items-center gap-4 px-4 py-4 w-full text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200"
+              className="mt-2 w-full flex items-center text-gray-300 hover:text-white text-sm"
             >
-              <LogOut className="h-6 w-6" />
+              <LogOut className="h-4 w-4 mr-2" />
               Cerrar Sesión
             </button>
           </div>
         </div>
       </div>
 
-      {/* Overlay para móvil */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Main Content */}
-      <div className="lg:ml-80">
+      <div className="lg:ml-64">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-600 hover:text-gray-900 mr-2">
+        <div className="bg-white shadow">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                >
                   <Menu className="h-6 w-6" />
                 </button>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-                  <Activity className="h-5 w-5" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {activeTab === 'medicos' ? 'Gestión de Médicos' : 'Gestión de Usuarios'}
-                  </h1>
+                <div className="ml-4">
+                  <h1 className="text-2xl font-bold text-gray-900">Gestión de Médicos</h1>
                   <p className="text-sm text-gray-600">Panel de administración</p>
                 </div>
               </div>
-              <button
-                onClick={() => activeTab === 'medicos' ? setIsMedicoModalOpen(true) : setIsUserModalOpen(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {activeTab === 'medicos' ? 'Nuevo Médico' : 'Nuevo Usuario'}
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-              <strong className="font-bold">Error:</strong>
-              <span className="block sm:inline"> {error}</span>
-            </div>
-          )}
-
-          {/* Search */}
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder={`Buscar ${activeTab}...`}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Content based on active tab */}
-          {activeTab === 'medicos' ? (
-            <div className="space-y-4">
-              {filteredMedicos.map((medico) => (
-                <div key={medico.id} className="bg-white shadow rounded-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                        <Stethoscope className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">
-                          Dr. {medico.nombres} {medico.apellidos}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {medico.especialidad_nombre || 'Sin especialidad'}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Centro: {centros.find(c => c.id === medico.id_centro)?.nombre || `ID: ${medico.id_centro}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="p-2 text-gray-400 hover:text-gray-600">
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button className="p-2 text-red-400 hover:text-red-600">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white shadow rounded-lg p-6">
-              <div className="text-center py-10">
-                <Users className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                <h3 className="text-lg font-medium mb-1 text-gray-900">Gestión de Usuarios</h3>
-                <p className="text-gray-500 mb-4">
-                  Aquí podrás ver y gestionar todos los usuarios del sistema
-                </p>
-                <button
-                  onClick={() => setIsUserModalOpen(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Crear Usuario
-                </button>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Modal de Médico */}
-      {isMedicoModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl bg-white shadow-xl rounded-lg">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Nuevo Médico
-                </h3>
-                <button
-                  onClick={resetMedicoForm}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateMedico} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombres
-                    </label>
-                    <input
-                      type="text"
-                      value={medicoForm.nombres}
-                      onChange={(e) => setMedicoForm(prev => ({ ...prev, nombres: e.target.value }))}
-                      required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Apellidos
-                    </label>
-                    <input
-                      type="text"
-                      value={medicoForm.apellidos}
-                      onChange={(e) => setMedicoForm(prev => ({ ...prev, apellidos: e.target.value }))}
-                      required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Centro Médico
-                    </label>
-                    <select
-                      value={medicoForm.id_centro}
-                      onChange={(e) => setMedicoForm(prev => ({ ...prev, id_centro: Number(e.target.value) }))}
-                      required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {centros.map((centro) => (
-                        <option key={centro.id} value={centro.id}>
-                          {centro.nombre} - {centro.ciudad}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Especialidad
-                    </label>
-                    <select
-                      value={medicoForm.id_especialidad}
-                      onChange={(e) => setMedicoForm(prev => ({ ...prev, id_especialidad: Number(e.target.value) }))}
-                      required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value={1}>Medicina General</option>
-                      <option value={2}>Cardiología</option>
-                      <option value={3}>Neurología</option>
-                      <option value={4}>Pediatría</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-4 pt-4 border-t">
-                  <button
-                    type="button"
-                    onClick={resetMedicoForm}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Crear Médico
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Modal de Usuario */}
-      {isUserModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl bg-white shadow-xl rounded-lg">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Nuevo Usuario
-                </h3>
+        {/* Content */}
+        <div className="p-6">
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div className="mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
                 <button
-                  onClick={resetUserForm}
+                  onClick={() => setActiveTab('medicos')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'medicos'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Médicos
+                </button>
+                <button
+                  onClick={() => setActiveTab('usuarios')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'usuarios'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Usuarios
+                </button>
+              </nav>
+            </div>
+          </div>
+
+          {/* Search and Add Button */}
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-lg">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar medicos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div className="mt-4 sm:mt-0 sm:ml-4">
+              <button
+                onClick={() => setIsMedicoModalOpen(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Médico
+              </button>
+            </div>
+          </div>
+
+          {/* Médicos List */}
+          {activeTab === 'medicos' && (
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+              <div className="px-4 py-5 sm:px-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Lista de Médicos
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  Gestiona los médicos del sistema
+                </p>
+              </div>
+              <div className="border-t border-gray-200">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Nombre
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Especialidad
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Centro
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredMedicos.map((medico) => (
+                        <tr key={medico.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {medico.nombres} {medico.apellidos}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {medico.especialidad_nombre || 'Sin especialidad'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              Centro {medico.id_centro}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button className="text-blue-600 hover:text-blue-900 mr-3">
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button className="text-red-600 hover:text-red-900">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Usuarios List */}
+          {activeTab === 'usuarios' && (
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+              <div className="px-4 py-5 sm:px-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Lista de Usuarios
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  Gestiona los usuarios del sistema
+                </p>
+              </div>
+              <div className="border-t border-gray-200">
+                <div className="px-4 py-5 sm:p-6">
+                  <p className="text-gray-500">Funcionalidad de usuarios en desarrollo...</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal para crear médico */}
+      {isMedicoModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Nuevo Médico</h3>
+                <button
+                  onClick={() => setIsMedicoModalOpen(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
-
-              <form onSubmit={handleCreateUser} className="space-y-4">
+              <form onSubmit={handleCreateMedico} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Nombres</label>
                   <input
-                    type="email"
-                    value={userForm.email}
-                    onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
+                    type="text"
+                    value={medicoForm.nombres}
+                    onChange={(e) => setMedicoForm({...medicoForm, nombres: e.target.value})}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     required
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Contraseña
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Apellidos</label>
                   <input
-                    type="password"
-                    value={userForm.password}
-                    onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                    type="text"
+                    value={medicoForm.apellidos}
+                    onChange={(e) => setMedicoForm({...medicoForm, apellidos: e.target.value})}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     required
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rol
-                    </label>
-                    <select
-                      value={userForm.rol}
-                      onChange={(e) => setUserForm(prev => ({ ...prev, rol: e.target.value as 'admin' | 'medico' }))}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="medico">Médico</option>
-                      <option value="admin">Administrador</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Centro Médico
-                    </label>
-                    <select
-                      value={userForm.id_centro}
-                      onChange={(e) => setUserForm(prev => ({ ...prev, id_centro: Number(e.target.value) }))}
-                      required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {centros.map((centro) => (
-                        <option key={centro.id} value={centro.id}>
-                          {centro.nombre} - {centro.ciudad}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {userForm.rol === 'medico' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Médico Asociado
-                    </label>
-                    <select
-                      value={userForm.id_medico || ''}
-                      onChange={(e) => setUserForm(prev => ({ ...prev, id_medico: Number(e.target.value) }))}
-                      required
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Seleccionar médico</option>
-                      {medicos
-                        .filter(medico => medico.id_centro === userForm.id_centro)
-                        .map((medico) => (
-                          <option key={medico.id} value={medico.id}>
-                            Dr. {medico.nombres} {medico.apellidos}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-4 pt-4 border-t">
+                <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={resetUserForm}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                    onClick={() => setIsMedicoModalOpen(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                   >
-                    Crear Usuario
+                    Crear
                   </button>
                 </div>
               </form>
