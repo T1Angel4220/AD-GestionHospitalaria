@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
 import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, CentroMedico } from '../types/consultas'
 import { getStatusColor, getStatusText } from '../utils/statusUtils'
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react'
 
 export default function MedicalConsultationsPage() {
+  const { user, logout } = useAuth()
   const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -278,11 +280,30 @@ export default function MedicalConsultationsPage() {
               <FileText className="h-6 w-6" />
               Reportes
             </a>
+            {user?.rol === 'admin' && (
+              <a href="/admin" className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-200">
+                <Users className="h-6 w-6" />
+                Administración
+              </a>
+            )}
           </nav>
 
-          {/* Footer del Sidebar */}
+          {/* User Info */}
           <div className="p-6 border-t border-gray-700">
-            <button className="flex items-center gap-4 px-4 py-4 w-full text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-600">
+                <User className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">{user?.email}</p>
+                <p className="text-xs text-gray-400 capitalize">{user?.rol}</p>
+                <p className="text-xs text-gray-500">{user?.centro?.nombre}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="flex items-center gap-4 px-4 py-4 w-full text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200"
+            >
               <LogOut className="h-6 w-6" />
               Cerrar Sesión
             </button>

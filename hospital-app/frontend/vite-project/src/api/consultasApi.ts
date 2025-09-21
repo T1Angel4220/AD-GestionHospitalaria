@@ -61,4 +61,16 @@ export class ConsultasApi {
   static async getCentros(): Promise<CentroMedico[]> {
     return this.request<CentroMedico[]>('/consultas/centros');
   }
+
+  static async createMedico(medico: {
+    nombres: string;
+    apellidos: string;
+    id_especialidad: number;
+    id_centro: number;
+  }): Promise<Medico> {
+    return this.request<Medico>('/consultas/medicos', {
+      method: 'POST',
+      body: JSON.stringify(medico),
+    });
+  }
 }
