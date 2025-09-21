@@ -85,4 +85,25 @@ export class ConsultasApi {
       body: JSON.stringify(medico),
     });
   }
+
+  static async getUsuarios(): Promise<any[]> {
+    return this.request<any[]>('/consultas/usuarios');
+  }
+
+  static async getMedicosDisponibles(): Promise<Medico[]> {
+    return this.request<Medico[]>('/consultas/medicos-disponibles');
+  }
+
+  static async createUsuario(usuario: {
+    email: string;
+    password: string;
+    rol: 'admin' | 'medico';
+    id_centro: number;
+    id_medico?: number;
+  }): Promise<any> {
+    return this.request<any>('/consultas/usuarios', {
+      method: 'POST',
+      body: JSON.stringify(usuario),
+    });
+  }
 }

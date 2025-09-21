@@ -49,6 +49,7 @@ export interface Medico {
   id_especialidad: number;
   id_centro: number;
   especialidad_nombre?: string;
+  centro_nombre?: string;
 }
 
 export interface Especialidad {
@@ -61,4 +62,15 @@ export interface CentroMedico {
   nombre: string;
   ciudad: string;
   direccion?: string;
+}
+
+export interface Usuario {
+  id: number;
+  email: string;
+  rol: 'admin' | 'medico';
+  id_centro: number;
+  id_medico?: number;
+  centro_nombre?: string;
+  medico_nombres?: string;
+  medico_apellidos?: string;
 }

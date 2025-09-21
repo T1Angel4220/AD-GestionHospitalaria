@@ -1,56 +1,32 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
-import type { Medico, CentroMedico } from '../types/consultas'
+import type { Medico } from '../types/consultas'
 import { 
   Activity, 
   Users, 
-  UserPlus,
   LogOut,
   Home,
-  Plus,
   Menu,
   Search,
   Edit,
   Trash2,
-  X,
   Stethoscope,
-  User as UserIcon,
-  Building2,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  X
 } from 'lucide-react'
 
 export default function AdminPage() {
   const { user, logout } = useAuth()
   const [medicos, setMedicos] = useState<Medico[]>([])
-  const [centros, setCentros] = useState<CentroMedico[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'medicos' | 'usuarios'>('medicos')
   const [searchTerm, setSearchTerm] = useState("")
 
-  // Estados para modales
-  const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false)
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
-
-  // Estados para formularios
-  const [medicoForm, setMedicoForm] = useState({
-    nombres: '',
-    apellidos: '',
-    id_especialidad: 1,
-    id_centro: 1
-  })
-
-  const [userForm, setUserForm] = useState({
-    email: '',
-    password: '',
-    rol: 'medico' as 'admin' | 'medico',
-    id_centro: 1,
-    id_medico: undefined as number | undefined
-  })
 
   useEffect(() => {
     loadData()
@@ -59,48 +35,14 @@ export default function AdminPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [medicosData, centrosData] = await Promise.all([
-        ConsultasApi.getMedicos(),
-        ConsultasApi.getCentros(),
-      ])
+      const medicosData = await ConsultasApi.getMedicos()
       setMedicos(medicosData)
-      setCentros(centrosData)
       setError(null)
     } catch (err) {
       setError("Error al cargar los datos")
       console.error(err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleCreateMedico = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    try {
-      const newMedico = await ConsultasApi.createMedico(medicoForm)
-      setMedicos(prev => [...prev, newMedico])
-      setIsMedicoModalOpen(false)
-      setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
-    } catch (err) {
-      setError("Error al crear el médico")
-      console.error(err)
-    }
-  }
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    try {
-      // Aquí implementarías la creación de usuario
-      console.log('Crear usuario:', userForm)
-      setIsUserModalOpen(false)
-      setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
-    } catch (err) {
-      setError("Error al crear el usuario")
-      console.error(err)
     }
   }
 
@@ -119,44 +61,85 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-blue-900 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0`}>
-        <div className="flex items-center justify-center h-16 bg-blue-800">
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-gray-900 to-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl`}>
+        {/* Logo Section */}
+        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-blue-600 to-blue-700">
           <div className="flex items-center">
-            <Activity className="h-8 w-8 text-white mr-2" />
-            <span className="text-white text-xl font-bold">HospitalApp</span>
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
+              <Activity className="h-8 w-8 text-blue-600" />
+            </div>
+            <div>
+              <span className="text-white text-xl font-bold">HospitalApp</span>
+              <p className="text-blue-100 text-xs">Sistema Médico</p>
+            </div>
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         
-        <nav className="mt-8">
-          <div className="px-4 space-y-2">
-            <button className="w-full flex items-center px-4 py-2 text-gray-300 hover:bg-blue-800 rounded-lg">
-              <Home className="h-5 w-5 mr-3" />
-              Dashboard
-            </button>
-            <button className="w-full flex items-center px-4 py-2 text-gray-300 hover:bg-blue-800 rounded-lg">
-              <Stethoscope className="h-5 w-5 mr-3" />
-              Consultas
-            </button>
-            <button className="w-full flex items-center px-4 py-2 text-white bg-blue-800 rounded-lg">
-              <Users className="h-5 w-5 mr-3" />
-              Médicos
-            </button>
-            <button className="w-full flex items-center px-4 py-2 text-gray-300 hover:bg-blue-800 rounded-lg">
-              <UserIcon className="h-5 w-5 mr-3" />
-              Usuarios
-            </button>
+        {/* Navigation */}
+        <nav className="mt-8 px-4">
+          <div className="space-y-2">
+            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Home className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Dashboard</div>
+                <div className="text-xs text-gray-400">Panel principal</div>
+              </div>
+            </a>
+            <a href="/consultas" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-green-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Consultas</div>
+                <div className="text-xs text-gray-400">Citas médicas</div>
+              </div>
+            </a>
+            <a href="/admin" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg">
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
+                <Stethoscope className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="font-medium">Médicos</div>
+                <div className="text-xs text-blue-100">Personal médico</div>
+              </div>
+            </a>
+            <a href="/usuarios" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Usuarios</div>
+                <div className="text-xs text-gray-400">Gestión usuarios</div>
+              </div>
+            </a>
           </div>
         </nav>
 
+        {/* User Section */}
         <div className="absolute bottom-0 w-full p-4">
-          <div className="bg-blue-800 rounded-lg p-4">
-            <div className="text-white text-sm font-medium">{user?.email}</div>
-            <div className="text-gray-300 text-xs">Admin</div>
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div className="flex items-center mb-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                <Stethoscope className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="text-white text-sm font-medium">{user?.email}</div>
+                <div className="text-gray-400 text-xs">Administrador</div>
+              </div>
+            </div>
             <button
               onClick={logout}
-              className="mt-2 w-full flex items-center text-gray-300 hover:text-white text-sm"
+              className="w-full flex items-center justify-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
             >
-              <LogOut className="h-4 w-4 mr-2" />
+              <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
               Cerrar Sesión
             </button>
           </div>
@@ -164,21 +147,30 @@ export default function AdminPage() {
       </div>
 
       {/* Main Content */}
-      <div className="lg:ml-64">
+      <div className="lg:ml-72">
         {/* Header */}
-        <div className="bg-white shadow">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg">
           <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-6">
+            <div className="flex justify-between items-center py-8">
               <div className="flex items-center">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                  className="lg:hidden p-2 rounded-md text-white hover:bg-blue-500 transition-colors"
                 >
                   <Menu className="h-6 w-6" />
                 </button>
                 <div className="ml-4">
-                  <h1 className="text-2xl font-bold text-gray-900">Gestión de Médicos</h1>
-                  <p className="text-sm text-gray-600">Panel de administración</p>
+                  <h1 className="text-3xl font-bold text-white">Gestión de Médicos</h1>
+                  <p className="text-blue-100 mt-1">Administra el personal médico del hospital</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-white font-medium">{user?.email}</p>
+                  <p className="text-blue-100 text-sm">Administrador</p>
+                </div>
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <Stethoscope className="h-6 w-6 text-white" />
                 </div>
               </div>
             </div>
@@ -194,33 +186,43 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Tabs */}
-          <div className="mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
-                <button
-                  onClick={() => setActiveTab('medicos')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'medicos'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Médicos
-                </button>
-                <button
-                  onClick={() => setActiveTab('usuarios')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'usuarios'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Usuarios
-                </button>
-              </nav>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+              <div className="flex items-center">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Stethoscope className="h-8 w-8 text-blue-600" />
+                      </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Médicos</p>
+                  <p className="text-2xl font-bold text-gray-900">{medicos.length}</p>
+                      </div>
+                    </div>
+                    </div>
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+              <div className="flex items-center">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <Activity className="h-8 w-8 text-green-600" />
+                  </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Especialidades</p>
+                  <p className="text-2xl font-bold text-gray-900">{new Set(medicos.map(m => m.especialidad_nombre)).size}</p>
+                </div>
+              </div>
             </div>
-          </div>
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+              <div className="flex items-center">
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <Users className="h-8 w-8 text-purple-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Centros</p>
+                  <p className="text-2xl font-bold text-gray-900">{new Set(medicos.map(m => m.centro_nombre)).size}</p>
+                </div>
+              </div>
+            </div>
+      </div>
 
           {/* Search and Add Button */}
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -228,166 +230,97 @@ export default function AdminPage() {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
-              <input
-                type="text"
-                placeholder="Buscar medicos..."
+                    <input
+                      type="text"
+                placeholder="Buscar médicos por nombre..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    />
+                  </div>
             <div className="mt-4 sm:mt-0 sm:ml-4">
-              <button
-                onClick={() => setIsMedicoModalOpen(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  <button
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-105"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Médico
-              </button>
+                <Stethoscope className="h-5 w-5 mr-2" />
+                    Crear Médico
+                  </button>
             </div>
           </div>
 
           {/* Médicos List */}
-          {activeTab === 'medicos' && (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Lista de Médicos
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-900">
+                Lista de Médicos
                 </h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  Gestiona los médicos del sistema
-                </p>
+              <p className="mt-1 text-sm text-gray-600">
+                Gestiona el personal médico del hospital
+              </p>
               </div>
-              <div className="border-t border-gray-200">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Nombre
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Especialidad
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Centro
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredMedicos.map((medico) => (
-                        <tr key={medico.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Médico
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Especialidad
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Centro Médico
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredMedicos.map((medico) => (
+                    <tr key={medico.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                            <Stethoscope className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">
                               {medico.nombres} {medico.apellidos}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {medico.especialidad_nombre || 'Sin especialidad'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              Centro {medico.id_centro}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button className="text-blue-600 hover:text-blue-900 mr-3">
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button className="text-red-600 hover:text-red-900">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            <div className="text-sm text-gray-500">ID: {medico.id}</div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Usuarios List */}
-          {activeTab === 'usuarios' && (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Lista de Usuarios
-                </h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  Gestiona los usuarios del sistema
-                </p>
-              </div>
-              <div className="border-t border-gray-200">
-                <div className="px-4 py-5 sm:p-6">
-                  <p className="text-gray-500">Funcionalidad de usuarios en desarrollo...</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Modal para crear médico */}
-      {isMedicoModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Nuevo Médico</h3>
-                <button
-                  onClick={() => setIsMedicoModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <form onSubmit={handleCreateMedico} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Nombres</label>
-                  <input
-                    type="text"
-                    value={medicoForm.nombres}
-                    onChange={(e) => setMedicoForm({...medicoForm, nombres: e.target.value})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Apellidos</label>
-                  <input
-                    type="text"
-                    value={medicoForm.apellidos}
-                    onChange={(e) => setMedicoForm({...medicoForm, apellidos: e.target.value})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsMedicoModalOpen(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancelar
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                          {medico.especialidad_nombre || 'Sin especialidad'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {medico.centro_nombre || `Centro ${medico.id_centro}`}
+                  </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                            <Edit className="h-4 w-4" />
                   </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    Crear
+                          <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                            <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-              </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      )}
+      </div>
+
     </div>
   )
 }
