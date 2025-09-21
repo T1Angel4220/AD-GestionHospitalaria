@@ -53,14 +53,24 @@ router.post("/", requireCentroAccess, async (req: Request, res: Response) => {
       // @ts-ignore
       centroConsulta = medicoRows[0].id_centro;
     } else {
-      // Para médico, validar que el médico pertenece a su centro
+      // Para médico, validar que el médico es el mismo usuario médico
+      const userId = decoded.id;
       const [medicoRows] = await pool.query(
-        "SELECT id FROM medicos WHERE id = ? AND id_centro = ?",
-        [id_medico, idCentro]
+        "SELECT id FROM medicos WHERE id = ? AND id = (SELECT id_medico FROM usuarios WHERE id = ?)",
+        [id_medico, userId]
       );
       // @ts-ignore
       if (!medicoRows[0]) {
-        return res.status(400).json({ error: "El médico no pertenece al centro indicado" });
+        return res.status(400).json({ error: "Solo puedes crear consultas para ti mismo" });
+      }
+      // Para médico, usar su centro
+      const [centroRows] = await pool.query(
+        "SELECT id_centro FROM medicos WHERE id = ?",
+        [id_medico]
+      );
+      // @ts-ignore
+      if (centroRows[0]) {
+        centroConsulta = centroRows[0].id_centro;
       }
     }
 
@@ -207,9 +217,10 @@ router.get("/medicos", async (req: Request, res: Response) => {
     } else {
       // Usuario normal ve solo médicos de su centro
       sql = `
-        SELECT m.*, e.nombre as especialidad_nombre 
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
         FROM medicos m 
         LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
         WHERE m.id_centro = ? 
         ORDER BY m.nombres, m.apellidos
       `;
@@ -302,7 +313,9 @@ router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
       return res.status(400).json({ error: "ID de consulta inválido" });
     }
 
-    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento } = req.body || {};
+    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado } = req.body || {};
+
+    console.log('Actualizando consulta:', { id, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado });
 
     // Build dynamic SET clause
     const fields: string[] = [];
@@ -314,6 +327,7 @@ router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
     if (motivo !== undefined) { fields.push("motivo = ?"); params.push(motivo); }
     if (diagnostico !== undefined) { fields.push("diagnostico = ?"); params.push(diagnostico); }
     if (tratamiento !== undefined) { fields.push("tratamiento = ?"); params.push(tratamiento); }
+    if (estado !== undefined) { fields.push("estado = ?"); params.push(estado); }
 
     if (fields.length === 0) return res.status(400).json({ error: "No hay campos para actualizar" });
 
@@ -331,6 +345,8 @@ router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
 
     const sql = `UPDATE consultas SET ${fields.join(", ")} WHERE id = ? AND id_centro = ?`;
     params.push(id, idCentro);
+    console.log('SQL de actualización:', sql);
+    console.log('Parámetros:', params);
     const [result] = await pool.execute(sql, params);
     // @ts-ignore
     if (result.affectedRows === 0) return res.status(404).json({ error: "Consulta no encontrada" });

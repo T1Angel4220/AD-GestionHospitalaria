@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
-import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, CentroMedico } from '../types/consultas'
+import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico } from '../types/consultas'
 import { getStatusColor, getStatusText } from '../utils/statusUtils'
 import { 
   Activity, 
@@ -24,7 +24,8 @@ import {
   User,
   Stethoscope,
   Clock,
-  Building2
+  Building2,
+  Eye
 } from 'lucide-react'
 
 export default function MedicalConsultationsPage() {
@@ -42,7 +43,6 @@ export default function MedicalConsultationsPage() {
 
   // Estados para datos relacionados
   const [medicos, setMedicos] = useState<Medico[]>([])
-  const [centros, setCentros] = useState<CentroMedico[]>([])
 
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState("")
@@ -69,6 +69,13 @@ export default function MedicalConsultationsPage() {
   const [medicoActual, setMedicoActual] = useState<Medico | null>(null)
   // Estado para el modal de confirmación
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  // Estado para el modal de confirmación de edición
+  const [showEditConfirmModal, setShowEditConfirmModal] = useState(false)
+  // Estado para los datos que se van a actualizar
+  const [pendingUpdateData, setPendingUpdateData] = useState<ConsultaUpdate | null>(null)
+  
+  // Variable para controlar si el formulario está en modo solo lectura
+  const isReadOnly = Boolean(editingConsulta && (editingConsulta.estado === 'completada' || editingConsulta.estado === 'cancelada'))
 
   useEffect(() => {
     loadConsultas()
@@ -81,9 +88,12 @@ export default function MedicalConsultationsPage() {
       try {
         const medico = medicos.find(m => m.id === user.id_medico)
         if (medico) {
+          console.log('Médico encontrado:', medico)
           setMedicoActual(medico)
           setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
           setSelectedCentro(medico.centro_nombre || 'Sin centro')
+          console.log('Especialidad:', medico.especialidad_nombre)
+          console.log('Centro:', medico.centro_nombre)
         }
       } catch (error) {
         console.error('Error cargando médico actual:', error)
@@ -93,14 +103,23 @@ export default function MedicalConsultationsPage() {
 
   // Cargar médico actual cuando se carguen los médicos
   useEffect(() => {
-    loadMedicoActual()
+    if (medicos.length > 0) {
+      loadMedicoActual()
+    }
   }, [medicos, user])
 
   const loadConsultas = async () => {
     try {
       setLoading(true)
       const data = await ConsultasApi.getConsultas()
+      
+      // Si es médico, filtrar solo sus consultas
+      if (user?.rol === 'medico' && user.id_medico) {
+        const consultasMedico = data.filter(consulta => consulta.id_medico === user.id_medico)
+        setConsultas(consultasMedico)
+      } else {
       setConsultas(data)
+      }
     } catch (err) {
       setError("Error al cargar las consultas")
       console.error(err)
@@ -111,12 +130,8 @@ export default function MedicalConsultationsPage() {
 
   const loadRelatedData = async () => {
     try {
-      const [medicosData, centrosData] = await Promise.all([
-        ConsultasApi.getMedicos(),
-        ConsultasApi.getCentros(),
-      ])
+      const medicosData = await ConsultasApi.getMedicos()
       setMedicos(medicosData)
-      setCentros(centrosData)
     } catch (err) {
       console.error("Error al cargar datos relacionados:", err)
     }
@@ -139,7 +154,9 @@ export default function MedicalConsultationsPage() {
           tratamiento: formData.tratamiento,
           estado: formData.estado!,
         }
-        await ConsultasApi.updateConsulta(editingConsulta.id, updateData)
+        // Guardar datos pendientes y mostrar modal de confirmación
+        setPendingUpdateData(updateData)
+        setShowEditConfirmModal(true)
       } else {
         const newData: ConsultaCreate = {
           paciente_nombre: formData.paciente_nombre!,
@@ -154,9 +171,9 @@ export default function MedicalConsultationsPage() {
         }
         await ConsultasApi.createConsulta(newData)
         setShowSuccessModal(true)
+        await loadConsultas()
+        resetForm()
       }
-      await loadConsultas()
-      resetForm()
     } catch (err) {
       setError("Error al guardar la consulta")
       console.error(err)
@@ -192,8 +209,10 @@ export default function MedicalConsultationsPage() {
     // Cargar especialidad y centro del médico seleccionado
     if (consulta.id_medico) {
       const medico = medicos.find(m => m.id === consulta.id_medico)
-      setSelectedEspecialidad(medico?.especialidad_nombre || 'Sin especialidad')
-      setSelectedCentro(medico?.centro_nombre || 'Sin centro')
+      if (medico) {
+        setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
+        setSelectedCentro(medico.centro_nombre || 'Sin centro')
+      }
     }
     setIsDialogOpen(true)
   }
@@ -219,6 +238,26 @@ export default function MedicalConsultationsPage() {
   const handleDeleteCancel = () => {
     setIsDeleteModalOpen(false)
     setConsultaToDelete(null)
+  }
+
+  const handleEditConfirm = async () => {
+    if (!editingConsulta || !pendingUpdateData) return
+    
+    try {
+      await ConsultasApi.updateConsulta(editingConsulta.id, pendingUpdateData)
+      await loadConsultas()
+      setShowEditConfirmModal(false)
+      setPendingUpdateData(null)
+      resetForm()
+    } catch (err) {
+      setError("Error al actualizar la consulta")
+      console.error(err)
+    }
+  }
+
+  const handleEditCancel = () => {
+    setShowEditConfirmModal(false)
+    setPendingUpdateData(null)
   }
 
   const resetForm = () => {
@@ -249,6 +288,9 @@ export default function MedicalConsultationsPage() {
         id_medico: medicoActual.id,
         id_centro: medicoActual.id_centro
       }))
+      // Cargar especialidad y centro del médico actual
+      setSelectedEspecialidad(medicoActual.especialidad_nombre || 'Sin especialidad')
+      setSelectedCentro(medicoActual.centro_nombre || 'Sin centro')
     }
     
     setIsDialogOpen(true)
@@ -370,7 +412,10 @@ export default function MedicalConsultationsPage() {
               </div>
               <div className="flex-1">
                 <div className="text-white text-base font-medium">{user?.email}</div>
-                <div className="text-gray-400 text-xs">Administrador</div>
+                <div className="text-gray-400 text-xs">
+                  {user?.rol === 'admin' ? 'Administrador' : 
+                   medicoActual ? `Dr. ${medicoActual.nombres} ${medicoActual.apellidos}` : 'Médico'}
+                </div>
               </div>
             </div>
             <button
@@ -405,7 +450,10 @@ export default function MedicalConsultationsPage() {
               <div className="flex items-center space-x-4">
                 <div className="text-right">
                   <p className="text-white font-medium">{user?.email}</p>
-                  <p className="text-green-100 text-base">Administrador</p>
+                  <p className="text-green-100 text-base">
+                    {user?.rol === 'admin' ? 'Administrador' : 
+                     medicoActual ? `Dr. ${medicoActual.nombres} ${medicoActual.apellidos}` : 'Médico'}
+                  </p>
               </div>
                 <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                   <Calendar className="h-6 w-6 text-white" />
@@ -532,36 +580,52 @@ export default function MedicalConsultationsPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-gradient-to-r from-green-100 to-green-200 rounded-full flex items-center justify-center shadow-sm">
                       <User className="h-5 w-5 text-green-700" />
-                    </div>
+                        </div>
                     <div>
                       <h3 className="font-bold text-gray-900 text-xl">
-                        {consulta.paciente_nombre} {consulta.paciente_apellido}
-                      </h3>
+                            {consulta.paciente_nombre} {consulta.paciente_apellido}
+                          </h3>
                       <p className="text-base text-gray-500 font-medium">ID: {consulta.id}</p>
-                    </div>
+                        </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-base font-semibold ${getStatusColor(consulta.estado)}`}>
-                      {getStatusText(consulta.estado)}
-                    </span>
+                          {getStatusText(consulta.estado)}
+                        </span>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(consulta)}
-                        className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors shadow-sm"
-                        title="Editar consulta"
-                      >
-                        <Edit className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(consulta)}
-                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors shadow-sm"
-                        title="Eliminar consulta"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
+                      {/* Solo mostrar botón de editar si no está completada o cancelada */}
+                      {consulta.estado !== 'completada' && consulta.estado !== 'cancelada' && (
+                        <button
+                          onClick={() => handleEdit(consulta)}
+                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors shadow-sm"
+                          title="Editar consulta"
+                        >
+                          <Edit className="h-5 w-5" />
+                        </button>
+                      )}
+                      {/* Solo mostrar botón de eliminar si no está completada o cancelada */}
+                      {consulta.estado !== 'completada' && consulta.estado !== 'cancelada' && (
+                        <button
+                          onClick={() => handleDeleteClick(consulta)}
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors shadow-sm"
+                          title="Eliminar consulta"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      )}
+                      {/* Botón de solo ver para consultas completadas o canceladas */}
+                      {(consulta.estado === 'completada' || consulta.estado === 'cancelada') && (
+                        <button
+                          onClick={() => handleEdit(consulta)}
+                          className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors shadow-sm"
+                          title="Ver consulta"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
-                </div>
+                      </div>
 
                 {/* Información principal mejorada */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
@@ -571,17 +635,17 @@ export default function MedicalConsultationsPage() {
                       <p className="text-base text-gray-600 font-semibold">Médico</p>
                     </div>
                     <p className="text-base text-gray-800 font-medium">
-                      {consulta.medico_nombres && consulta.medico_apellidos
-                        ? `Dr. ${consulta.medico_nombres} ${consulta.medico_apellidos}`
-                        : `ID: ${consulta.id_medico}`
-                      }
+                            {consulta.medico_nombres && consulta.medico_apellidos
+                              ? `Dr. ${consulta.medico_nombres} ${consulta.medico_apellidos}`
+                              : `ID: ${consulta.id_medico}`
+                            }
                     </p>
-                  </div>
+                        </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Activity className="h-4 w-4 text-purple-600" />
                       <p className="text-base text-gray-600 font-semibold">Especialidad</p>
-                    </div>
+                        </div>
                     <p className="text-base text-gray-800 font-medium">
                       {consulta.especialidad_nombre || 'No especificada'}
                     </p>
@@ -601,39 +665,39 @@ export default function MedicalConsultationsPage() {
                       <p className="text-base text-gray-600 font-semibold">Hora</p>
                     </div>
                     <p className="text-base text-gray-800 font-medium">
-                      {new Date(consulta.fecha).toLocaleTimeString("es-ES", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                            {new Date(consulta.fecha).toLocaleTimeString("es-ES", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                     </p>
-                  </div>
+                        </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Building2 className="h-4 w-4 text-orange-600" />
                       <p className="text-base text-gray-600 font-semibold">Centro</p>
                     </div>
                     <p className="text-base text-gray-800 font-medium">
-                      {consulta.centro_nombre
-                        ? `${consulta.centro_nombre}${consulta.centro_ciudad ? ` - ${consulta.centro_ciudad}` : ''}`
-                        : `ID: ${consulta.id_centro}`
-                      }
+                            {consulta.centro_nombre
+                              ? `${consulta.centro_nombre}${consulta.centro_ciudad ? ` - ${consulta.centro_ciudad}` : ''}`
+                              : `ID: ${consulta.id_centro}`
+                            }
                     </p>
-                  </div>
+                      </div>
 
-                </div>
+                      </div>
 
                 {/* Motivo mejorado */}
-                {consulta.motivo && (
+                      {consulta.motivo && (
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <FileText className="h-4 w-4 text-indigo-600" />
                       <p className="text-base text-gray-600 font-semibold">Motivo de la Consulta</p>
-                    </div>
+                        </div>
                     <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
                       <p className="text-base text-gray-800 font-medium">{consulta.motivo}</p>
-                    </div>
-                  </div>
-                )}
+                        </div>
+                        </div>
+                      )}
 
                 {/* Diagnóstico y Tratamiento mejorados */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -641,11 +705,11 @@ export default function MedicalConsultationsPage() {
                     <div className="flex items-center mb-2">
                       <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></div>
                       <p className="text-base font-bold text-emerald-800">Diagnóstico</p>
-                    </div>
+                      </div>
                     <p className="text-base text-emerald-700 pl-4 font-medium">
                       {consulta.diagnostico || "Sin diagnóstico"}
                     </p>
-                  </div>
+                    </div>
                   <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center mb-2">
                       <div className="w-2 h-2 bg-amber-500 rounded-full mr-2"></div>
@@ -740,7 +804,8 @@ export default function MedicalConsultationsPage() {
                       value={formData.paciente_nombre || ''}
                       onChange={(e) => setFormData((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
                       required
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                      disabled={isReadOnly}
+                      className={`block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
                   </div>
                   <div>
@@ -753,7 +818,8 @@ export default function MedicalConsultationsPage() {
                       value={formData.paciente_apellido || ''}
                       onChange={(e) => setFormData((prev) => ({ ...prev, paciente_apellido: e.target.value }))}
                       required
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                      disabled={isReadOnly}
+                      className={`block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
                   </div>
                 </div>
@@ -766,30 +832,30 @@ export default function MedicalConsultationsPage() {
                     {user?.rol === 'medico' ? (
                       <input
                         type="text"
-                        value={medicoActual ? `Dr. ${medicoActual.nombres} ${medicoActual.apellidos}` : ''}
+                        value={medicoActual ? `DR. ${medicoActual.nombres.toUpperCase()} ${medicoActual.apellidos.toUpperCase()}` : ''}
                         readOnly
                         className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700 cursor-not-allowed"
                       />
                     ) : (
-                      <select
-                        id="medico"
-                        value={formData.id_medico || ''}
+                    <select
+                      id="medico"
+                      value={formData.id_medico || ''}
                         onChange={(e) => {
                           const medicoId = Number(e.target.value)
                           setFormData((prev) => ({ ...prev, id_medico: medicoId }))
                           handleMedicoChange(medicoId)
                         }}
-                        required
-                        disabled={editingConsulta?.estado === 'completada'}
+                      required
+                      disabled={editingConsulta?.estado === 'completada'}
                         className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-                      >
-                        <option value="">Seleccionar médico</option>
-                        {medicos.map((medico) => (
-                          <option key={medico.id} value={medico.id}>
+                    >
+                      <option value="">Seleccionar médico</option>
+                      {medicos.map((medico) => (
+                        <option key={medico.id} value={medico.id}>
                             Dr. {medico.nombres} {medico.apellidos}
-                          </option>
-                        ))}
-                      </select>
+                        </option>
+                      ))}
+                    </select>
                     )}
                     {user?.rol === 'medico' && (
                       <p className="mt-1 text-xs text-gray-500">
@@ -839,29 +905,6 @@ export default function MedicalConsultationsPage() {
                     </p>
                   </div>
                   <div>
-                    <label htmlFor="fecha" className="block text-base font-medium text-gray-700 mb-1">
-                      Fecha y Hora
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="datetime-local"
-                        id="fecha"
-                        value={formData.fecha || ''}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, fecha: e.target.value }))}
-                        required
-                        className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
                     <label htmlFor="estado" className="block text-base font-medium text-gray-700 mb-1">
                       Estado
                     </label>
@@ -869,13 +912,59 @@ export default function MedicalConsultationsPage() {
                       id="estado"
                       value={formData.estado || 'pendiente'}
                       onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value as any }))}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      disabled={isReadOnly}
+                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     >
-                      <option value="pendiente">Pendiente</option>
-                      <option value="programada">Programada</option>
-                      <option value="completada">Completada</option>
-                      <option value="cancelada">Cancelada</option>
+                      {editingConsulta ? (
+                        // Al editar, mostrar todos los estados
+                        <>
+                          <option value="pendiente">Pendiente</option>
+                          <option value="programada">Programada</option>
+                          <option value="completada">Completada</option>
+                          <option value="cancelada">Cancelada</option>
+                        </>
+                      ) : (
+                        // Al crear, solo pendiente y programada
+                        <>
+                          <option value="pendiente">Pendiente</option>
+                          <option value="programada">Programada</option>
+                        </>
+                      )}
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="fecha" className="block text-base font-medium text-gray-700 mb-1">
+                      Fecha y Hora {formData.estado === 'pendiente' ? '(Opcional)' : '(Requerida)'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="datetime-local"
+                        id="fecha"
+                        value={formData.fecha || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, fecha: e.target.value }))}
+                        required={formData.estado === 'programada'}
+                        disabled={isReadOnly}
+                        className={`block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
+                    {formData.estado === 'pendiente' && (
+                      <p className="mt-1 text-xs text-amber-600">
+                        Las consultas pendientes no requieren fecha específica
+                      </p>
+                    )}
+                    {formData.estado === 'programada' && (
+                      <p className="mt-1 text-xs text-blue-600">
+                        Las consultas programadas requieren fecha y hora específica
+                      </p>
+                    )}
                   </div>
                   <div></div>
                 </div>
@@ -890,7 +979,8 @@ export default function MedicalConsultationsPage() {
                     onChange={(e) => setFormData((prev) => ({ ...prev, motivo: e.target.value }))}
                     placeholder="Describe el motivo de la consulta..."
                     rows={3}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    disabled={isReadOnly}
+                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                 </div>
 
@@ -904,7 +994,8 @@ export default function MedicalConsultationsPage() {
                     onChange={(e) => setFormData((prev) => ({ ...prev, diagnostico: e.target.value }))}
                     placeholder="Diagnóstico médico (opcional para consultas programadas)"
                     rows={3}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    disabled={isReadOnly}
+                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                 </div>
 
@@ -918,7 +1009,8 @@ export default function MedicalConsultationsPage() {
                     onChange={(e) => setFormData((prev) => ({ ...prev, tratamiento: e.target.value }))}
                     placeholder="Tratamiento prescrito (opcional para consultas programadas)"
                     rows={3}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    disabled={isReadOnly}
+                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                 </div>
 
@@ -928,14 +1020,17 @@ export default function MedicalConsultationsPage() {
                     onClick={resetForm}
                     className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
                   >
-                    Cancelar
+                    {editingConsulta && (editingConsulta.estado === 'completada' || editingConsulta.estado === 'cancelada') ? 'Cerrar' : 'Cancelar'}
                   </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl transition-all duration-200 transform hover:scale-105"
-                  >
-                    {editingConsulta ? "Actualizar" : "Crear"} Consulta
-                  </button>
+                  {/* Solo mostrar botón de guardar si no es consulta completada o cancelada */}
+                  {!(editingConsulta && (editingConsulta.estado === 'completada' || editingConsulta.estado === 'cancelada')) && (
+                    <button
+                      type="submit"
+                      className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                    >
+                      {editingConsulta ? "Actualizar" : "Crear"} Consulta
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
@@ -968,16 +1063,16 @@ export default function MedicalConsultationsPage() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-            </div>
+                  </div>
             
             {/* Contenido del modal */}
             <div className="px-6 py-6">
 
               <div className="text-center mb-6">
                 <p className="text-gray-600 mb-4">
-                  ¿Estás seguro de que quieres eliminar esta consulta?
-                </p>
-                
+                      ¿Estás seguro de que quieres eliminar esta consulta?
+                    </p>
+
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-2">
                     {consultaToDelete.paciente_nombre} {consultaToDelete.paciente_apellido}
@@ -1053,6 +1148,48 @@ export default function MedicalConsultationsPage() {
                   className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl transition-all duration-200 transform hover:scale-105"
                 >
                   Crear Otra
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Edición */}
+      {showEditConfirmModal && editingConsulta && pendingUpdateData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={handleEditCancel}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-2xl">
+              <div className="flex items-center justify-center">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
+                  <AlertCircle className="h-8 w-8 text-blue-600" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-white">Confirmar Actualización</h3>
+                  <p className="text-blue-100 text-base">¿Estás seguro de finalizar esta consulta?</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-6 text-center">
+              <p className="text-gray-600 mb-6">
+                Se actualizará la consulta de <strong>{editingConsulta.paciente_nombre} {editingConsulta.paciente_apellido}</strong> con el estado <strong>{getStatusText(pendingUpdateData.estado!)}</strong>.
+              </p>
+              
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={handleEditCancel}
+                  className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEditConfirm}
+                  className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  Confirmar Actualización
                 </button>
               </div>
             </div>
