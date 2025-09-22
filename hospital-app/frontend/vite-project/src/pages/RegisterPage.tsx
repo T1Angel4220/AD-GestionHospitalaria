@@ -40,7 +40,7 @@ export default function RegisterPage() {
       await AuthApi.register(formData)
       setSuccess(true)
       setTimeout(() => {
-        navigate('/login')
+      navigate('/login')
       }, 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrar usuario')
@@ -102,7 +102,7 @@ export default function RegisterPage() {
           <div className="mb-6">
             <h3 className="text-2xl font-semibold text-gray-900 text-center">
               Solicitar Acceso
-            </h3>
+                </h3>
             <p className="mt-2 text-sm text-gray-600 text-center">
               Completa el formulario para solicitar acceso al sistema
             </p>
@@ -181,17 +181,17 @@ export default function RegisterPage() {
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <select
-                  id="rol"
-                  name="rol"
-                  value={formData.rol}
-                  onChange={handleInputChange}
+            </div>
+              <select
+                id="rol"
+                name="rol"
+                value={formData.rol}
+                onChange={handleInputChange}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="medico">Médico</option>
-                  <option value="admin">Administrador</option>
-                </select>
+              >
+                <option value="medico">Médico</option>
+                <option value="admin">Administrador</option>
+              </select>
               </div>
             </div>
 
@@ -225,10 +225,10 @@ export default function RegisterPage() {
                   ID del Médico (opcional)
                 </label>
                 <input
-                  id="id_medico"
-                  name="id_medico"
+                    id="id_medico"
+                    name="id_medico"
                   type="number"
-                  value={formData.id_medico || ''}
+                    value={formData.id_medico || ''}
                   onChange={handleInputChange}
                   className="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="ID del médico"
