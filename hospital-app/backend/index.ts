@@ -4,6 +4,7 @@ import { pool } from "./src/config/db";
 import dotenv from "dotenv";
 import consultasRouter from "./src/routes/consultas";
 import authRouter from "./src/routes/auth";
+import reportsRouter from "./src/routes/reports";
 
 dotenv.config();
 
@@ -24,6 +25,9 @@ app.use("/api/auth", authRouter);
 
 // Rutas protegidas
 app.use("/api/consultas", consultasRouter);
+
+// Rutas de reportes
+app.use("/api/reports", reportsRouter);
 
 // Ruta de prueba para verificar conexión
 app.get("/ping", async (req: Request, res: Response) => {

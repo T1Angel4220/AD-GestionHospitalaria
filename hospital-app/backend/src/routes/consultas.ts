@@ -497,4 +497,3 @@ router.post("/usuarios", requireRole(['admin']), async (req: Request, res: Respo
 
 export default router;
 
-
