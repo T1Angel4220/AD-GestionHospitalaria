@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
 import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico } from '../types/consultas'
 import { getStatusColor, getStatusText } from '../utils/statusUtils'
+import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses } from '../utils/sidebarUtils'
 import { 
   Activity, 
   Users, 
@@ -34,6 +35,9 @@ export default function MedicalConsultationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  
+  // Determinar el elemento activo del sidebar
+  const activeItem = getActiveSidebarItem(window.location.pathname)
 
   // Estados para modales
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -364,52 +368,52 @@ export default function MedicalConsultationsPage() {
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            {/* Solo mostrar Dashboard para administradores */}
+            {/* Dashboard - solo para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-                <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                  <Home className="h-5 w-5" />
+              <a href="/admin/reportes" className={getSidebarItemClasses('dashboard', activeItem)}>
+                <div className={getIconContainerClasses('dashboard', activeItem)}>
+                  <BarChart3 className={getIconClasses('dashboard', activeItem)} />
                 </div>
                 <div>
-                  <div className="font-medium">Dashboard</div>
-                  <div className="text-xs text-gray-400">Panel principal</div>
+                  <div className={getTextClasses('dashboard', activeItem).main}>Dashboard</div>
+                  <div className={getTextClasses('dashboard', activeItem).sub}>Panel principal</div>
                 </div>
               </a>
             )}
             
             {/* Consultas - visible para todos */}
-            <a href="/consultas" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
-                <Calendar className="h-5 w-5 text-green-600" />
+            <a href="/consultas" className={getSidebarItemClasses('consultas', activeItem)}>
+              <div className={getIconContainerClasses('consultas', activeItem)}>
+                <Calendar className={getIconClasses('consultas', activeItem)} />
               </div>
               <div>
-                <div className="font-medium">Consultas</div>
-                <div className="text-xs text-green-100">Citas médicas</div>
+                <div className={getTextClasses('consultas', activeItem).main}>Consultas</div>
+                <div className={getTextClasses('consultas', activeItem).sub}>Citas médicas</div>
               </div>
             </a>
             
             {/* Solo mostrar Médicos para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-                <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                  <Stethoscope className="h-5 w-5" />
+              <a href="/admin" className={getSidebarItemClasses('medicos', activeItem)}>
+                <div className={getIconContainerClasses('medicos', activeItem)}>
+                  <Stethoscope className={getIconClasses('medicos', activeItem)} />
                 </div>
                 <div>
-                  <div className="font-medium">Médicos</div>
-                  <div className="text-xs text-gray-400">Personal médico</div>
+                  <div className={getTextClasses('medicos', activeItem).main}>Médicos</div>
+                  <div className={getTextClasses('medicos', activeItem).sub}>Personal médico</div>
                 </div>
               </a>
             )}
             
             {/* Solo mostrar Usuarios para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/usuarios" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-                <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                  <Users className="h-5 w-5" />
+              <a href="/usuarios" className={getSidebarItemClasses('usuarios', activeItem)}>
+                <div className={getIconContainerClasses('usuarios', activeItem)}>
+                  <Users className={getIconClasses('usuarios', activeItem)} />
                 </div>
                 <div>
-                  <div className="font-medium">Usuarios</div>
-                  <div className="text-xs text-gray-400">Gestión usuarios</div>
+                  <div className={getTextClasses('usuarios', activeItem).main}>Usuarios</div>
+                  <div className={getTextClasses('usuarios', activeItem).sub}>Gestión usuarios</div>
                 </div>
               </a>
             )}
