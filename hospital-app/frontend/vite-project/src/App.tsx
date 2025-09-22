@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage'
 import ConsultasPage from './pages/ConsultasPage'
 import AdminPage from './pages/AdminPage'
 import UsuariosPage from './pages/UsuariosPage'
+import PerfilPage from './pages/PerfilPage'
 import { ReportesPage } from './pages/admin/ReportesPage'
 
 function App() {
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="admin">
                   <UsuariosPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/perfil" 
+              element={
+                <ProtectedRoute>
+                  <PerfilPage />
                 </ProtectedRoute>
               } 
             />

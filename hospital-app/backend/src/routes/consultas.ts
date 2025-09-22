@@ -55,12 +55,12 @@ router.post("/", requireCentroAccess, async (req: Request, res: Response) => {
     } else {
       // Para médico, validar que el médico es el mismo usuario médico
       const userId = decoded.id;
-      const [medicoRows] = await pool.query(
+    const [medicoRows] = await pool.query(
         "SELECT id FROM medicos WHERE id = ? AND id = (SELECT id_medico FROM usuarios WHERE id = ?)",
         [id_medico, userId]
-      );
-      // @ts-ignore
-      if (!medicoRows[0]) {
+    );
+    // @ts-ignore
+    if (!medicoRows[0]) {
         return res.status(400).json({ error: "Solo puedes crear consultas para ti mismo" });
       }
       // Para médico, usar su centro

@@ -75,16 +75,16 @@ export default function AdminPage() {
             <div>
               <span className="text-white text-xl font-bold">HospitalApp</span>
               <p className="text-blue-100 text-xs">Sistema Médico</p>
+              </div>
             </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
+            <button
+              onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
-          >
+            >
             <X className="h-5 w-5" />
-          </button>
-        </div>
-        
+            </button>
+          </div>
+
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
@@ -131,8 +131,21 @@ export default function AdminPage() {
                 <div className={getTextClasses('usuarios', activeItem).sub}>Gestión usuarios</div>
               </div>
             </a>
+
+            {/* Perfil - solo para médicos */}
+            {user?.rol === 'medico' && (
+             <a href="/perfil" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+               <div className="w-10 h-10 bg-gray-700 group-hover:bg-gray-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                 <User className="h-5 w-5" />
+               </div>
+               <div>
+                 <div className="font-medium">Perfil</div>
+                 <div className="text-xs text-gray-400">Mi información</div>
+               </div>
+             </a>
+            )}
           </div>
-        </nav>
+          </nav>
 
         {/* User Section */}
         <div className="absolute bottom-0 w-full p-4">
@@ -183,10 +196,10 @@ export default function AdminPage() {
                 <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                   <Stethoscope className="h-6 w-6 text-white" />
                 </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
         {/* Content */}
         <div className="p-6">
@@ -208,39 +221,39 @@ export default function AdminPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Médicos</p>
                   <p className="text-2xl font-bold text-gray-900">{medicos.length}</p>
+            </div>
+          </div>
                       </div>
-                    </div>
-                    </div>
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
               <div className="flex items-center">
                 <div className="p-3 bg-green-100 rounded-lg">
                   <Activity className="h-8 w-8 text-green-600" />
-                  </div>
+                      </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Especialidades</p>
                   <p className="text-2xl font-bold text-gray-900">{new Set(medicos.map(m => m.especialidad_nombre)).size}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
               <div className="flex items-center">
                 <div className="p-3 bg-purple-100 rounded-lg">
                   <Users className="h-8 w-8 text-purple-600" />
-                </div>
+            </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Centros</p>
                   <p className="text-2xl font-bold text-gray-900">{new Set(medicos.map(m => m.centro_nombre)).size}</p>
-                </div>
               </div>
             </div>
       </div>
+              </div>
 
           {/* Search and Add Button */}
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1 max-w-lg">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
-              </div>
+                  </div>
                     <input
                       type="text"
                 placeholder="Buscar médicos por nombre..."
@@ -256,8 +269,8 @@ export default function AdminPage() {
                 <Stethoscope className="h-5 w-5 mr-2" />
                     Crear Médico
                   </button>
-            </div>
           </div>
+        </div>
 
           {/* Médicos List */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -294,8 +307,8 @@ export default function AdminPage() {
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4">
                             <Stethoscope className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
+                  </div>
+                  <div>
                             <div className="text-sm font-semibold text-gray-900">
                               {medico.nombres} {medico.apellidos}
                             </div>
@@ -328,9 +341,9 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+            </div>
           </div>
         </div>
-      </div>
 
     </div>
   )
