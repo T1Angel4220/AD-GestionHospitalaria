@@ -84,15 +84,18 @@ export default function AdminPage() {
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            <a href="/admin/reportes" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-              <div className="w-10 h-10 bg-gray-700 group-hover:bg-amber-500 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                <BarChart3 className="h-5 w-5" />
+            {/* Dashboard - solo para administradores */}
+            <a href="/admin" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg">
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
+                <Home className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <div className="font-medium">Dashboard</div>
-                <div className="text-xs text-gray-400">Panel principal</div>
+                <div className="text-xs text-blue-100">Panel principal</div>
               </div>
             </a>
+            
+            {/* Consultas - visible para todos */}
             <a href="/consultas" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
               <div className="w-10 h-10 bg-gray-700 group-hover:bg-green-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                 <Calendar className="h-5 w-5" />
@@ -102,15 +105,19 @@ export default function AdminPage() {
                 <div className="text-xs text-gray-400">Citas médicas</div>
               </div>
             </a>
-            <a href="/admin" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
-                <Stethoscope className="h-5 w-5 text-blue-600" />
+            
+            {/* Médicos - solo para administradores */}
+            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Stethoscope className="h-5 w-5" />
               </div>
               <div>
                 <div className="font-medium">Médicos</div>
-                <div className="text-xs text-blue-100">Personal médico</div>
+                <div className="text-xs text-gray-400">Personal médico</div>
               </div>
             </a>
+            
+            {/* Usuarios - solo para administradores */}
             <a href="/usuarios" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
               <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                 <Users className="h-5 w-5" />
