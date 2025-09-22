@@ -33,7 +33,7 @@ export const CONFIG = {
   DB_PASS:        (process.env.DB_PASS ?? ""),    // puede ser vacío
   DB_NAME:        required("DB_NAME", process.env),
 
-  PORT:           asNumber("PORT", process.env, 4000),
+  PORT:           asNumber("PORT", process.env, 3000),
   JWT_SECRET:     required("JWT_SECRET", process.env),
 } as const;
 

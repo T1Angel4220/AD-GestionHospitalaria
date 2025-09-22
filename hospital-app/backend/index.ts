@@ -40,7 +40,7 @@ app.get("/ping", async (req: Request, res: Response) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Admin-service listening on port ${PORT}`);
 });
