@@ -15,6 +15,7 @@ import {
   Stethoscope,
   AlertCircle,
   Calendar,
+  FileText,
   X,
   BarChart3
 } from 'lucide-react'
@@ -102,11 +103,22 @@ export default function AdminPage() {
             {/* Consultas - visible para todos */}
             <a href="/consultas" className={getSidebarItemClasses('consultas', activeItem)}>
               <div className={getIconContainerClasses('consultas', activeItem)}>
-                <Calendar className={getIconClasses('consultas', activeItem)} />
+                <FileText className={getIconClasses('consultas', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('consultas', activeItem).main}>Consultas</div>
                 <div className={getTextClasses('consultas', activeItem).sub}>Citas médicas</div>
+              </div>
+            </a>
+
+            {/* Calendario - visible para todos */}
+            <a href="/calendario" className={getSidebarItemClasses('calendario', activeItem)}>
+              <div className={getIconContainerClasses('calendario', activeItem)}>
+                <Calendar className={getIconClasses('calendario', activeItem)} />
+              </div>
+              <div>
+                <div className={getTextClasses('calendario', activeItem).main}>Calendario</div>
+                <div className={getTextClasses('calendario', activeItem).sub}>Vista mensual</div>
               </div>
             </a>
             

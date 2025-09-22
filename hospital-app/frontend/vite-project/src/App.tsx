@@ -7,6 +7,7 @@ import ConsultasPage from './pages/ConsultasPage'
 import AdminPage from './pages/AdminPage'
 import UsuariosPage from './pages/UsuariosPage'
 import PerfilPage from './pages/PerfilPage'
+import CalendarPage from './pages/CalendarPage'
 import { ReportesPage } from './pages/admin/ReportesPage'
 
 function App() {
@@ -25,6 +26,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ConsultasPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/calendario" 
+              element={
+                <ProtectedRoute>
+                  <CalendarPage />
                 </ProtectedRoute>
               } 
             />
