@@ -29,7 +29,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.rol === 'admin') {
-        navigate('/admin')
+        navigate('/admin/reportes')
       } else {
         navigate('/consultas')
       }

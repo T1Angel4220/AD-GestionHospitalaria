@@ -20,6 +20,8 @@ import {
   BarChart3
 } from 'lucide-react'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses } from '../utils/sidebarUtils'
+import { AdminBanner } from '../components/AdminBanner'
+import { getRoleText } from '../utils/roleUtils'
 
 export default function AdminPage() {
   const { user, logout } = useAuth()
@@ -201,14 +203,13 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-white font-medium">{user?.email}</p>
-                  <p className="text-blue-100 text-sm">Administrador</p>
-                </div>
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Stethoscope className="h-6 w-6 text-white" />
-                </div>
-                </div>
+                <AdminBanner 
+                  backgroundColor="bg-blue-600"
+                  iconBackgroundColor="bg-blue-700"
+                  icon={Stethoscope}
+                  roleText={getRoleText(user)}
+                />
+              </div>
               </div>
             </div>
           </div>

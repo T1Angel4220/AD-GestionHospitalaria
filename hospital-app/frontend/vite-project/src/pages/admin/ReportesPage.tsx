@@ -23,6 +23,8 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { AdminBanner } from '../../components/AdminBanner';
+import { getRoleText } from '../../utils/roleUtils';
 
 export const ReportesPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -406,11 +408,20 @@ export const ReportesPage: React.FC = () => {
             </a>
             <a href="/consultas" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
               <div className="w-10 h-10 bg-gray-700 group-hover:bg-green-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                <Calendar className="h-5 w-5" />
+                <FileText className="h-5 w-5" />
               </div>
               <div>
                 <div className="font-medium">Consultas</div>
                 <div className="text-xs text-gray-400">Citas médicas</div>
+              </div>
+            </a>
+            <a href="/calendario" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-cyan-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Calendario</div>
+                <div className="text-xs text-gray-400">Vista mensual</div>
               </div>
             </a>
             <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
@@ -479,13 +490,12 @@ export const ReportesPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-white font-medium">{user?.email}</p>
-                  <p className="text-amber-100 text-sm">Administrador</p>
-                </div>
-                <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
-                  <Stethoscope className="h-6 w-6 text-white" />
-                </div>
+                <AdminBanner 
+                  backgroundColor="bg-amber-600"
+                  iconBackgroundColor="bg-amber-700"
+                  icon={BarChart3}
+                  roleText={getRoleText(user)}
+                />
               </div>
             </div>
           </div>

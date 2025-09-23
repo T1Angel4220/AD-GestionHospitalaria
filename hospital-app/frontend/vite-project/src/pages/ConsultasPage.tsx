@@ -28,6 +28,8 @@ import {
   Eye,
   BarChart3
 } from 'lucide-react'
+import { AdminBanner } from '../components/AdminBanner'
+import { getRoleText } from '../utils/roleUtils'
 
 export default function MedicalConsultationsPage() {
   const { user, logout } = useAuth()
@@ -506,17 +508,13 @@ export default function MedicalConsultationsPage() {
                 </div>
                 </div>
               <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-white font-medium"></p>
-                  <p className="text-green-100 text-lg font-semibold">
-                    {user?.rol === 'admin' ? 'Administrador' : 
-                     medicoActual ? `Dr. ${medicoActual.nombres} ${medicoActual.apellidos}` : 'Médico'}
-                  </p>
+                <AdminBanner 
+                  backgroundColor="bg-green-600"
+                  iconBackgroundColor="bg-green-700"
+                  icon={FileText}
+                  roleText={getRoleText(user)}
+                />
               </div>
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <Calendar className="h-6 w-6 text-white" />
-            </div>
-          </div>
             </div>
           </div>
         </div>

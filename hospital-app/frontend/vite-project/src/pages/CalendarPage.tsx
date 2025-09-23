@@ -16,9 +16,12 @@ import {
   X,
   AlertCircle,
   User,
-  Stethoscope
+  Stethoscope,
+  BarChart3
 } from 'lucide-react'
 import { CalendarView } from '../components/Calendar/CalendarView'
+import { AdminBanner } from '../components/AdminBanner'
+import { getRoleText } from '../utils/roleUtils'
 
 export default function CalendarPage() {
   const { user, logout } = useAuth()
@@ -121,9 +124,9 @@ export default function CalendarPage() {
           <div className="space-y-2">
             {/* Solo mostrar Dashboard para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-                <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                  <Home className="h-5 w-5" />
+              <a href="/admin/reportes" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-amber-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <BarChart3 className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="font-medium">Dashboard</div>
@@ -250,16 +253,12 @@ export default function CalendarPage() {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-white font-medium"></p>
-                  <p className="text-cyan-100 text-lg font-semibold">
-                    {user?.rol === 'admin' ? 'Administrador' : 
-                     user?.rol === 'medico' ? `Dr. ${user.medico?.nombres} ${user.medico?.apellidos}` : 'Médico'}
-                  </p>
-                </div>
-                <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center">
-                  <User className="h-6 w-6 text-white" />
-                </div>
+                <AdminBanner 
+                  backgroundColor="bg-cyan-600"
+                  iconBackgroundColor="bg-cyan-700"
+                  icon={Calendar}
+                  roleText={getRoleText(user)}
+                />
               </div>
             </div>
           </div>
