@@ -9,6 +9,7 @@ export interface Consulta {
   diagnostico?: string;
   tratamiento?: string;
   estado: 'pendiente' | 'programada' | 'completada' | 'cancelada';
+  duracion_minutos?: number;
   created_at: string;
   // Datos relacionados
   medico_nombres?: string;
@@ -28,6 +29,7 @@ export interface ConsultaCreate {
   diagnostico?: string;
   tratamiento?: string;
   estado?: 'pendiente' | 'programada' | 'completada' | 'cancelada';
+  duracion_minutos?: number;
 }
 
 export interface ConsultaUpdate {
@@ -40,6 +42,7 @@ export interface ConsultaUpdate {
   diagnostico?: string;
   tratamiento?: string;
   estado?: 'pendiente' | 'programada' | 'completada' | 'cancelada';
+  duracion_minutos?: number;
 }
 
 export interface Medico {

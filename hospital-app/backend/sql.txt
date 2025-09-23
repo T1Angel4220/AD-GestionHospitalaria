@@ -74,3 +74,5 @@ CREATE TABLE consultas (
 ALTER TABLE consultas
 ADD COLUMN estado ENUM('pendiente','programada','completada','cancelada') 
 DEFAULT 'pendiente';
+ALTER TABLE consultas 
+ADD COLUMN duracion_minutos INT DEFAULT 0 COMMENT 'Duración de la consulta en minutos';

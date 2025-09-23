@@ -417,6 +417,26 @@ export default function CalendarPage() {
                     </div>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-base font-semibold text-gray-700 mb-1">
+                      Duración de la Consulta
+                    </label>
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900">
+                      {viewingConsulta.duracion_minutos && viewingConsulta.duracion_minutos > 0 ? 
+                        `${viewingConsulta.duracion_minutos} minutos` + 
+                        (viewingConsulta.duracion_minutos >= 60 ? 
+                          ` (${Math.floor(viewingConsulta.duracion_minutos / 60)}h ${viewingConsulta.duracion_minutos % 60}m)` : 
+                          '') : 
+                        viewingConsulta.estado === 'pendiente' || viewingConsulta.estado === 'cancelada' ?
+                          'No aplica' :
+                          'No especificada'
+                      }
+                    </div>
+                  </div>
+                  <div></div>
+                </div>
               </div>
             </div>
 

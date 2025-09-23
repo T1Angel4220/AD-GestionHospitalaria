@@ -63,6 +63,7 @@ export default function MedicalConsultationsPage() {
     diagnostico: "",
     tratamiento: "",
     estado: "pendiente",
+    duracion_minutos: 0,
   })
 
   // Estado para la especialidad seleccionada
@@ -86,6 +87,18 @@ export default function MedicalConsultationsPage() {
     loadRelatedData()
     loadMedicoActual()
   }, [])
+
+  // Efecto para manejar cambios de estado y duración
+  useEffect(() => {
+    if (formData.estado === 'cancelada') {
+      // Si se cancela, duración = 0
+      setFormData(prev => ({ ...prev, duracion_minutos: 0 }))
+    } else if (formData.estado === 'pendiente') {
+      // Si es pendiente, duración = 0
+      setFormData(prev => ({ ...prev, duracion_minutos: 0 }))
+    }
+    // Para 'programada' y 'completada' no cambiamos el valor automáticamente
+  }, [formData.estado])
 
   const loadMedicoActual = async () => {
     if (user?.rol === 'medico' && user.id_medico && medicos.length > 0) {
@@ -157,6 +170,7 @@ export default function MedicalConsultationsPage() {
           diagnostico: formData.diagnostico,
           tratamiento: formData.tratamiento,
           estado: formData.estado!,
+          duracion_minutos: formData.duracion_minutos,
         }
         // Guardar datos pendientes y mostrar modal de confirmación
         setPendingUpdateData(updateData)
@@ -172,6 +186,7 @@ export default function MedicalConsultationsPage() {
           diagnostico: formData.diagnostico,
           tratamiento: formData.tratamiento,
           estado: formData.estado!,
+          duracion_minutos: formData.duracion_minutos,
         }
         await ConsultasApi.createConsulta(newData)
         setShowSuccessModal(true)
@@ -209,6 +224,7 @@ export default function MedicalConsultationsPage() {
       diagnostico: consulta.diagnostico,
       tratamiento: consulta.tratamiento,
       estado: consulta.estado,
+      duracion_minutos: consulta.duracion_minutos || 0,
     })
     // Cargar especialidad y centro del médico seleccionado
     if (consulta.id_medico) {
@@ -276,6 +292,7 @@ export default function MedicalConsultationsPage() {
       diagnostico: "",
       tratamiento: "",
       estado: "pendiente",
+      duracion_minutos: 0,
     })
     setSelectedEspecialidad("")
     setSelectedCentro("")
@@ -976,6 +993,56 @@ export default function MedicalConsultationsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="duracion_minutos" className="block text-base font-medium text-gray-700 mb-1">
+                      Duración (minutos) {
+                        formData.estado === 'pendiente' ? '(Bloqueada)' :
+                        formData.estado === 'cancelada' ? '(Bloqueada)' :
+                        formData.estado === 'programada' ? '(Requerida)' :
+                        formData.estado === 'completada' ? '(Requerida)' : '(Opcional)'
+                      }
+                    </label>
+                    <input
+                      type="number"
+                      id="duracion_minutos"
+                      value={formData.duracion_minutos || ''}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, duracion_minutos: parseInt(e.target.value) || 0 }))}
+                      min="0"
+                      max="480"
+                      step="15"
+                      required={formData.estado === 'programada' || formData.estado === 'completada'}
+                      disabled={isReadOnly || formData.estado === 'pendiente' || formData.estado === 'cancelada'}
+                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                        isReadOnly || formData.estado === 'pendiente' || formData.estado === 'cancelada' 
+                          ? 'bg-gray-100 cursor-not-allowed' 
+                          : ''
+                      }`}
+                      placeholder="Ej: 30, 45, 60"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Duración estimada o real de la consulta en minutos
+                    </p>
+                    {formData.estado === 'pendiente' && (
+                      <p className="mt-1 text-xs text-amber-600">
+                        Las consultas pendientes no requieren duración específica
+                      </p>
+                    )}
+                    {formData.estado === 'programada' && (
+                      <p className="mt-1 text-xs text-blue-600">
+                        Para consultas programadas, ingresa la duración estimada
+                      </p>
+                    )}
+                    {formData.estado === 'completada' && (
+                      <p className="mt-1 text-xs text-emerald-600">
+                        Para consultas completadas, ingresa la duración real
+                      </p>
+                    )}
+                    {formData.estado === 'cancelada' && (
+                      <p className="mt-1 text-xs text-red-600">
+                        Las consultas canceladas no requieren duración (0 minutos)
+                      </p>
+                    )}
+                  </div>
                   <div>
                     <label htmlFor="fecha" className="block text-base font-medium text-gray-700 mb-1">
                       Fecha y Hora {formData.estado === 'pendiente' ? '(Opcional)' : '(Requerida)'}

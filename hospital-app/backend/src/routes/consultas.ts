@@ -24,9 +24,19 @@ router.post("/", requireCentroAccess, async (req: Request, res: Response) => {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
-    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado } = req.body || {};
+    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
     if (!id_medico || !paciente_nombre || !paciente_apellido || !fecha) {
       return res.status(400).json({ error: "id_medico, paciente_nombre, paciente_apellido y fecha son obligatorios" });
+    }
+
+    // Validar duración según el estado
+    if (estado === 'programada' || estado === 'completada') {
+      if (!duracion_minutos || duracion_minutos <= 0) {
+        return res.status(400).json({ error: `La duración es obligatoria para consultas ${estado === 'programada' ? 'programadas' : 'completadas'}` });
+      }
+      if (duracion_minutos > 480) {
+        return res.status(400).json({ error: "La duración no puede ser mayor a 8 horas (480 minutos)" });
+      }
     }
 
     // Obtener información del usuario autenticado
@@ -75,9 +85,9 @@ router.post("/", requireCentroAccess, async (req: Request, res: Response) => {
     }
 
     const [result] = await pool.execute(
-      `INSERT INTO consultas (id_centro, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [centroConsulta, id_medico, paciente_nombre, paciente_apellido, fecha, motivo ?? null, diagnostico ?? null, tratamiento ?? null, estado ?? 'pendiente']
+      `INSERT INTO consultas (id_centro, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [centroConsulta, id_medico, paciente_nombre, paciente_apellido, fecha, motivo ?? null, diagnostico ?? null, tratamiento ?? null, estado ?? 'pendiente', duracion_minutos ?? 0]
     );
 
     // @ts-ignore - mysql2 returns OkPacket
@@ -313,9 +323,16 @@ router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
       return res.status(400).json({ error: "ID de consulta inválido" });
     }
 
-    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado } = req.body || {};
+    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
 
-    console.log('Actualizando consulta:', { id, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado });
+    // Validar duración según el estado si se está actualizando
+    if (estado === 'programada' || estado === 'completada') {
+      if (duracion_minutos !== undefined && (duracion_minutos <= 0 || duracion_minutos > 480)) {
+        return res.status(400).json({ error: "La duración debe estar entre 1 y 480 minutos para consultas programadas o completadas" });
+      }
+    }
+
+    console.log('Actualizando consulta:', { id, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos });
 
     // Build dynamic SET clause
     const fields: string[] = [];
@@ -328,11 +345,19 @@ router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
     if (diagnostico !== undefined) { fields.push("diagnostico = ?"); params.push(diagnostico); }
     if (tratamiento !== undefined) { fields.push("tratamiento = ?"); params.push(tratamiento); }
     if (estado !== undefined) { fields.push("estado = ?"); params.push(estado); }
+    if (duracion_minutos !== undefined) { fields.push("duracion_minutos = ?"); params.push(duracion_minutos); }
 
     if (fields.length === 0) return res.status(400).json({ error: "No hay campos para actualizar" });
 
-    // Si se intenta cambiar el médico, validar que pertenezca al centro
-    if (id_medico !== undefined) {
+    // Obtener el rol del usuario para validaciones
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Token requerido" });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const userRole = decoded.rol;
+
+    // Si se intenta cambiar el médico, validar que pertenezca al centro (solo para médicos)
+    if (id_medico !== undefined && userRole === 'medico') {
       const [medicoRows] = await pool.query(
         "SELECT id FROM medicos WHERE id = ? AND id_centro = ?",
         [id_medico, idCentro]
@@ -343,15 +368,27 @@ router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
       }
     }
 
-    const sql = `UPDATE consultas SET ${fields.join(", ")} WHERE id = ? AND id_centro = ?`;
-    params.push(id, idCentro);
+    // Construir la consulta WHERE según el rol del usuario
+    let whereClause = "WHERE id = ?";
+    let whereParams = [id];
+    
+    if (userRole === 'medico') {
+      // Los médicos solo pueden actualizar consultas de su centro
+      whereClause += " AND id_centro = ?";
+      whereParams.push(idCentro);
+    }
+    // Los admins pueden actualizar consultas de cualquier centro
+
+    const sql = `UPDATE consultas SET ${fields.join(", ")} ${whereClause}`;
+    params.push(...whereParams);
     console.log('SQL de actualización:', sql);
     console.log('Parámetros:', params);
     const [result] = await pool.execute(sql, params);
     // @ts-ignore
     if (result.affectedRows === 0) return res.status(404).json({ error: "Consulta no encontrada" });
 
-    const [rows] = await pool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [id, idCentro]);
+    // Obtener la consulta actualizada
+    const [rows] = await pool.query(`SELECT * FROM consultas ${whereClause}`, whereParams);
     // @ts-ignore
     res.json(rows[0]);
   } catch (error) {
@@ -371,7 +408,25 @@ router.delete("/:id", requireCentroAccess, async (req: Request, res: Response) =
       return res.status(400).json({ error: "ID de consulta inválido" });
     }
 
-    const [result] = await pool.execute("DELETE FROM consultas WHERE id = ? AND id_centro = ?", [id, idCentro]);
+    // Obtener el rol del usuario para validaciones
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Token requerido" });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const userRole = decoded.rol;
+
+    // Construir la consulta WHERE según el rol del usuario
+    let whereClause = "WHERE id = ?";
+    let whereParams = [id];
+    
+    if (userRole === 'medico') {
+      // Los médicos solo pueden eliminar consultas de su centro
+      whereClause += " AND id_centro = ?";
+      whereParams.push(idCentro);
+    }
+    // Los admins pueden eliminar consultas de cualquier centro
+
+    const [result] = await pool.execute(`DELETE FROM consultas ${whereClause}`, whereParams);
     // @ts-ignore
     if (result.affectedRows === 0) return res.status(404).json({ error: "Consulta no encontrada" });
     res.status(204).send();
