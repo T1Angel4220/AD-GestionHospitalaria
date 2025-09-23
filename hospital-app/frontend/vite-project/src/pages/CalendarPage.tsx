@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
-import type { Consulta, ConsultaUpdate, Medico } from '../types/consultas'
+import type { Consulta, Medico } from '../types/consultas'
 import moment from 'moment'
 import { 
   Activity, 
@@ -19,7 +19,6 @@ import {
   Stethoscope
 } from 'lucide-react'
 import { CalendarView } from '../components/Calendar/CalendarView'
-import ConsultaModal from '../components/ConsultaModal'
 
 export default function CalendarPage() {
   const { user, logout } = useAuth()
@@ -32,22 +31,9 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
 
   // Estados para modales
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingConsulta, setEditingConsulta] = useState<Consulta | null>(null)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [consultaToDelete, setConsultaToDelete] = useState<Consulta | null>(null)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [viewingConsulta, setViewingConsulta] = useState<Consulta | null>(null)
 
-  // Estado del formulario del modal
-  const [formData, setFormData] = useState<Partial<Consulta>>({
-    paciente_nombre: '',
-    paciente_apellido: '',
-    motivo: '',
-    diagnostico: '',
-    tratamiento: '',
-    fecha: '',
-    id_medico: 0,
-    id_centro: 0
-  })
 
   useEffect(() => {
     loadData()
@@ -79,81 +65,8 @@ export default function CalendarPage() {
   }
 
 
-  const handleEditConsulta = (consulta: Consulta) => {
-    setEditingConsulta(consulta)
-    setFormData({
-      paciente_nombre: consulta.paciente_nombre,
-      paciente_apellido: consulta.paciente_apellido,
-      motivo: consulta.motivo || '',
-      diagnostico: consulta.diagnostico || '',
-      tratamiento: consulta.tratamiento || '',
-      fecha: consulta.fecha,
-      id_medico: consulta.id_medico || 0,
-      id_centro: consulta.id_centro || 0
-    })
-    setIsDialogOpen(true)
-  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      if (editingConsulta) {
-        const updateData: ConsultaUpdate = {
-          ...formData,
-          estado: editingConsulta.estado
-        }
-        await ConsultasApi.updateConsulta(editingConsulta.id, updateData)
-      } else {
-        // Convertir Partial<Consulta> a ConsultaCreate
-        const createData = {
-          paciente_nombre: formData.paciente_nombre || '',
-          paciente_apellido: formData.paciente_apellido || '',
-          motivo: formData.motivo || '',
-          diagnostico: formData.diagnostico || '',
-          tratamiento: formData.tratamiento || '',
-          fecha: formData.fecha || '',
-          id_medico: formData.id_medico || 0,
-          id_centro: formData.id_centro || 0
-        }
-        await ConsultasApi.createConsulta(createData)
-      }
-      await loadConsultas()
-      setIsDialogOpen(false)
-    } catch (err) {
-      setError("Error al guardar la consulta")
-      console.error(err)
-    }
-  }
 
-  const handleDelete = async () => {
-    if (!consultaToDelete) return
-    try {
-      await ConsultasApi.deleteConsulta(consultaToDelete.id)
-      await loadConsultas()
-      setIsDeleteModalOpen(false)
-      setConsultaToDelete(null)
-    } catch (err) {
-      setError("Error al eliminar la consulta")
-      console.error(err)
-    }
-  }
-
-  const loadConsultas = async () => {
-    try {
-      const consultasData = await ConsultasApi.getConsultas()
-      
-      // Filtrar consultas por el doctor en sesión
-      let consultasFiltradas = consultasData
-      if (user?.rol === 'medico' && user.id_medico) {
-        consultasFiltradas = consultasData.filter(consulta => consulta.id_medico === user.id_medico)
-      }
-      
-      setConsultas(consultasFiltradas)
-    } catch (err) {
-      setError("Error al cargar las consultas")
-      console.error(err)
-    }
-  }
 
   const handleViewChange = (view: string) => {
     // Manejar cambio de vista del calendario
@@ -165,6 +78,11 @@ export default function CalendarPage() {
     // Manejar navegación del calendario
     setCurrentDate(date)
     console.log('Navegación a:', date)
+  }
+
+  const handleViewConsulta = (consulta: Consulta) => {
+    setViewingConsulta(consulta)
+    setIsViewModalOpen(true)
   }
 
   if (loading) {
@@ -365,7 +283,7 @@ export default function CalendarPage() {
             consultas={consultas}
             medicos={medicos}
             loading={loading}
-            onEditConsulta={handleEditConsulta}
+            onViewConsulta={handleViewConsulta}
             onViewChange={handleViewChange}
             onNavigate={handleNavigate}
             user={user ? { rol: user.rol } : undefined}
@@ -373,69 +291,145 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Modales */}
-      <ConsultaModal
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSubmit={handleSubmit}
-        formData={formData}
-        setFormData={setFormData}
-        medicos={medicos}
-        centros={[]}
-        editingConsulta={editingConsulta}
-      />
 
-      {/* Modal de Eliminación */}
-      {isDeleteModalOpen && consultaToDelete && (
+
+      {/* Modal de Solo Lectura */}
+      {isViewModalOpen && viewingConsulta && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsDeleteModalOpen(false)}></div>
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsViewModalOpen(false)}></div>
           
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full transform transition-all duration-300 scale-100 max-h-[85vh] overflow-y-auto">
             {/* Header del modal */}
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 bg-gradient-to-r from-cyan-600 to-cyan-700 rounded-t-2xl">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <Calendar className="h-6 w-6 text-cyan-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Eliminar Consulta</h3>
-                    <p className="text-sm text-gray-500">Esta acción no se puede deshacer</p>
+                    <h3 className="text-xl font-bold text-white">
+                      Ver Consulta Médica
+                    </h3>
+                    <p className="text-cyan-100 text-base">
+                      Información detallada de la consulta
+                    </p>
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsDeleteModalOpen(false)}
-                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={() => setIsViewModalOpen(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
-
+            
             {/* Contenido del modal */}
             <div className="px-6 py-4">
-              <p className="text-gray-700">
-                ¿Estás seguro de que quieres eliminar la consulta de{' '}
-                <span className="font-semibold">
-                  {consultaToDelete.paciente_nombre} {consultaToDelete.paciente_apellido}
-                </span>?
-              </p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-base font-semibold text-gray-700 mb-1">
+                      Nombre del Paciente
+                    </label>
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900">
+                      {viewingConsulta.paciente_nombre}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-base font-semibold text-gray-700 mb-1">
+                      Apellido del Paciente
+                    </label>
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900">
+                      {viewingConsulta.paciente_apellido}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-base font-semibold text-gray-700 mb-1">
+                      Fecha de la Consulta
+                    </label>
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900">
+                      {viewingConsulta.fecha ? moment(viewingConsulta.fecha).format('DD/MM/YYYY HH:mm') : 'No especificada'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-base font-semibold text-gray-700 mb-1">
+                      Estado
+                    </label>
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900">
+                      <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                        viewingConsulta.estado === 'pendiente' ? 'bg-amber-100 text-amber-800' :
+                        viewingConsulta.estado === 'programada' ? 'bg-blue-100 text-blue-800' :
+                        viewingConsulta.estado === 'completada' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {viewingConsulta.estado?.charAt(0).toUpperCase() + viewingConsulta.estado?.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-base font-semibold text-gray-700 mb-1">
+                    Motivo de la Consulta
+                  </label>
+                  <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 min-h-[80px]">
+                    {viewingConsulta.motivo || 'No especificado'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-base font-semibold text-gray-700 mb-1">
+                    Diagnóstico
+                  </label>
+                  <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 min-h-[80px]">
+                    {viewingConsulta.diagnostico || 'No especificado'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-base font-semibold text-gray-700 mb-1">
+                    Tratamiento
+                  </label>
+                  <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 min-h-[80px]">
+                    {viewingConsulta.tratamiento || 'No especificado'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-base font-semibold text-gray-700 mb-1">
+                      Médico Asignado
+                    </label>
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900">
+                      {viewingConsulta.medico_nombres ? `Dr. ${viewingConsulta.medico_nombres} ${viewingConsulta.medico_apellidos}` : 'No asignado'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-base font-semibold text-gray-700 mb-1">
+                      Centro Médico
+                    </label>
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900">
+                      {viewingConsulta.centro_nombre || 'No especificado'}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Footer del modal */}
-            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Eliminar
-              </button>
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl border-t border-gray-200">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setIsViewModalOpen(false)}
+                  className="px-6 py-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

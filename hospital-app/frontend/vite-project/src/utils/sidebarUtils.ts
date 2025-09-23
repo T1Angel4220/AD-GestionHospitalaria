@@ -71,7 +71,7 @@ export const getIconContainerClasses = (
     case 'consultas':
       return "w-10 h-10 bg-gray-700 group-hover:bg-green-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'calendario':
-      return "w-10 h-10 bg-gray-700 group-hover:bg-indigo-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+      return "w-10 h-10 bg-gray-700 group-hover:bg-cyan-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'medicos':
       return "w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'usuarios':
@@ -96,7 +96,7 @@ export const getIconClasses = (
       case 'consultas':
         return "h-5 w-5 text-green-600";
       case 'calendario':
-        return "h-5 w-5 text-indigo-600";
+        return "h-5 w-5 text-cyan-600";
       case 'medicos':
         return "h-5 w-5 text-blue-600";
       case 'usuarios':

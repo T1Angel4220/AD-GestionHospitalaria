@@ -28,7 +28,7 @@ interface CalendarViewProps {
   consultas: Consulta[];
   medicos: Medico[];
   loading: boolean;
-  onEditConsulta: (consulta: Consulta) => void;
+  onViewConsulta: (consulta: Consulta) => void;
   onViewChange: (view: View) => void;
   onNavigate: (date: Date) => void;
   user?: {
@@ -40,7 +40,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   consultas,
   medicos,
   loading,
-  onEditConsulta,
+  onViewConsulta,
   onViewChange,
   onNavigate,
   user
@@ -92,7 +92,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   // Manejar clic en evento
   const handleSelectEvent = (event: CalendarEvent) => {
-    onEditConsulta(event.resource.consulta);
+    onViewConsulta(event.resource.consulta);
   };
 
   // Manejar cambio de vista

@@ -122,7 +122,7 @@ export default function PerfilPage() {
 
             {/* Calendario - visible para todos */}
             <a href="/calendario" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-              <div className="w-10 h-10 bg-gray-700 group-hover:bg-indigo-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-cyan-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                 <Calendar className="h-5 w-5" />
               </div>
               <div>
