@@ -28,7 +28,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  
+
   // Determinar el elemento activo del sidebar
   const activeItem = getActiveSidebarItem(window.location.pathname)
 

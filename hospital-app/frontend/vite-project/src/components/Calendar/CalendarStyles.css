@@ -44,7 +44,6 @@
 
 /* Día actual */
 .rbc-today {
-  background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
   color: white;
   font-weight: bold;
 }
@@ -120,6 +119,146 @@
 
 .rbc-time-content {
   border: none;
+}
+
+/* Simplificar vistas de semana y día - usar estilos por defecto de react-big-calendar */
+.rbc-time-view .rbc-time-gutter {
+  width: 80px !important;
+  min-width: 80px !important;
+}
+
+
+/* Mejorar la columna de tiempo */
+.rbc-time-view .rbc-time-gutter .rbc-timeslot-group {
+  width: 80px !important;
+}
+
+.rbc-time-view .rbc-time-gutter .rbc-time-slot {
+  width: 80px !important;
+  padding: 8px 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+}
+
+/* ESTILOS ESPECÍFICOS PARA VISTA SEMANA - Replicar estilo de mes */
+
+.rbc-time-view[data-view="week"] .rbc-time-header .rbc-header {
+  width: calc(100% / 7) !important;
+  min-width: calc(100% / 7) !important;
+  max-width: calc(100% / 7) !important;
+  flex: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.rbc-time-view[data-view="week"] .rbc-time-content .rbc-time-slot {
+  width: calc(100% / 7) !important;
+  min-width: calc(100% / 7) !important;
+  max-width: calc(100% / 7) !important;
+  flex: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.rbc-time-view[data-view="week"] .rbc-time-content {
+  display: flex !important;
+  flex-direction: row !important;
+}
+
+.rbc-time-view[data-view="week"] .rbc-time-content > div {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 100% !important;
+}
+
+/* ESTILOS ESPECÍFICOS PARA VISTA DÍA - Arreglar filas */
+.rbc-time-view[data-view="day"] .rbc-time-header .rbc-header {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+}
+
+.rbc-time-view[data-view="day"] .rbc-time-content .rbc-time-slot {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+}
+
+.rbc-time-view[data-view="day"] .rbc-time-content {
+  display: block !important;
+}
+
+.rbc-time-view[data-view="day"] .rbc-time-content > div {
+  display: block !important;
+  width: 100% !important;
+}
+
+/* Asegurar que las filas de tiempo se muestren en vista día */
+.rbc-time-view[data-view="day"] .rbc-time-gutter {
+  display: block !important;
+  width: 80px !important;
+  min-width: 80px !important;
+}
+
+.rbc-time-view[data-view="day"] .rbc-time-gutter .rbc-timeslot-group {
+  display: block !important;
+  width: 80px !important;
+}
+
+.rbc-time-view[data-view="day"] .rbc-time-gutter .rbc-time-slot {
+  display: block !important;
+  width: 80px !important;
+  height: 60px !important;
+  padding: 8px 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* Vista de día mejorada */
+.rbc-time-view .rbc-time-slot {
+  background: transparent !important;
+  border-bottom: 1px solid #e2e8f0 !important; /* gray-200 */
+}
+
+/* Quitar espacio blanco antes de las líneas del calendario */
+.rbc-time-view .rbc-time-content {
+  background: transparent !important;
+}
+
+.rbc-time-view .rbc-time-content > div {
+  background: transparent !important;
+}
+
+/* Asegurar que no haya padding extra */
+.rbc-time-view .rbc-time-content .rbc-time-slot {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.rbc-time-view .rbc-time-slot.rbc-today {
+  background: transparent !important;
+  border-bottom: 1px solid #e2e8f0 !important; /* gray-200 */
+}
+
+.rbc-time-view .rbc-time-slot:hover {
+  background: #f0f9ff !important; /* sky-50 */
+}
+
+/* Mejorar contraste en vista día */
+.rbc-time-view .rbc-event {
+  background: linear-gradient(135deg, #10b981, #059669) !important; /* emerald-500/600 */
+  border: 2px solid #047857 !important; /* emerald-700 */
+  color: white !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
+}
+
+.rbc-time-view .rbc-event:hover {
+  background: linear-gradient(135deg, #059669, #047857) !important; /* emerald-600/700 */
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
 }
 
 /* Vista de agenda */

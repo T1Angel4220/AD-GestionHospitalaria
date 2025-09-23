@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
 import type { Consulta, ConsultaUpdate, Medico } from '../types/consultas'
+import moment from 'moment'
 import { 
   Activity, 
   Users, 
@@ -27,6 +28,8 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [currentView, setCurrentView] = useState('month')
+  const [currentDate, setCurrentDate] = useState(new Date())
 
   // Estados para modales
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -57,7 +60,14 @@ export default function CalendarPage() {
         ConsultasApi.getConsultas(),
         ConsultasApi.getMedicos()
       ])
-      setConsultas(consultasData)
+      
+      // Filtrar consultas por el doctor en sesión
+      let consultasFiltradas = consultasData
+      if (user?.rol === 'medico' && user.id_medico) {
+        consultasFiltradas = consultasData.filter(consulta => consulta.id_medico === user.id_medico)
+      }
+      
+      setConsultas(consultasFiltradas)
       setMedicos(medicosData)
       setError(null)
     } catch (err) {
@@ -68,20 +78,6 @@ export default function CalendarPage() {
     }
   }
 
-  const handleNewConsulta = () => {
-    setEditingConsulta(null)
-    setFormData({
-      paciente_nombre: '',
-      paciente_apellido: '',
-      motivo: '',
-      diagnostico: '',
-      tratamiento: '',
-      fecha: '',
-      id_medico: 0,
-      id_centro: 0
-    })
-    setIsDialogOpen(true)
-  }
 
   const handleEditConsulta = (consulta: Consulta) => {
     setEditingConsulta(consulta)
@@ -145,7 +141,14 @@ export default function CalendarPage() {
   const loadConsultas = async () => {
     try {
       const consultasData = await ConsultasApi.getConsultas()
-      setConsultas(consultasData)
+      
+      // Filtrar consultas por el doctor en sesión
+      let consultasFiltradas = consultasData
+      if (user?.rol === 'medico' && user.id_medico) {
+        consultasFiltradas = consultasData.filter(consulta => consulta.id_medico === user.id_medico)
+      }
+      
+      setConsultas(consultasFiltradas)
     } catch (err) {
       setError("Error al cargar las consultas")
       console.error(err)
@@ -154,11 +157,13 @@ export default function CalendarPage() {
 
   const handleViewChange = (view: string) => {
     // Manejar cambio de vista del calendario
+    setCurrentView(view)
     console.log('Vista cambiada a:', view)
   }
 
   const handleNavigate = (date: Date) => {
     // Manejar navegación del calendario
+    setCurrentDate(date)
     console.log('Navegación a:', date)
   }
 
@@ -312,8 +317,18 @@ export default function CalendarPage() {
                   <Menu className="h-6 w-6" />
                 </button>
                 <div className="ml-4">
-                  <h1 className="text-3xl font-bold text-white">Calendario de Consultas</h1>
-                  <p className="text-cyan-100 mt-1">Vista mensual de citas médicas</p>
+                  <h1 className="text-3xl font-bold text-white">
+                    {currentView === 'month' && moment(currentDate).format('MMMM YYYY')}
+                    {currentView === 'week' && `Semana del ${moment(currentDate).startOf('week').format('DD MMM')} al ${moment(currentDate).endOf('week').format('DD MMM YYYY')}`}
+                    {currentView === 'day' && moment(currentDate).format('dddd, DD MMMM YYYY')}
+                    {currentView === 'agenda' && 'Agenda de Consultas'}
+                  </h1>
+                  <p className="text-cyan-100 mt-1">
+                    {currentView === 'month' && 'Vista mensual de citas médicas'}
+                    {currentView === 'week' && 'Vista semanal de citas médicas'}
+                    {currentView === 'day' && 'Vista diaria de citas médicas'}
+                    {currentView === 'agenda' && 'Lista de consultas programadas'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
@@ -350,10 +365,10 @@ export default function CalendarPage() {
             consultas={consultas}
             medicos={medicos}
             loading={loading}
-            onCreateConsulta={handleNewConsulta}
             onEditConsulta={handleEditConsulta}
             onViewChange={handleViewChange}
             onNavigate={handleNavigate}
+            user={user ? { rol: user.rol } : undefined}
           />
         </div>
       </div>

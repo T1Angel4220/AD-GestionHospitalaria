@@ -28,20 +28,22 @@ interface CalendarViewProps {
   consultas: Consulta[];
   medicos: Medico[];
   loading: boolean;
-  onCreateConsulta: () => void;
   onEditConsulta: (consulta: Consulta) => void;
   onViewChange: (view: View) => void;
   onNavigate: (date: Date) => void;
+  user?: {
+    rol: 'admin' | 'medico';
+  };
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
   consultas,
   medicos,
   loading,
-  onCreateConsulta,
   onEditConsulta,
   onViewChange,
-  onNavigate
+  onNavigate,
+  user
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMedico, setSelectedMedico] = useState('all');
@@ -239,7 +241,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             {/* Título y Filtros */}
             <div className="flex items-center space-x-4">
-              <h3 className="text-xl font-bold text-white">Calendario de Consultas</h3>
+              <h3 className="text-xl font-bold text-white">
+                {currentView === 'month' && moment(currentDate).format('MMMM YYYY')}
+                {currentView === 'week' && `Semana del ${moment(currentDate).startOf('week').format('DD MMM')} al ${moment(currentDate).endOf('week').format('DD MMM YYYY')}`}
+                {currentView === 'day' && moment(currentDate).format('dddd, DD MMMM YYYY')}
+                {currentView === 'agenda' && 'Agenda de Consultas'}
+              </h3>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors font-medium"
@@ -250,20 +257,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
 
             {/* Botón Nueva Consulta */}
-            <button
-              onClick={onCreateConsulta}
+            <a
+              href="/consultas"
               className="flex items-center px-4 py-2 bg-white text-cyan-600 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               <Plus className="h-4 w-4 mr-2" />
               Nueva Consulta
-            </button>
+            </a>
           </div>
         </div>
 
         {/* Filtros Expandibles */}
         {showFilters && (
           <div className="px-6 py-6 bg-gradient-to-r from-violet-50 to-violet-100 border-b border-violet-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${user?.rol === 'admin' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-6`}>
               {/* Búsqueda */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-violet-800">
@@ -282,25 +289,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
               </div>
 
-              {/* Médico */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-violet-800">
-                  <Stethoscope className="h-4 w-4 inline mr-2" />
-                  Médico
-                </label>
-                <select
-                  value={selectedMedico}
-                  onChange={(e) => setSelectedMedico(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-white shadow-sm"
-                >
-                  <option value="all">Todos los médicos</option>
-                  {medicos.map((medico) => (
-                    <option key={medico.id} value={medico.id.toString()}>
-                      Dr. {medico.nombres} {medico.apellidos}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Médico - Solo para administradores */}
+              {user?.rol === 'admin' && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-violet-800">
+                    <Stethoscope className="h-4 w-4 inline mr-2" />
+                    Médico
+                  </label>
+                  <select
+                    value={selectedMedico}
+                    onChange={(e) => setSelectedMedico(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-white shadow-sm"
+                  >
+                    <option value="all">Todos los médicos</option>
+                    {medicos.map((medico) => (
+                      <option key={medico.id} value={medico.id.toString()}>
+                        Dr. {medico.nombres} {medico.apellidos}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Estado */}
               <div className="space-y-2">
@@ -472,6 +481,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               components={{
                 toolbar: () => null // Ocultar toolbar nativo
               }}
+              data-view={currentView}
             />
           </div>
         </div>
