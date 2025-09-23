@@ -175,7 +175,7 @@ export default function CalendarPage() {
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-gray-900 to-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl`}>
         {/* Logo Section */}
-        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-gray-600 to-gray-700">
+        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-cyan-600 to-cyan-700">
           <div className="flex items-center">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
               <Activity className="h-8 w-8 text-gray-600" />
@@ -221,13 +221,13 @@ export default function CalendarPage() {
             </a>
 
             {/* Calendario - visible para todos - ACTIVO */}
-            <a href="/calendario" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-lg">
+            <a href="/calendario" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-cyan-600 to-cyan-700 rounded-xl shadow-lg">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
-                <Calendar className="h-5 w-5 text-indigo-600" />
+                <Calendar className="h-5 w-5 text-cyan-600" />
               </div>
               <div>
                 <div className="font-medium">Calendario</div>
-                <div className="text-xs text-indigo-100">Vista mensual</div>
+                <div className="text-xs text-cyan-100">Vista mensual</div>
               </div>
             </a>
             
@@ -282,7 +282,8 @@ export default function CalendarPage() {
               <div className="flex-1">
                 <div className="text-white text-base font-medium">{user?.email}</div>
                 <div className="text-gray-400 text-sm font-medium">
-                  {user?.rol === 'admin' ? 'Administrador' : 'Médico'}
+                  {user?.rol === 'admin' ? 'Administrador' : 
+                   user?.rol === 'medico' ? `Dr. ${user.medico?.nombres} ${user.medico?.apellidos}` : 'Médico'}
                 </div>
               </div>
             </div>
@@ -300,7 +301,7 @@ export default function CalendarPage() {
       {/* Main Content */}
       <div className="lg:pl-72">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 shadow-lg">
+        <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 shadow-lg">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-8">
               <div className="flex items-center">
@@ -312,17 +313,18 @@ export default function CalendarPage() {
                 </button>
                 <div className="ml-4">
                   <h1 className="text-3xl font-bold text-white">Calendario de Consultas</h1>
-                  <p className="text-indigo-100 mt-1">Vista mensual de citas médicas</p>
+                  <p className="text-cyan-100 mt-1">Vista mensual de citas médicas</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-right">
                   <p className="text-white font-medium"></p>
-                  <p className="text-indigo-100 text-lg font-semibold">
-                    {user?.rol === 'admin' ? 'Administrador' : 'Médico'}
+                  <p className="text-cyan-100 text-lg font-semibold">
+                    {user?.rol === 'admin' ? 'Administrador' : 
+                     user?.rol === 'medico' ? `Dr. ${user.medico?.nombres} ${user.medico?.apellidos}` : 'Médico'}
                   </p>
                 </div>
-                <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center">
                   <User className="h-6 w-6 text-white" />
                 </div>
               </div>

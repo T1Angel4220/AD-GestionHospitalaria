@@ -1,0 +1,175 @@
+/* Ocultar los controles nativos de react-big-calendar */
+.rbc-toolbar {
+  display: none !important;
+}
+
+/* Personalizar el calendario */
+.rbc-calendar {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Header del calendario */
+.rbc-header {
+  background: linear-gradient(135deg, #0891b2, #0e7490);
+  color: white;
+  font-weight: 600;
+  padding: 12px 8px;
+  text-align: center;
+  border: none;
+}
+
+/* Días de la semana */
+.rbc-header:first-child {
+  border-top-left-radius: 12px;
+}
+
+.rbc-header:last-child {
+  border-top-right-radius: 12px;
+}
+
+/* Celdas del calendario */
+.rbc-date-cell {
+  padding: 8px;
+  border: 1px solid #f3f4f6;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.rbc-date-cell:hover {
+  background: #fef3c7;
+}
+
+/* Día actual */
+.rbc-today {
+  background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
+  color: white;
+  font-weight: bold;
+}
+
+/* Números de fecha */
+.rbc-date-cell > a {
+  color: #374151;
+  text-decoration: none;
+  font-weight: 500;
+  display: block;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.rbc-date-cell > a:hover {
+  background: rgba(6, 182, 212, 0.2);
+  color: #0891b2;
+}
+
+/* Eventos del calendario */
+.rbc-event {
+  background: linear-gradient(135deg, #0891b2, #0e7490);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  padding: 4px 8px;
+  margin: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.rbc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Eventos por estado */
+.rbc-event[data-status="pendiente"] {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+
+.rbc-event[data-status="programada"] {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.rbc-event[data-status="completada"] {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.rbc-event[data-status="cancelada"] {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+/* Mes anterior/siguiente */
+.rbc-off-range-bg {
+  background: #f9fafb;
+}
+
+.rbc-off-range > a {
+  color: #9ca3af !important;
+}
+
+/* Vista de semana */
+.rbc-time-view {
+  border: none;
+}
+
+.rbc-time-header {
+  border: none;
+}
+
+.rbc-time-content {
+  border: none;
+}
+
+/* Vista de agenda */
+.rbc-agenda-view {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rbc-agenda-view table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rbc-agenda-view thead {
+  background: linear-gradient(135deg, #0891b2, #0e7490);
+  color: white;
+}
+
+.rbc-agenda-view th {
+  padding: 12px;
+  font-weight: 600;
+  text-align: left;
+  border: none;
+}
+
+.rbc-agenda-view td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.rbc-agenda-view tbody tr:hover {
+  background: #fef3c7;
+}
+
+/* Scrollbar personalizado */
+.rbc-time-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rbc-time-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb {
+  background: #0891b2;
+  border-radius: 4px;
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb:hover {
+  background: #0e7490;
+}
