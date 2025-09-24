@@ -94,4 +94,6 @@ export interface Paciente {
   updated_at: string;
   centro_nombre?: string;
   centro_ciudad?: string;
+  consultas_activas?: number;
+  medicos_activos?: string;
 }

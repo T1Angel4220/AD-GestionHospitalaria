@@ -997,6 +997,35 @@ export default function MedicalConsultationsPage() {
                     <p className="mt-1 text-xs text-gray-500">
                       Selecciona un paciente de la lista. Si no aparece, primero créalo en la página de Pacientes.
                     </p>
+                    
+                    {/* Label de consultas activas */}
+                    {(() => {
+                      const pacienteSeleccionado = pacientes.find(p => p.id === formData.id_paciente);
+                      if (pacienteSeleccionado?.consultas_activas && pacienteSeleccionado.consultas_activas > 0) {
+                        return (
+                          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                <span className="text-blue-600 font-bold text-sm">
+                                  {pacienteSeleccionado.consultas_activas}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-blue-800">
+                                  {pacienteSeleccionado.consultas_activas} consulta{pacienteSeleccionado.consultas_activas > 1 ? 's' : ''} activa{pacienteSeleccionado.consultas_activas > 1 ? 's' : ''}
+                                </p>
+                                {pacienteSeleccionado.medicos_activos && (
+                                  <p className="text-xs text-blue-600 mt-1">
+                                    Con médico(s): {pacienteSeleccionado.medicos_activos}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   <div>
                     <label htmlFor="paciente_info" className="block text-base font-semibold text-gray-700 mb-1">
@@ -1009,6 +1038,15 @@ export default function MedicalConsultationsPage() {
                           {formData.id_paciente && (
                             <p className="text-sm text-gray-500">ID: {formData.id_paciente}</p>
                           )}
+                          {(() => {
+                            const pacienteSeleccionado = pacientes.find(p => p.id === formData.id_paciente);
+                            if (pacienteSeleccionado?.cedula) {
+                              return (
+                                <p className="text-sm text-gray-500 mt-1">Cédula: {pacienteSeleccionado.cedula}</p>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       ) : (
                         <p className="text-gray-500">Selecciona un paciente primero</p>

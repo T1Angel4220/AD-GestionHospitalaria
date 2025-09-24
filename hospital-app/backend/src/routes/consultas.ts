@@ -294,21 +294,31 @@ router.get("/pacientes", requireCentroAccess, async (req: Request, res: Response
     
     let sql, params;
     if (isAdmin) {
-      // Admin ve todos los pacientes de todos los centros
+      // Admin ve todos los pacientes de todos los centros con info de consultas activas
       sql = `
-        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
+               COUNT(c.id) as consultas_activas,
+               GROUP_CONCAT(DISTINCT CONCAT(m.nombres, ' ', m.apellidos) SEPARATOR ', ') as medicos_activos
         FROM pacientes p 
         LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        LEFT JOIN consultas c ON p.id = c.id_paciente AND c.estado IN ('pendiente', 'programada')
+        LEFT JOIN medicos m ON c.id_medico = m.id
+        GROUP BY p.id
         ORDER BY p.nombres, p.apellidos
       `;
       params = [];
     } else {
-      // Usuario normal ve solo pacientes de su centro
+      // Usuario normal ve solo pacientes de su centro con info de consultas activas
       sql = `
-        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
+               COUNT(c.id) as consultas_activas,
+               GROUP_CONCAT(DISTINCT CONCAT(m.nombres, ' ', m.apellidos) SEPARATOR ', ') as medicos_activos
         FROM pacientes p 
         LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        LEFT JOIN consultas c ON p.id = c.id_paciente AND c.estado IN ('pendiente', 'programada')
+        LEFT JOIN medicos m ON c.id_medico = m.id
         WHERE p.id_centro = ? 
+        GROUP BY p.id
         ORDER BY p.nombres, p.apellidos
       `;
       params = [idCentro];
