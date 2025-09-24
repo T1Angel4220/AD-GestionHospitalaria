@@ -262,14 +262,14 @@ export const ReportesPage: React.FC = () => {
       addLine(15, yPosition - 5, 195, yPosition - 5, [59, 130, 246]);
       addLine(15, yPosition + 25, 195, yPosition + 25, [59, 130, 246]);
       
-      addText('📈 Resumen Estadístico:', 20, yPosition + 5, { fontSize: 12, color: [59, 130, 246] });
+      addText('Resumen Estadistico:', 20, yPosition + 5, { fontSize: 12, color: [59, 130, 246] });
       yPosition += 8;
 
       const estadisticas = [
-        `📊 Total de Consultas: ${totalConsultas.toLocaleString()}`,
-        `👨‍⚕️ Médicos Activos: ${data.length}`,
-        `📊 Promedio por Médico: ${promedioConsultas}`,
-        `🏥 Especialidades: ${especialidadesUnicas}`
+        `Total de Consultas: ${totalConsultas.toLocaleString()}`,
+        `Medicos Activos: ${data.length}`,
+        `Promedio por Medico: ${promedioConsultas}`,
+        `Especialidades: ${especialidadesUnicas}`
       ];
 
       estadisticas.forEach((stat, index) => {
@@ -279,7 +279,7 @@ export const ReportesPage: React.FC = () => {
       yPosition += 35;
 
       // Tabla de datos mejorada
-      addText('👨‍⚕️ RESUMEN POR MÉDICO', 20, yPosition, { fontSize: 12, color: textColor });
+      addText('RESUMEN POR MEDICO', 20, yPosition, { fontSize: 12, color: textColor });
       yPosition += 10;
 
       // Preparar datos para la tabla con mejor formato
@@ -293,7 +293,7 @@ export const ReportesPage: React.FC = () => {
 
       // Agregar tabla usando autoTable con mejor diseño
       autoTable(doc, {
-        head: [['👨‍⚕️ Médico', '🏥 Especialidad', '📊 Total Consultas', '📅 Primera Consulta', '📅 Última Consulta']],
+        head: [['Medico', 'Especialidad', 'Total Consultas', 'Primera Consulta', 'Ultima Consulta']],
         body: tableData,
         startY: yPosition,
         styles: {
@@ -329,7 +329,7 @@ export const ReportesPage: React.FC = () => {
       let currentY = finalY + 20;
 
       // Agregar detalles de consultas por médico
-      addText('📋 DETALLES DE CONSULTAS POR MÉDICO', 20, currentY, { fontSize: 14, color: primaryColor });
+      addText('DETALLES DE CONSULTAS POR MEDICO', 20, currentY, { fontSize: 14, color: primaryColor });
       currentY += 15;
 
       // Función para verificar espacio y agregar nueva página si es necesario
@@ -359,9 +359,9 @@ export const ReportesPage: React.FC = () => {
         addLine(15, currentY + 20, 195, currentY + 20, [59, 130, 246]); // línea azul inferior
 
         // Título del médico con mejor formato
-        addText(`👨‍⚕️ Dr. ${medico.nombres} ${medico.apellidos}`, 20, currentY + 5, { fontSize: 12, color: [59, 130, 246] });
-        addText(`🏥 ${medico.especialidad}`, 20, currentY + 12, { fontSize: 10, color: [107, 114, 128] });
-        addText(`📊 Total consultas: ${consultas.length}`, 120, currentY + 12, { fontSize: 10, color: [107, 114, 128] });
+        addText(`Dr. ${medico.nombres} ${medico.apellidos}`, 20, currentY + 5, { fontSize: 12, color: [59, 130, 246] });
+        addText(`${medico.especialidad}`, 20, currentY + 12, { fontSize: 10, color: [107, 114, 128] });
+        addText(`Total consultas: ${consultas.length}`, 120, currentY + 12, { fontSize: 10, color: [107, 114, 128] });
         currentY += 25;
 
         // Crear tabla de detalles con mejor diseño
@@ -375,7 +375,7 @@ export const ReportesPage: React.FC = () => {
         ]);
 
         autoTable(doc, {
-          head: [['📅 Fecha', '👤 Paciente', '🆔 Cédula', '📝 Motivo', '🔍 Diagnóstico', '📊 Estado']],
+          head: [['Fecha', 'Paciente', 'Cedula', 'Motivo', 'Diagnostico', 'Estado']],
           body: detalleTableData,
           startY: currentY,
           styles: {
