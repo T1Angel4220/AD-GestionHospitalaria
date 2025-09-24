@@ -137,6 +137,19 @@ export const ReportesPage: React.FC = () => {
     }
 
     try {
+      // Obtener detalles de consultas para cada médico
+      const detallesConsultas: { [medicoId: number]: ConsultaDetalle[] } = {};
+      
+      for (const medico of data) {
+        try {
+          const response = await apiService.getDetalleConsultas(medico.medico_id, filtros);
+          if (response.data) {
+            detallesConsultas[medico.medico_id] = response.data;
+          }
+        } catch (err) {
+          console.warn(`Error al obtener detalles para médico ${medico.medico_id}:`, err);
+        }
+      }
       // Crear nuevo documento PDF
       const doc = new jsPDF();
       
