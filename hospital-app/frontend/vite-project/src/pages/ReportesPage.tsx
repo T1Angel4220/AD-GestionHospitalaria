@@ -207,12 +207,12 @@ export const ReportesPage: React.FC = () => {
       
       // Logo/Icono
       addRect(10, 5, 25, 25, [255, 255, 255]);
-      addText('🏥', 18, 18, { fontSize: 16, color: primaryColor });
+      addText('H', 18, 18, { fontSize: 16, color: primaryColor });
       
       // Título principal
       addText('HOSPITALAPP', 40, 15, { fontSize: 22, color: [255, 255, 255] });
-      addText('Sistema de Gestión Hospitalaria', 40, 22, { fontSize: 11, color: [255, 255, 255] });
-      addText('Reporte de Consultas Médicas', 40, 28, { fontSize: 9, color: [255, 248, 220] });
+      addText('Sistema de Gestion Hospitalaria', 40, 22, { fontSize: 11, color: [255, 255, 255] });
+      addText('Reporte de Consultas Medicas', 40, 28, { fontSize: 9, color: [255, 248, 220] });
       
       // Fecha de generación con mejor formato
       const fechaActual = new Date().toLocaleDateString('es-ES', {
@@ -222,13 +222,13 @@ export const ReportesPage: React.FC = () => {
         hour: '2-digit',
         minute: '2-digit'
       });
-      addText(`📅 Generado: ${fechaActual}`, 130, 15, { fontSize: 9, color: [255, 255, 255] });
-      addText(`👤 Usuario: ${user?.email || 'Sistema'}`, 130, 22, { fontSize: 8, color: [255, 248, 220] });
+      addText(`Generado: ${fechaActual}`, 130, 15, { fontSize: 9, color: [255, 255, 255] });
+      addText(`Usuario: ${user?.email || 'Sistema'}`, 130, 22, { fontSize: 8, color: [255, 248, 220] });
 
       yPosition = 40;
 
       // Título del reporte con mejor diseño
-      addText('📊 REPORTE DE CONSULTAS MÉDICAS', 20, yPosition, { fontSize: 16, color: primaryColor });
+      addText('REPORTE DE CONSULTAS MEDICAS', 20, yPosition, { fontSize: 16, color: primaryColor });
       yPosition += 12;
 
       // Caja de información de filtros
@@ -236,14 +236,14 @@ export const ReportesPage: React.FC = () => {
       addLine(15, yPosition - 5, 195, yPosition - 5, primaryColor);
       addLine(15, yPosition + 30, 195, yPosition + 30, primaryColor);
       
-      addText('🔍 Parámetros del Reporte:', 20, yPosition + 5, { fontSize: 12, color: primaryColor });
+      addText('Parametros del Reporte:', 20, yPosition + 5, { fontSize: 12, color: primaryColor });
       yPosition += 8;
 
       const filtrosInfo = [
-        `📅 Período: ${filtros.desde && filtros.hasta ? `${filtros.desde} - ${filtros.hasta}` : filtros.desde ? `Desde ${filtros.desde}` : filtros.hasta ? `Hasta ${filtros.hasta}` : 'Todos los registros'}`,
-        `🏥 Centro Médico: ID ${filtros.centroId}`,
-        `🔎 Búsqueda: ${filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}`,
-        `👥 Total de registros: ${data.length} médico${data.length !== 1 ? 's' : ''}`
+        `Periodo: ${filtros.desde && filtros.hasta ? `${filtros.desde} - ${filtros.hasta}` : filtros.desde ? `Desde ${filtros.desde}` : filtros.hasta ? `Hasta ${filtros.hasta}` : 'Todos los registros'}`,
+        `Centro Medico: ID ${filtros.centroId}`,
+        `Busqueda: ${filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}`,
+        `Total de registros: ${data.length} medico${data.length !== 1 ? 's' : ''}`
       ];
 
       filtrosInfo.forEach((info, index) => {
