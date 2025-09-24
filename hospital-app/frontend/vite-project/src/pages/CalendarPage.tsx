@@ -201,7 +201,7 @@ export default function CalendarPage() {
             {/* Solo mostrar Empleados para administradores */}
             {user?.rol === 'admin' && (
               <a href="/empleados" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-                <div className="w-10 h-10 bg-gray-700 group-hover:bg-orange-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-gray-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                   <UserCheck className="h-5 w-5" />
                 </div>
                 <div>
@@ -243,8 +243,8 @@ export default function CalendarPage() {
         <div className="absolute bottom-0 w-full p-4">
           <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
             <div className="flex items-center mb-3">
-               <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center mr-3">
-                <User className="h-5 w-5 text-white" />
+               <div className="w-10 h-10 bg-cyan-600 rounded-full flex items-center justify-center mr-3">
+                <Users className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
                 <div className="text-white text-base font-medium">{user?.email}</div>

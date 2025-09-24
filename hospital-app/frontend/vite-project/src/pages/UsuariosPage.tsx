@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
-import { AdminApi } from '../api/adminApi'
-import type { AdminUsuario, AdminCentro, AdminMedico } from '../api/adminApi'
+import { AdminApi, type AdminUsuario, type AdminUsuarioCreate, type AdminCentro, type AdminMedico } from '../api/adminApi'
 import { 
   Activity, 
   Users, 
@@ -24,6 +23,7 @@ import {
   UserCheck
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
+import { UsuarioModals } from '../components/UsuarioModals'
 import { getRoleText } from '../utils/roleUtils'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors } from '../utils/sidebarUtils'
 
@@ -37,20 +37,24 @@ export default function UsuariosPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   
+  // Estados para modales
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedUsuario, setSelectedUsuario] = useState<AdminUsuario | null>(null)
+  
   // Determinar el elemento activo del sidebar y obtener colores
   const activeItem = getActiveSidebarItem(window.location.pathname);
   const headerColors = getHeaderColors(activeItem);
 
-  // Estados para modales
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
 
   // Estados para formularios
-  const [userForm, setUserForm] = useState({
+  const [userForm, setUserForm] = useState<AdminUsuarioCreate>({
     email: '',
     password: '',
-    rol: 'medico' as 'admin' | 'medico',
+    rol: 'medico',
     id_centro: 1,
-    id_medico: undefined as number | undefined
+    id_medico: undefined
   })
 
   useEffect(() => {
@@ -83,7 +87,7 @@ export default function UsuariosPage() {
 
     try {
       await AdminApi.createUsuario(userForm)
-      setIsUserModalOpen(false)
+      setIsCreateModalOpen(false)
       setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
       // Recargar datos después de crear usuario
       loadData()
@@ -91,6 +95,55 @@ export default function UsuariosPage() {
       setError("Error al crear el usuario")
       console.error(err)
     }
+  }
+
+  const handleEditUsuario = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    try {
+      if (selectedUsuario) {
+        await AdminApi.updateUsuario(selectedUsuario.id, userForm)
+        setIsEditModalOpen(false)
+        setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
+        setSelectedUsuario(null)
+        loadData()
+      }
+    } catch (err) {
+      setError("Error al actualizar el usuario")
+      console.error(err)
+    }
+  }
+
+  const handleDeleteUsuario = async () => {
+    if (selectedUsuario) {
+      try {
+        await AdminApi.deleteUsuario(selectedUsuario.id)
+        setIsDeleteModalOpen(false)
+        setSelectedUsuario(null)
+        loadData()
+      } catch (err) {
+        setError("Error al eliminar el usuario")
+        console.error(err)
+      }
+    }
+  }
+
+  const openEditModal = (usuario: AdminUsuario) => {
+    setSelectedUsuario(usuario)
+    setUserForm({
+      email: usuario.email,
+      password: '',
+      rol: usuario.rol,
+      id_centro: usuario.id_centro,
+      id_medico: usuario.id_medico
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const openDeleteModal = (usuario: AdminUsuario) => {
+    setSelectedUsuario(usuario)
+    setIsDeleteModalOpen(true)
   }
 
   const filteredUsuarios = usuarios.filter(usuario =>
@@ -363,7 +416,7 @@ export default function UsuariosPage() {
             </div>
             <div className="mt-4 sm:mt-0 sm:ml-4">
               <button
-                onClick={() => setIsUserModalOpen(true)}
+                onClick={() => setIsCreateModalOpen(true)}
                 className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all transform hover:scale-105"
               >
                 <Plus className="h-5 w-5 mr-2" />
@@ -447,10 +500,16 @@ export default function UsuariosPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => openEditModal(usuario)}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => openDeleteModal(usuario)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -464,145 +523,29 @@ export default function UsuariosPage() {
         </div>
       </div>
 
-      {/* Modal para crear usuario */}
-      {isUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsUserModalOpen(false)}></div>
-          
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
-            {/* Header del modal */}
-            <div className="px-8 py-6 bg-gradient-to-r from-purple-600 to-purple-700 rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
-                    <Users className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Nuevo Usuario</h3>
-                    <p className="text-purple-100 text-sm">Crear cuenta de usuario</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsUserModalOpen(false)}
-                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-            
-            {/* Contenido del modal */}
-            <form onSubmit={handleCreateUser} className="px-8 py-6 space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Correo Electrónico
-                </label>
-                <input
-                  type="email"
-                  value={userForm.email}
-                  onChange={(e) => setUserForm({...userForm, email: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  placeholder="usuario@hospital.com"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Contraseña
-                </label>
-                <input
-                  type="password"
-                  value={userForm.password}
-                  onChange={(e) => setUserForm({...userForm, password: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Rol
-                </label>
-                <select
-                  value={userForm.rol}
-                  onChange={(e) => setUserForm({...userForm, rol: e.target.value as 'admin' | 'medico'})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  required
-                >
-                  <option value="medico">Médico</option>
-                  <option value="admin">Administrador</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Centro Médico
-                </label>
-                <select
-                  value={userForm.id_centro}
-                  onChange={(e) => setUserForm({...userForm, id_centro: Number(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  required
-                >
-                  {centros.map((centro) => (
-                    <option key={centro.id} value={centro.id}>
-                      {centro.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {userForm.rol === 'medico' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Médico Asociado (Opcional)
-                  </label>
-                  <select
-                    value={userForm.id_medico || ''}
-                    onChange={(e) => setUserForm({...userForm, id_medico: e.target.value ? Number(e.target.value) : undefined})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  >
-                    <option value="">
-                      {medicosDisponibles.filter(medico => medico.id_centro === userForm.id_centro).length === 0 
-                        ? 'No hay médicos disponibles en este centro' 
-                        : 'Seleccionar médico'
-                      }
-                    </option>
-                    {medicosDisponibles
-                      .filter(medico => medico.id_centro === userForm.id_centro)
-                      .map((medico) => (
-                        <option key={medico.id} value={medico.id}>
-                          {medico.nombres} {medico.apellidos} - {medico.especialidad_nombre || 'Sin especialidad'}
-                        </option>
-                      ))}
-                  </select>
-                  {medicosDisponibles.filter(medico => medico.id_centro === userForm.id_centro).length === 0 && (
-                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <p className="text-sm text-amber-700 flex items-center">
-                        <span className="mr-2">ℹ️</span>
-                        Todos los médicos de este centro ya tienen usuarios asociados
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setIsUserModalOpen(false)}
-                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-xl transition-all duration-200 transform hover:scale-105"
-                >
-                  Crear Usuario
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+      <UsuarioModals
+        isCreateModalOpen={isCreateModalOpen}
+        setIsCreateModalOpen={setIsCreateModalOpen}
+        isEditModalOpen={isEditModalOpen}
+        setIsEditModalOpen={setIsEditModalOpen}
+        isDeleteModalOpen={isDeleteModalOpen}
+        setIsDeleteModalOpen={setIsDeleteModalOpen}
+        selectedUsuario={selectedUsuario}
+        usuarioForm={userForm}
+        setUsuarioForm={setUserForm}
+        centros={centros}
+        medicos={medicosDisponibles}
+        handleCreateUsuario={handleCreateUser}
+        handleEditUsuario={handleEditUsuario}
+        handleDeleteUsuario={handleDeleteUsuario}
+        buttonColors={{
+          primary: 'bg-gradient-to-r from-purple-600 to-violet-600',
+          primaryHover: 'hover:from-purple-700 hover:to-violet-700',
+          primaryFocus: 'focus:ring-purple-500',
+          primaryIcon: 'text-purple-600'
+        }}
+      />
     </div>
   )
 }

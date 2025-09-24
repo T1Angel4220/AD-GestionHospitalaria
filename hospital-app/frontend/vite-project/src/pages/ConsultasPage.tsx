@@ -509,7 +509,7 @@ export default function MedicalConsultationsPage() {
           <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
             <div className="flex items-center mb-3">
               <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center mr-3">
-                <Calendar className="h-5 w-5 text-white" />
+                <Users className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
                 <div className="text-white text-base font-medium">{user?.email}</div>

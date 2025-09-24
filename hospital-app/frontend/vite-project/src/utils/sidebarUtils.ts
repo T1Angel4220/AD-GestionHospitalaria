@@ -84,9 +84,9 @@ export const getHeaderColors = (activeItem: SidebarItem): {
       };
     case 'empleados':
       return {
-        gradient: 'bg-gradient-to-r from-orange-600 to-amber-600',
-        iconBg: 'bg-orange-600',
-        iconColor: 'text-orange-600'
+        gradient: 'bg-gradient-to-r from-gray-600 to-slate-600',
+        iconBg: 'bg-gray-600',
+        iconColor: 'text-gray-600'
       };
     case 'perfil':
       return {
@@ -128,8 +128,8 @@ export const getSidebarItemClasses = (
         return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-teal-600 to-emerald-600 rounded-xl shadow-lg";
       case 'especialidades':
         return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-pink-600 to-rose-600 rounded-xl shadow-lg";
-      case 'empleados':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl shadow-lg";
+        case 'empleados':
+          return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-gray-600 to-slate-600 rounded-xl shadow-lg";
       default:
         return "w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group";
     }
@@ -167,8 +167,8 @@ export const getIconContainerClasses = (
       return "w-10 h-10 bg-gray-700 group-hover:bg-teal-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'especialidades':
       return "w-10 h-10 bg-gray-700 group-hover:bg-pink-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
-    case 'empleados':
-      return "w-10 h-10 bg-gray-700 group-hover:bg-orange-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+      case 'empleados':
+        return "w-10 h-10 bg-gray-700 group-hover:bg-gray-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     default:
       return "w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
   }
@@ -199,7 +199,7 @@ export const getIconClasses = (
       case 'especialidades':
         return "h-5 w-5 text-pink-600";
       case 'empleados':
-        return "h-5 w-5 text-orange-600";
+        return "h-5 w-5 text-gray-600";
       default:
         return "h-5 w-5";
     }
@@ -259,7 +259,7 @@ export const getTextClasses = (
       case 'empleados':
         return {
           main: "font-medium",
-          sub: "text-xs text-orange-100"
+          sub: "text-xs text-gray-100"
         };
       default:
         return {
@@ -273,4 +273,85 @@ export const getTextClasses = (
     main: "font-medium",
     sub: "text-xs text-gray-400"
   };
+};
+
+// Función para obtener los colores de los botones basados en la página activa
+export const getButtonColors = (activeItem: SidebarItem): {
+  primary: string;
+  primaryHover: string;
+  primaryFocus: string;
+  primaryIcon: string;
+} => {
+  switch (activeItem) {
+    case 'dashboard':
+      return {
+        primary: 'bg-gradient-to-r from-amber-600 to-orange-600',
+        primaryHover: 'hover:from-amber-700 hover:to-orange-700',
+        primaryFocus: 'focus:ring-amber-500',
+        primaryIcon: 'text-amber-600'
+      };
+    case 'consultas':
+      return {
+        primary: 'bg-gradient-to-r from-emerald-600 to-green-600',
+        primaryHover: 'hover:from-emerald-700 hover:to-green-700',
+        primaryFocus: 'focus:ring-emerald-500',
+        primaryIcon: 'text-emerald-600'
+      };
+    case 'calendario':
+      return {
+        primary: 'bg-gradient-to-r from-cyan-600 to-blue-600',
+        primaryHover: 'hover:from-cyan-700 hover:to-blue-700',
+        primaryFocus: 'focus:ring-cyan-500',
+        primaryIcon: 'text-cyan-600'
+      };
+    case 'medicos':
+      return {
+        primary: 'bg-gradient-to-r from-blue-600 to-indigo-600',
+        primaryHover: 'hover:from-blue-700 hover:to-indigo-700',
+        primaryFocus: 'focus:ring-blue-500',
+        primaryIcon: 'text-blue-600'
+      };
+    case 'usuarios':
+      return {
+        primary: 'bg-gradient-to-r from-purple-600 to-violet-600',
+        primaryHover: 'hover:from-purple-700 hover:to-violet-700',
+        primaryFocus: 'focus:ring-purple-500',
+        primaryIcon: 'text-purple-600'
+      };
+    case 'centros':
+      return {
+        primary: 'bg-gradient-to-r from-teal-600 to-emerald-600',
+        primaryHover: 'hover:from-teal-700 hover:to-emerald-700',
+        primaryFocus: 'focus:ring-teal-500',
+        primaryIcon: 'text-teal-600'
+      };
+    case 'especialidades':
+      return {
+        primary: 'bg-gradient-to-r from-pink-600 to-rose-600',
+        primaryHover: 'hover:from-pink-700 hover:to-rose-700',
+        primaryFocus: 'focus:ring-pink-500',
+        primaryIcon: 'text-pink-600'
+      };
+    case 'empleados':
+      return {
+        primary: 'bg-gradient-to-r from-gray-600 to-slate-600',
+        primaryHover: 'hover:from-gray-700 hover:to-slate-700',
+        primaryFocus: 'focus:ring-gray-500',
+        primaryIcon: 'text-gray-600'
+      };
+    case 'perfil':
+      return {
+        primary: 'bg-gradient-to-r from-gray-600 to-slate-600',
+        primaryHover: 'hover:from-gray-700 hover:to-slate-700',
+        primaryFocus: 'focus:ring-gray-500',
+        primaryIcon: 'text-gray-600'
+      };
+    default:
+      return {
+        primary: 'bg-gradient-to-r from-amber-600 to-orange-600',
+        primaryHover: 'hover:from-amber-700 hover:to-orange-700',
+        primaryFocus: 'focus:ring-amber-500',
+        primaryIcon: 'text-amber-600'
+      };
+  }
 };

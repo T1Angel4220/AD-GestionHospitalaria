@@ -18,9 +18,11 @@ import {
   FileText,
   X,
   BarChart3,
-  Building2
+  Building2,
+  Heart,
+  UserCheck
 } from 'lucide-react'
-import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors } from '../utils/sidebarUtils'
+import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors, getButtonColors } from '../utils/sidebarUtils'
 import { AdminBanner } from '../components/AdminBanner'
 import { MedicoModals } from '../components/MedicoModals'
 import { getRoleText } from '../utils/roleUtils'
@@ -44,6 +46,7 @@ export default function MedicosPage() {
   // Determinar el elemento activo del sidebar y obtener colores
   const activeItem = getActiveSidebarItem(window.location.pathname);
   const headerColors = getHeaderColors(activeItem);
+  const buttonColors = getButtonColors(activeItem);
 
   // Estados para formularios
   const [medicoForm, setMedicoForm] = useState<AdminMedicoCreate>({
@@ -238,18 +241,18 @@ export default function MedicosPage() {
             {/* Especialidades */}
             <a href="/especialidades" className={getSidebarItemClasses('especialidades', activeItem)}>
               <div className={getIconContainerClasses('especialidades', activeItem)}>
-                <Activity className={getIconClasses('especialidades', activeItem)} />
+                <Heart className={getIconClasses('especialidades', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('especialidades', activeItem).main}>Especialidades</div>
-                <div className={getTextClasses('especialidades', activeItem).sub}>Especialidades médicas</div>
+                <div className={getTextClasses('especialidades', activeItem).sub}>Gestión especialidades</div>
               </div>
             </a>
             
             {/* Empleados */}
             <a href="/empleados" className={getSidebarItemClasses('empleados', activeItem)}>
               <div className={getIconContainerClasses('empleados', activeItem)}>
-                <Users className={getIconClasses('empleados', activeItem)} />
+                <UserCheck className={getIconClasses('empleados', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('empleados', activeItem).main}>Empleados</div>
@@ -287,8 +290,8 @@ export default function MedicosPage() {
         <div className="absolute bottom-0 w-full p-4">
           <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
             <div className="flex items-center mb-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-                <Stethoscope className="h-5 w-5 text-white" />
+              <div className={`w-10 h-10 ${buttonColors.primaryIcon.replace('text-', 'bg-')} rounded-full flex items-center justify-center mr-3`}>
+                <Users className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
                 <div className="text-white text-sm font-medium">{user?.email}</div>
@@ -351,10 +354,10 @@ export default function MedicosPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+            <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${buttonColors.primaryIcon.replace('text-', 'border-')}`}>
               <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Stethoscope className="h-8 w-8 text-blue-600" />
+                <div className={`p-3 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-lg`}>
+                  <Stethoscope className={`h-8 w-8 ${buttonColors.primaryIcon}`} />
                       </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Médicos</p>
@@ -403,7 +406,7 @@ export default function MedicosPage() {
             <div className="mt-4 sm:mt-0 sm:ml-4">
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-105"
+                className={`inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white ${buttonColors.primary} ${buttonColors.primaryHover} focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonColors.primaryFocus} transition-all transform hover:scale-105`}
               >
                 <Stethoscope className="h-5 w-5 mr-2" />
                 Crear Médico
@@ -444,8 +447,8 @@ export default function MedicosPage() {
                     <tr key={medico.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-                            <Stethoscope className="h-5 w-5 text-blue-600" />
+                          <div className={`w-10 h-10 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-full flex items-center justify-center mr-4`}>
+                            <Stethoscope className={`h-5 w-5 ${buttonColors.primaryIcon}`} />
                   </div>
                   <div>
                             <div className="text-sm font-semibold text-gray-900">
@@ -469,7 +472,7 @@ export default function MedicosPage() {
                         <div className="flex space-x-2">
                           <button 
                             onClick={() => openEditModal(medico)}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            className={`p-2 ${buttonColors.primaryIcon} hover:${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-lg transition-colors`}
                           >
                             <Edit className="h-4 w-4" />
                           </button>

@@ -18,11 +18,13 @@ import {
   Calendar,
   FileText,
   BarChart3,
-  Building2
+  Building2,
+  Stethoscope,
+  Heart
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { getRoleText } from '../utils/roleUtils'
-import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors } from '../utils/sidebarUtils'
+import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors, getButtonColors } from '../utils/sidebarUtils'
 
 export default function EmpleadosPage() {
   const { user, logout } = useAuth()
@@ -50,6 +52,7 @@ export default function EmpleadosPage() {
   // Determinar el elemento activo del sidebar y obtener colores
   const activeItem = getActiveSidebarItem(window.location.pathname);
   const headerColors = getHeaderColors(activeItem);
+  const buttonColors = getButtonColors(activeItem);
 
   useEffect(() => {
     loadData()
@@ -160,7 +163,7 @@ export default function EmpleadosPage() {
             </div>
             <div>
               <span className="text-white text-xl font-bold">HospitalApp</span>
-              <p className="text-indigo-100 text-xs">Sistema Médico</p>
+              <p className="text-gray-100 text-xs">Sistema Médico</p>
             </div>
           </div>
           <button
@@ -210,7 +213,7 @@ export default function EmpleadosPage() {
             {/* Médicos */}
             <a href="/medicos" className={getSidebarItemClasses('medicos', activeItem)}>
               <div className={getIconContainerClasses('medicos', activeItem)}>
-                <Users className={getIconClasses('medicos', activeItem)} />
+                <Stethoscope className={getIconClasses('medicos', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('medicos', activeItem).main}>Médicos</div>
@@ -232,11 +235,11 @@ export default function EmpleadosPage() {
             {/* Especialidades */}
             <a href="/especialidades" className={getSidebarItemClasses('especialidades', activeItem)}>
               <div className={getIconContainerClasses('especialidades', activeItem)}>
-                <Activity className={getIconClasses('especialidades', activeItem)} />
+                <Heart className={getIconClasses('especialidades', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('especialidades', activeItem).main}>Especialidades</div>
-                <div className={getTextClasses('especialidades', activeItem).sub}>Especialidades médicas</div>
+                <div className={getTextClasses('especialidades', activeItem).sub}>Gestión especialidades</div>
               </div>
             </a>
             
@@ -268,7 +271,7 @@ export default function EmpleadosPage() {
         <div className="absolute bottom-0 w-full p-4">
           <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
             <div className="flex items-center mb-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center mr-3">
+              <div className={`w-10 h-10 ${buttonColors.primaryIcon.replace('text-', 'bg-')} rounded-full flex items-center justify-center mr-3`}>
                 <Users className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
@@ -296,7 +299,7 @@ export default function EmpleadosPage() {
               <div className="flex items-center">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="lg:hidden p-2 rounded-md text-white hover:bg-indigo-500 transition-colors"
+                  className="lg:hidden p-2 rounded-md text-white hover:bg-gray-500 transition-colors"
                 >
                   <Menu className="h-6 w-6" />
                 </button>
@@ -305,13 +308,13 @@ export default function EmpleadosPage() {
                     <UserCheck className={`h-8 w-8 mr-3 ${headerColors.iconColor}`} />
                     Gestión de Empleados
                   </h1>
-                  <p className="text-indigo-100 mt-1">Administra el personal administrativo</p>
+                  <p className="text-gray-100 mt-1">Administra el personal administrativo</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
                 <AdminBanner 
-                  backgroundColor="bg-indigo-600"
-                  iconBackgroundColor="bg-indigo-700"
+                  backgroundColor={buttonColors.primary}
+                  iconBackgroundColor={buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-700')}
                   icon={UserCheck}
                   roleText={getRoleText(user)}
                 />
@@ -331,10 +334,10 @@ export default function EmpleadosPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-indigo-500">
+            <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${buttonColors.primaryIcon.replace('text-', 'border-')}`}>
               <div className="flex items-center">
-                <div className="p-3 bg-indigo-100 rounded-lg">
-                  <UserCheck className="h-8 w-8 text-indigo-600" />
+                <div className={`p-3 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-lg`}>
+                  <UserCheck className={`h-8 w-8 ${buttonColors.primaryIcon}`} />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Empleados</p>
@@ -364,10 +367,10 @@ export default function EmpleadosPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+            <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${buttonColors.primaryIcon.replace('text-', 'border-')}`}>
               <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Calendar className="h-8 w-8 text-purple-600" />
+                <div className={`p-3 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-lg`}>
+                  <Calendar className={`h-8 w-8 ${buttonColors.primaryIcon}`} />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Centros</p>
@@ -388,13 +391,13 @@ export default function EmpleadosPage() {
                 placeholder="Buscar empleados por nombre o cargo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all"
               />
             </div>
             <div className="mt-4 sm:mt-0 sm:ml-4">
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:scale-105"
+                className={`inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white ${buttonColors.primary} ${buttonColors.primaryHover} focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonColors.primaryFocus} transition-all transform hover:scale-105`}
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Crear Empleado
@@ -435,8 +438,8 @@ export default function EmpleadosPage() {
                     <tr key={empleado.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-4">
-                            <UserCheck className="h-5 w-5 text-indigo-600" />
+                          <div className={`w-10 h-10 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-full flex items-center justify-center mr-4`}>
+                            <UserCheck className={`h-5 w-5 ${buttonColors.primaryIcon}`} />
                           </div>
                           <div>
                             <div className="text-sm font-semibold text-gray-900">
@@ -488,15 +491,15 @@ export default function EmpleadosPage() {
           
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
             {/* Header del modal */}
-            <div className="px-8 py-6 bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-t-2xl">
+            <div className={`px-8 py-6 ${buttonColors.primary} rounded-t-2xl`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
-                    <UserCheck className="h-6 w-6 text-indigo-600" />
+                    <UserCheck className={`h-6 w-6 ${buttonColors.primaryIcon}`} />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">Nuevo Empleado</h3>
-                    <p className="text-indigo-100 text-sm">Crear empleado</p>
+                    <p className="text-gray-100 text-sm">Crear empleado</p>
                   </div>
                 </div>
                 <button
@@ -518,7 +521,7 @@ export default function EmpleadosPage() {
                   type="text"
                   value={empleadoForm.nombres}
                   onChange={(e) => setEmpleadoForm({...empleadoForm, nombres: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all"
                   placeholder="María"
                   required
                 />
@@ -531,7 +534,7 @@ export default function EmpleadosPage() {
                   type="text"
                   value={empleadoForm.apellidos}
                   onChange={(e) => setEmpleadoForm({...empleadoForm, apellidos: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all"
                   placeholder="González"
                   required
                 />
@@ -544,7 +547,7 @@ export default function EmpleadosPage() {
                   type="text"
                   value={empleadoForm.cargo}
                   onChange={(e) => setEmpleadoForm({...empleadoForm, cargo: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all"
                   placeholder="Enfermera"
                   required
                 />
@@ -556,7 +559,7 @@ export default function EmpleadosPage() {
                 <select
                   value={empleadoForm.id_centro}
                   onChange={(e) => setEmpleadoForm({...empleadoForm, id_centro: Number(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all"
                   required
                 >
                   {centros.map((centro) => (
@@ -576,7 +579,7 @@ export default function EmpleadosPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                  className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
                 >
                   Crear Empleado
                 </button>
@@ -593,15 +596,15 @@ export default function EmpleadosPage() {
           
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
             {/* Header del modal */}
-            <div className="px-8 py-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-2xl">
+            <div className={`px-8 py-6 ${buttonColors.primary} rounded-t-2xl`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
-                    <UserCheck className="h-6 w-6 text-blue-600" />
+                    <UserCheck className={`h-6 w-6 ${buttonColors.primaryIcon}`} />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">Editar Empleado</h3>
-                    <p className="text-blue-100 text-sm">Actualizar información</p>
+                    <p className="text-gray-100 text-sm">Actualizar información</p>
                   </div>
                 </div>
                 <button
@@ -681,7 +684,7 @@ export default function EmpleadosPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                  className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
                 >
                   Actualizar Empleado
                 </button>
