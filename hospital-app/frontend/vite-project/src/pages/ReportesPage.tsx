@@ -136,12 +136,22 @@ export const ReportesPage: React.FC = () => {
       return;
     }
 
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
     try {
+      // Mostrar progreso
+      setSuccess('🔄 Generando reporte PDF con detalles completos...');
+      
       // Obtener detalles de consultas para cada médico
       const detallesConsultas: { [medicoId: number]: ConsultaDetalle[] } = {};
       
-      for (const medico of data) {
+      for (let i = 0; i < data.length; i++) {
+        const medico = data[i];
         try {
+          setSuccess(`📊 Obteniendo detalles del médico ${i + 1}/${data.length}: Dr. ${medico.nombres} ${medico.apellidos}...`);
+          
           const response = await apiService.getDetalleConsultasMedico(
             medico.medico_id, 
             { desde: filtros.desde, hasta: filtros.hasta, q: filtros.q },
@@ -154,6 +164,8 @@ export const ReportesPage: React.FC = () => {
           console.warn(`Error al obtener detalles para médico ${medico.medico_id}:`, err);
         }
       }
+
+      setSuccess('📝 Creando documento PDF...');
       // Crear nuevo documento PDF
       const doc = new jsPDF();
       
@@ -266,34 +278,36 @@ export const ReportesPage: React.FC = () => {
 
       yPosition += 35;
 
-      // Tabla de datos
-      addText('Detalle por Médico:', 20, yPosition, { fontSize: 12, color: textColor });
+      // Tabla de datos mejorada
+      addText('👨‍⚕️ RESUMEN POR MÉDICO', 20, yPosition, { fontSize: 12, color: textColor });
       yPosition += 10;
 
-      // Preparar datos para la tabla
+      // Preparar datos para la tabla con mejor formato
       const tableData = data.map(medico => [
-        `${medico.nombres} ${medico.apellidos}`,
+        `Dr. ${medico.nombres} ${medico.apellidos}`,
         medico.especialidad,
         medico.total_consultas.toString(),
         medico.primera_consulta ? new Date(medico.primera_consulta).toLocaleDateString('es-ES') : 'N/A',
         medico.ultima_consulta ? new Date(medico.ultima_consulta).toLocaleDateString('es-ES') : 'N/A'
       ]);
 
-      // Agregar tabla usando autoTable
+      // Agregar tabla usando autoTable con mejor diseño
       autoTable(doc, {
-        head: [['Médico', 'Especialidad', 'Total Consultas', 'Primera Consulta', 'Última Consulta']],
+        head: [['👨‍⚕️ Médico', '🏥 Especialidad', '📊 Total Consultas', '📅 Primera Consulta', '📅 Última Consulta']],
         body: tableData,
         startY: yPosition,
         styles: {
           fontSize: 9,
-          cellPadding: 3,
+          cellPadding: 4,
           overflow: 'linebreak',
-          halign: 'left'
+          halign: 'left',
+          lineColor: [209, 213, 219]
         },
         headStyles: {
           fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]],
           textColor: [255, 255, 255],
-          fontStyle: 'bold'
+          fontStyle: 'bold',
+          fontSize: 10
         },
         alternateRowStyles: {
           fillColor: [249, 250, 251] // gray-50
@@ -305,7 +319,9 @@ export const ReportesPage: React.FC = () => {
           3: { cellWidth: 30, halign: 'center' }, // Primera Consulta
           4: { cellWidth: 30, halign: 'center' }  // Última Consulta
         },
-        margin: { left: 20, right: 20 }
+        margin: { left: 20, right: 20 },
+        tableLineColor: [59, 130, 246],
+        tableLineWidth: 0.5
       });
 
       // Obtener la posición final después de la tabla
@@ -349,7 +365,7 @@ export const ReportesPage: React.FC = () => {
         currentY += 25;
 
         // Crear tabla de detalles con mejor diseño
-        const detalleTableData = consultas.map((consulta, index) => [
+        const detalleTableData = consultas.map((consulta) => [
           new Date(consulta.fecha).toLocaleDateString('es-ES'),
           `${consulta.paciente_nombre} ${consulta.paciente_apellido}`,
           consulta.cedula || 'N/A',
@@ -535,22 +551,34 @@ export const ReportesPage: React.FC = () => {
         }
       }
 
-      // Pie de página
+      // Pie de página mejorado
       const pageHeight = doc.internal.pageSize.height;
-      const footerY = Math.max(currentY + 20, pageHeight - 20);
+      const footerY = Math.max(currentY + 20, pageHeight - 25);
 
-      addLine(20, footerY - 5, 190, footerY - 5, [209, 213, 219]); // gray-300
-      addText('HospitalApp - Sistema de Gestión Hospitalaria', 20, footerY, { fontSize: 8, color: [107, 114, 128] });
-      addText(`Página ${doc.internal.pages.length}`, 150, footerY, { fontSize: 8, color: [107, 114, 128] });
+      // Línea decorativa
+      addLine(20, footerY - 8, 190, footerY - 8, primaryColor);
+      addLine(20, footerY - 7, 190, footerY - 7, [209, 213, 219]);
+      
+      // Fondo del pie de página
+      addRect(15, footerY - 5, 180, 15, [248, 250, 252]);
+      
+      addText('🏥 HospitalApp - Sistema de Gestión Hospitalaria', 20, footerY, { fontSize: 8, color: [107, 114, 128] });
+      addText(`📄 Página ${doc.internal.pages.length}`, 150, footerY, { fontSize: 8, color: [107, 114, 128] });
+      addText('📧 soporte@hospitalapp.com', 20, footerY + 5, { fontSize: 7, color: [156, 163, 175] });
+      addText('🌐 www.hospitalapp.com', 150, footerY + 5, { fontSize: 7, color: [156, 163, 175] });
 
-      // Guardar el PDF
-      const fileName = `reporte_consultas_${new Date().toISOString().split('T')[0]}.pdf`;
+      // Guardar el PDF con nombre más descriptivo
+      const fechaFormateada = new Date().toISOString().split('T')[0];
+      const horaFormateada = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }).replace(':', '');
+      const fileName = `Reporte_Consultas_${fechaFormateada}_${horaFormateada}.pdf`;
       doc.save(fileName);
 
-      setSuccess('Reporte PDF exportado exitosamente');
+      setSuccess('✅ Reporte PDF exportado exitosamente con detalles completos');
     } catch (err) {
       console.error('Error al generar PDF:', err);
-      setError('Error al exportar el reporte PDF');
+      setError('❌ Error al exportar el reporte PDF');
+    } finally {
+      setLoading(false);
     }
   };
 
