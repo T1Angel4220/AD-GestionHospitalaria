@@ -28,6 +28,12 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> 
   return rows as T[];
 }
 
+/** Helper para operaciones que devuelven metadata (INSERT, UPDATE, DELETE) */
+export async function execute(sql: string, params?: any[]): Promise<any> {
+  const [result] = await pool.execute(sql, params ?? []);
+  return result;
+}
+
 /** Cierre limpio del pool en señales del proceso */
 async function shutdown() {
   try {

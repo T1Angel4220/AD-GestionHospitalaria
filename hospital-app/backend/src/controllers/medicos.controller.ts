@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { query } from "../config/db";
+import { query, execute } from "../config/db";
 import { validateMedico } from "../middlewares/validation";
 
 // =========================
@@ -80,7 +80,7 @@ export async function create(req: Request, res: Response) {
     const especialidades = await query("SELECT id FROM especialidades WHERE id = ?", [Number(id_especialidad)]);
     if (especialidades.length === 0) return res.status(400).json({ error: "La especialidad especificada no existe" });
 
-    const result = await query(`
+    const result = await execute(`
       INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro) 
       VALUES (?, ?, ?, ?)
     `, [nombres, apellidos, Number(id_especialidad), Number(id_centro)]);
@@ -122,7 +122,7 @@ export async function update(req: Request, res: Response) {
     const especialidades = await query("SELECT id FROM especialidades WHERE id = ?", [Number(id_especialidad)]);
     if (especialidades.length === 0) return res.status(400).json({ error: "La especialidad especificada no existe" });
 
-    await query(`
+    await execute(`
       UPDATE medicos 
       SET nombres = ?, apellidos = ?, id_especialidad = ?, id_centro = ?
       WHERE id = ?
@@ -152,7 +152,7 @@ export async function remove(req: Request, res: Response) {
     const medicos = await query("SELECT id FROM medicos WHERE id = ?", [id]);
     if (medicos.length === 0) return res.status(404).json({ error: "Médico no encontrado" });
 
-    await query("DELETE FROM medicos WHERE id = ?", [id]);
+    await execute("DELETE FROM medicos WHERE id = ?", [id]);
 
     res.json({ message: "Médico eliminado correctamente" });
   } catch (err) {

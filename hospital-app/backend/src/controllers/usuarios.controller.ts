@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { query } from "../config/db";
+import { query, execute } from "../config/db";
 import bcrypt from "bcrypt";
 import { validateUsuario } from "../middlewares/validation";
 
@@ -98,7 +98,7 @@ export async function create(req: Request, res: Response) {
     // Hash de la contraseña
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const result = await query(`
+    const result = await execute(`
       INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) 
       VALUES (?, ?, ?, ?, ?)
     `, [email, passwordHash, rol, Number(id_centro), id_medico ? Number(id_medico) : null]);
@@ -184,7 +184,7 @@ export async function update(req: Request, res: Response) {
 
     values.push(id);
 
-    const result = await query(`
+    const result = await execute(`
       UPDATE usuarios 
       SET ${updates.join(", ")}
       WHERE id = ?
@@ -217,7 +217,7 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const result = await query("DELETE FROM usuarios WHERE id = ?", [id]);
+    const result = await execute("DELETE FROM usuarios WHERE id = ?", [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Usuario no encontrado" });

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { query } from "../config/db";
+import { query, execute } from "../config/db";
 
 // =========================
 // GET /api/admin/centros
@@ -53,7 +53,7 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ error: "nombre y ciudad son obligatorios" });
     }
 
-    const result = await query(`
+    const result = await execute(`
       INSERT INTO centros_medicos (nombre, ciudad, direccion) 
       VALUES (?, ?, ?)
     `, [nombre.trim(), ciudad.trim(), direccion?.trim() || null]);
@@ -102,7 +102,7 @@ export async function update(req: Request, res: Response) {
 
     values.push(id);
 
-    const result = await query(`
+    const result = await execute(`
       UPDATE centros_medicos 
       SET ${updates.join(", ")}
       WHERE id = ?
@@ -131,7 +131,7 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const result = await query("DELETE FROM centros_medicos WHERE id = ?", [id]);
+    const result = await execute("DELETE FROM centros_medicos WHERE id = ?", [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Centro no encontrado" });

@@ -1,12 +1,13 @@
 USE hospital_central;
 
--- Eliminar si existían
+-- Eliminar si existían (en orden inverso por foreign keys)
+DROP TABLE IF EXISTS consultas;
 DROP TABLE IF EXISTS usuarios;
+DROP TABLE IF EXISTS pacientes;
 DROP TABLE IF EXISTS medicos;
 DROP TABLE IF EXISTS empleados;
 DROP TABLE IF EXISTS especialidades;
 DROP TABLE IF EXISTS centros_medicos;
-DROP TABLE IF EXISTS consultas;
 
 -- Tabla Centros Médicos
 CREATE TABLE centros_medicos (

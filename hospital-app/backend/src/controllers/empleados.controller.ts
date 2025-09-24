@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { query } from "../config/db";
+import { query, execute } from "../config/db";
 
 // =========================
 // GET /api/admin/empleados
@@ -75,7 +75,7 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ error: "El centro especificado no existe" });
     }
 
-    const result = await query(`
+    const result = await execute(`
       INSERT INTO empleados (nombres, apellidos, cargo, id_centro) 
       VALUES (?, ?, ?, ?)
     `, [nombres.trim(), apellidos.trim(), cargo.trim(), Number(id_centro)]);
@@ -137,7 +137,7 @@ export async function update(req: Request, res: Response) {
 
     values.push(id);
 
-    await query(`
+    await execute(`
       UPDATE empleados 
       SET ${updates.join(", ")}
       WHERE id = ?
@@ -169,7 +169,7 @@ export async function remove(req: Request, res: Response) {
     const empleados = await query("SELECT id FROM empleados WHERE id = ?", [id]);
     if (empleados.length === 0) return res.status(404).json({ error: "Empleado no encontrado" });
 
-    await query("DELETE FROM empleados WHERE id = ?", [id]);
+    await execute("DELETE FROM empleados WHERE id = ?", [id]);
 
     res.json({ message: "Empleado eliminado correctamente" });
   } catch (err) {

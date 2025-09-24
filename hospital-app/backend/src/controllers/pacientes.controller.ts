@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { query } from "../config/db";
+import { query, execute } from "../config/db";
 
 // =========================
 // GET /api/pacientes
@@ -115,7 +115,7 @@ export async function create(req: Request, res: Response) {
       }
     }
 
-    const result = await query(`
+    const result = await execute(`
       INSERT INTO pacientes (
         nombres, apellidos, cedula, telefono, email, 
         fecha_nacimiento, genero, direccion, id_centro
@@ -250,7 +250,7 @@ export async function update(req: Request, res: Response) {
 
     values.push(id);
 
-    const result = await query(`
+    const result = await execute(`
       UPDATE pacientes 
       SET ${updates.join(", ")}
       WHERE id = ?
@@ -299,7 +299,7 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const result = await query("DELETE FROM pacientes WHERE id = ?", [id]);
+    const result = await execute("DELETE FROM pacientes WHERE id = ?", [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Paciente no encontrado" });
@@ -319,7 +319,7 @@ export async function search(req: Request, res: Response) {
   try {
     const { q, centro } = req.query as Record<string, string>;
     
-    let whereConditions = [];
+    let whereConditions: string[] = [];
     let params: any[] = [];
 
     if (q && q.trim()) {

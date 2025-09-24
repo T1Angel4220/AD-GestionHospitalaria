@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { query } from "../config/db";
+import { query, execute } from "../config/db";
 
 // =========================
 // GET /api/admin/especialidades
@@ -53,7 +53,7 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ error: "nombre es obligatorio" });
     }
 
-    const result = await query(`
+    const result = await execute(`
       INSERT INTO especialidades (nombre) 
       VALUES (?)
     `, [nombre.trim()]);
@@ -89,7 +89,7 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
     }
 
-    const result = await query(`
+    const result = await execute(`
       UPDATE especialidades 
       SET nombre = ?
       WHERE id = ?
@@ -124,7 +124,7 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const result = await query("DELETE FROM especialidades WHERE id = ?", [id]);
+    const result = await execute("DELETE FROM especialidades WHERE id = ?", [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Especialidad no encontrada" });
