@@ -25,7 +25,7 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
-    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
+    const { id_medico, paciente_nombre, paciente_apellido, id_paciente, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
     
     // Validaciones básicas (las validaciones detalladas ya se hicieron en el middleware)
     if (!id_medico) {
@@ -66,21 +66,28 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
     if (!medicoRows[0]) {
         return res.status(400).json({ error: "Solo puedes crear consultas para ti mismo" });
       }
-      // Para médico, usar su centro
-      const [centroRows] = await pool.query(
-        "SELECT id_centro FROM medicos WHERE id = ?",
-        [id_medico]
-      );
-      // @ts-ignore
-      if (centroRows[0]) {
-        centroConsulta = centroRows[0].id_centro;
-      }
+      // Para médico, usar el centro del usuario autenticado
+      centroConsulta = decoded.id_centro;
     }
 
+    console.log('Datos para insertar consulta:', {
+      centroConsulta,
+      id_medico,
+      paciente_nombre,
+      paciente_apellido,
+      id_paciente,
+      fecha,
+      motivo,
+      diagnostico,
+      tratamiento,
+      estado,
+      duracion_minutos
+    });
+
     const [result] = await pool.execute(
-      `INSERT INTO consultas (id_centro, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [centroConsulta, id_medico, paciente_nombre, paciente_apellido, fecha, motivo ?? null, diagnostico ?? null, tratamiento ?? null, estado ?? 'pendiente', duracion_minutos ?? 0]
+      `INSERT INTO consultas (id_centro, id_medico, paciente_nombre, paciente_apellido, id_paciente, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [centroConsulta, id_medico, paciente_nombre, paciente_apellido, id_paciente ?? null, fecha, motivo ?? null, diagnostico ?? null, tratamiento ?? null, estado ?? 'pendiente', duracion_minutos ?? 0]
     );
 
     // @ts-ignore - mysql2 returns OkPacket
@@ -89,8 +96,8 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
     // @ts-ignore
     res.status(201).json(rows[0]);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "No se pudo crear la consulta" });
+    console.error('Error creando consulta:', error);
+    res.status(500).json({ error: "No se pudo crear la consulta", details: error.message });
   }
 });
 
@@ -152,6 +159,7 @@ router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
       ORDER BY c.fecha DESC, c.id DESC
     `;
     
+    console.log('Obteniendo consultas - Centro:', idCentro, 'isAdmin:', isAdmin);
     console.log('SQL Query:', sql);
     console.log('Params:', params);
     
@@ -263,6 +271,58 @@ router.get("/centros", async (req: Request, res: Response) => {
   }
 });
 
+// Obtener pacientes del centro
+router.get("/pacientes", requireCentroAccess, async (req: Request, res: Response) => {
+  try {
+    const idCentro = getCentroId(req);
+    if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
+
+    // Verificar si es admin para mostrar todos los pacientes
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+      } catch (err) {
+        // Token inválido, continuar como no admin
+      }
+    }
+
+    console.log('Obteniendo pacientes para centro:', idCentro, 'isAdmin:', isAdmin);
+    
+    let sql, params;
+    if (isAdmin) {
+      // Admin ve todos los pacientes de todos los centros
+      sql = `
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+        FROM pacientes p 
+        LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        ORDER BY p.nombres, p.apellidos
+      `;
+      params = [];
+    } else {
+      // Usuario normal ve solo pacientes de su centro
+      sql = `
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+        FROM pacientes p 
+        LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        WHERE p.id_centro = ? 
+        ORDER BY p.nombres, p.apellidos
+      `;
+      params = [idCentro];
+    }
+    
+    const [rows] = await pool.query(sql, params);
+    console.log('Pacientes encontrados:', (rows as any[]).length);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener los pacientes" });
+  }
+});
+
 // Obtener usuarios (solo admin)
 router.get("/usuarios", requireRole(['admin']), async (req: Request, res: Response) => {
   try {
@@ -316,7 +376,7 @@ router.put("/:id", requireCentroAccess, validateConsultation, async (req: Reques
       return res.status(400).json({ error: "ID de consulta inválido" });
     }
 
-    const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
+    const { id_medico, paciente_nombre, paciente_apellido, id_paciente, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
 
     // Las validaciones detalladas ya se hicieron en el middleware
 
@@ -328,6 +388,7 @@ router.put("/:id", requireCentroAccess, validateConsultation, async (req: Reques
     if (id_medico !== undefined) { fields.push("id_medico = ?"); params.push(id_medico); }
     if (paciente_nombre !== undefined) { fields.push("paciente_nombre = ?"); params.push(paciente_nombre); }
     if (paciente_apellido !== undefined) { fields.push("paciente_apellido = ?"); params.push(paciente_apellido); }
+    if (id_paciente !== undefined) { fields.push("id_paciente = ?"); params.push(id_paciente); }
     if (fecha !== undefined) { fields.push("fecha = ?"); params.push(fecha); }
     if (motivo !== undefined) { fields.push("motivo = ?"); params.push(motivo); }
     if (diagnostico !== undefined) { fields.push("diagnostico = ?"); params.push(diagnostico); }

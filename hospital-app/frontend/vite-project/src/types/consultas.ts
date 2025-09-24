@@ -4,6 +4,7 @@ export interface Consulta {
   id_medico: number;
   paciente_nombre: string;
   paciente_apellido: string;
+  id_paciente?: number;
   fecha: string;
   motivo?: string;
   diagnostico?: string;
@@ -20,10 +21,10 @@ export interface Consulta {
 }
 
 export interface ConsultaCreate {
-  id_centro: number;
   id_medico: number;
   paciente_nombre: string;
   paciente_apellido: string;
+  id_paciente?: number;
   fecha: string;
   motivo?: string;
   diagnostico?: string;
@@ -35,8 +36,8 @@ export interface ConsultaCreate {
 export interface ConsultaUpdate {
   paciente_nombre?: string;
   paciente_apellido?: string;
+  id_paciente?: number;
   id_medico?: number;
-  id_centro?: number;
   fecha?: string;
   motivo?: string;
   diagnostico?: string;
@@ -76,4 +77,21 @@ export interface Usuario {
   centro_nombre?: string;
   medico_nombres?: string;
   medico_apellidos?: string;
+}
+
+export interface Paciente {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  cedula?: string;
+  telefono?: string;
+  email?: string;
+  fecha_nacimiento?: string;
+  genero?: 'M' | 'F' | 'O';
+  direccion?: string;
+  id_centro: number;
+  created_at: string;
+  updated_at: string;
+  centro_nombre?: string;
+  centro_ciudad?: string;
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
-import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico } from '../types/consultas'
+import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, Paciente } from '../types/consultas'
 import { useValidation } from '../hooks/useValidation'
 import { getStatusColor, getStatusText } from '../utils/statusUtils'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses } from '../utils/sidebarUtils'
@@ -56,6 +56,7 @@ export default function MedicalConsultationsPage() {
 
   // Estados para datos relacionados
   const [medicos, setMedicos] = useState<Medico[]>([])
+  const [pacientes, setPacientes] = useState<Paciente[]>([])
 
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState("")
@@ -65,6 +66,7 @@ export default function MedicalConsultationsPage() {
   const [formData, setFormData] = useState<Partial<Consulta>>({
     paciente_nombre: "",
     paciente_apellido: "",
+    id_paciente: undefined,
     id_medico: undefined,
     id_centro: undefined,
     fecha: "",
@@ -110,17 +112,22 @@ export default function MedicalConsultationsPage() {
   }, [formData.estado])
 
   const loadMedicoActual = async () => {
-    if (user?.rol === 'medico' && user.id_medico && medicos.length > 0) {
+    if (user?.rol === 'medico' && user.medico) {
       try {
-        const medico = medicos.find(m => m.id === user.id_medico)
-        if (medico) {
-          console.log('Médico encontrado:', medico)
-          setMedicoActual(medico)
-          setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
-          setSelectedCentro(medico.centro_nombre || 'Sin centro')
-          console.log('Especialidad:', medico.especialidad_nombre)
-          console.log('Centro:', medico.centro_nombre)
+        // Usar la información del médico que ya está en el contexto de usuario
+        const medicoData: Medico = {
+          id: user.medico.id,
+          nombres: user.medico.nombres,
+          apellidos: user.medico.apellidos,
+          especialidad_nombre: user.medico.especialidad,
+          centro_nombre: user.centro.nombre,
+          id_centro: user.centro.id,
+          id_especialidad: 0 // No disponible en el contexto actual
         }
+        
+        setMedicoActual(medicoData)
+        setSelectedEspecialidad(user.medico.especialidad || 'Sin especialidad')
+        setSelectedCentro(user.centro.nombre || 'Sin centro')
       } catch (error) {
         console.error('Error cargando médico actual:', error)
       }
@@ -140,12 +147,12 @@ export default function MedicalConsultationsPage() {
     setShowLogoutModal(false)
   }
 
-  // Cargar médico actual cuando se carguen los médicos
+  // Cargar médico actual cuando el usuario esté disponible
   useEffect(() => {
-    if (medicos.length > 0) {
+    if (user) {
       loadMedicoActual()
     }
-  }, [medicos, user])
+  }, [user])
 
   const loadConsultas = async () => {
     try {
@@ -169,8 +176,12 @@ export default function MedicalConsultationsPage() {
 
   const loadRelatedData = async () => {
     try {
-      const medicosData = await ConsultasApi.getMedicos()
+      const [medicosData, pacientesData] = await Promise.all([
+        ConsultasApi.getMedicos(),
+        ConsultasApi.getPacientes()
+      ])
       setMedicos(medicosData)
+      setPacientes(pacientesData)
     } catch (err) {
       console.error("Error al cargar datos relacionados:", err)
     }
@@ -202,8 +213,8 @@ export default function MedicalConsultationsPage() {
         const updateData: ConsultaUpdate = {
           paciente_nombre: sanitizedFormData.paciente_nombre,
           paciente_apellido: sanitizedFormData.paciente_apellido,
+          id_paciente: sanitizedFormData.id_paciente,
           id_medico: sanitizedFormData.id_medico,
-          id_centro: sanitizedFormData.id_centro,
           fecha: sanitizedFormData.fecha,
           motivo: sanitizedFormData.motivo,
           diagnostico: sanitizedFormData.diagnostico,
@@ -218,8 +229,8 @@ export default function MedicalConsultationsPage() {
         const newData: ConsultaCreate = {
           paciente_nombre: sanitizedFormData.paciente_nombre!,
           paciente_apellido: sanitizedFormData.paciente_apellido!,
+          id_paciente: sanitizedFormData.id_paciente,
           id_medico: sanitizedFormData.id_medico!,
-          id_centro: sanitizedFormData.id_centro!,
           fecha: sanitizedFormData.fecha!,
           motivo: sanitizedFormData.motivo,
           diagnostico: sanitizedFormData.diagnostico,
@@ -251,11 +262,31 @@ export default function MedicalConsultationsPage() {
     }
   }
 
+  const handlePacienteChange = (pacienteId: number) => {
+    const paciente = pacientes.find(p => p.id === pacienteId)
+    if (paciente) {
+      setFormData((prev) => ({ 
+        ...prev, 
+        id_paciente: paciente.id,
+        paciente_nombre: paciente.nombres,
+        paciente_apellido: paciente.apellidos
+      }))
+    } else {
+      setFormData((prev) => ({ 
+        ...prev, 
+        id_paciente: undefined,
+        paciente_nombre: "",
+        paciente_apellido: ""
+      }))
+    }
+  }
+
   const handleEdit = (consulta: Consulta) => {
     setEditingConsulta(consulta)
     setFormData({
       paciente_nombre: consulta.paciente_nombre,
       paciente_apellido: consulta.paciente_apellido,
+      id_paciente: consulta.id_paciente,
       id_medico: consulta.id_medico,
       id_centro: consulta.id_centro,
       fecha: new Date(consulta.fecha).toISOString().slice(0, 16),
@@ -324,6 +355,7 @@ export default function MedicalConsultationsPage() {
     setFormData({
       paciente_nombre: "",
       paciente_apellido: "",
+      id_paciente: undefined,
       id_medico: undefined,
       id_centro: undefined,
       fecha: "",
@@ -938,38 +970,50 @@ export default function MedicalConsultationsPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="paciente_nombre" className="block text-base font-semibold text-gray-700 mb-1">
-                      Nombre del Paciente
+                    <label htmlFor="paciente" className="block text-base font-semibold text-gray-700 mb-1">
+                      Seleccionar Paciente
                     </label>
-                    <input
-                      type="text"
-                      id="paciente_nombre"
-                      value={formData.paciente_nombre || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
+                    <select
+                      id="paciente"
+                      value={formData.id_paciente || ''}
+                      onChange={(e) => {
+                        const pacienteId = Number(e.target.value)
+                        handlePacienteChange(pacienteId)
+                      }}
                       required
                       disabled={isReadOnly}
                       className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''} ${errors.paciente_nombre ? 'border-red-500' : 'border-gray-300'}`}
-                    />
+                    >
+                      <option value="">Seleccionar paciente</option>
+                      {pacientes.map((paciente) => (
+                        <option key={paciente.id} value={paciente.id}>
+                          {paciente.nombres} {paciente.apellidos} {paciente.cedula ? `- Cédula: ${paciente.cedula}` : ''}
+                        </option>
+                      ))}
+                    </select>
                     {errors.paciente_nombre && (
                       <p className="mt-1 text-sm text-red-600">{errors.paciente_nombre}</p>
                     )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Selecciona un paciente de la lista. Si no aparece, primero créalo en la página de Pacientes.
+                    </p>
                   </div>
                   <div>
-                    <label htmlFor="paciente_apellido" className="block text-base font-semibold text-gray-700 mb-1">
-                      Apellido del Paciente
+                    <label htmlFor="paciente_info" className="block text-base font-semibold text-gray-700 mb-1">
+                      Información del Paciente
                     </label>
-                    <input
-                      type="text"
-                      id="paciente_apellido"
-                      value={formData.paciente_apellido || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, paciente_apellido: e.target.value }))}
-                      required
-                      disabled={isReadOnly}
-                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''} ${errors.paciente_apellido ? 'border-red-500' : 'border-gray-300'}`}
-                    />
-                    {errors.paciente_apellido && (
-                      <p className="mt-1 text-sm text-red-600">{errors.paciente_apellido}</p>
-                    )}
+                    <div className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700">
+                      {formData.paciente_nombre && formData.paciente_apellido ? (
+                        <div>
+                          <p className="font-medium">{formData.paciente_nombre} {formData.paciente_apellido}</p>
+                          {formData.id_paciente && (
+                            <p className="text-sm text-gray-500">ID: {formData.id_paciente}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">Selecciona un paciente primero</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -1,4 +1,4 @@
-import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, Especialidad, CentroMedico } from '../types/consultas';
+import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, Especialidad, CentroMedico, Paciente } from '../types/consultas';
 import { config } from '../config/env';
 
 const API_BASE_URL = config.apiUrl;
@@ -11,7 +11,7 @@ export class ConsultasApi {
     
     return {
       'Content-Type': 'application/json',
-      'X-Centro-Id': user?.id_centro?.toString() || '1',
+      'X-Centro-Id': user?.centro?.id?.toString() || '1',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
   }
@@ -72,6 +72,10 @@ export class ConsultasApi {
 
   static async getCentros(): Promise<CentroMedico[]> {
     return this.request<CentroMedico[]>('/consultas/centros');
+  }
+
+  static async getPacientes(): Promise<Paciente[]> {
+    return this.request<Paciente[]>('/consultas/pacientes');
   }
 
   static async createMedico(medico: {
