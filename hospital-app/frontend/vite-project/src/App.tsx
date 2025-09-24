@@ -7,6 +7,7 @@ import MedicosPage from './pages/MedicosPage'
 import UsuariosPage from './pages/UsuariosPage'
 import PerfilPage from './pages/PerfilPage'
 import CalendarPage from './pages/CalendarPage'
+import PacientesPage from './pages/PacientesPage'
 import { ReportesPage } from './pages/ReportesPage'
 import CentrosPage from './pages/CentrosPage'
 import EspecialidadesPage from './pages/EspecialidadesPage'
@@ -35,6 +36,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CalendarPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/pacientes" 
+              element={
+                <ProtectedRoute>
+                  <PacientesPage />
                 </ProtectedRoute>
               } 
             />

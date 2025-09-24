@@ -20,7 +20,7 @@ export const useRouteSecurity = () => {
     }
 
     // Verificar rutas protegidas
-    const protectedRoutes = ['/admin', '/medico', '/usuarios'];
+    const protectedRoutes = ['/admin', '/medico', '/usuarios', '/pacientes', '/consultas', '/calendario'];
     const isProtectedRoute = protectedRoutes.some(route => 
       location.pathname.startsWith(route)
     );
@@ -48,6 +48,17 @@ export const useRouteSecurity = () => {
     );
 
     if (isMedicoRoute && user?.rol !== 'medico') {
+      navigate('/unauthorized', { replace: true });
+      return;
+    }
+
+    // Verificar rutas compartidas (admin y médico)
+    const sharedRoutes = ['/pacientes', '/consultas', '/calendario'];
+    const isSharedRoute = sharedRoutes.some(route => 
+      location.pathname.startsWith(route)
+    );
+
+    if (isSharedRoute && user?.rol !== 'admin' && user?.rol !== 'medico') {
       navigate('/unauthorized', { replace: true });
       return;
     }

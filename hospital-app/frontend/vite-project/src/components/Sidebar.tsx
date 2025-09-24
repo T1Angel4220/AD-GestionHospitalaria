@@ -2,12 +2,12 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Activity, 
-  Users, 
   Calendar, 
   FileText, 
   Settings, 
   LogOut,
-  Home
+  Home,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -28,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       href: '/reportes' 
     },
     { icon: Activity, label: 'Consultas', href: '/consultas' },
-    { icon: Users, label: 'Pacientes', href: '/pacientes' },
+    { icon: UserCheck, label: 'Pacientes', href: '/pacientes' },
     { icon: Calendar, label: 'Citas', href: '/citas' },
     { icon: FileText, label: 'Reportes', href: '/reportes' },
     { icon: Settings, label: 'Configuración', href: '/configuracion' },
@@ -58,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           {/* Header del Sidebar */}
           <div className="flex items-center justify-between p-6 border-b border-gray-700">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-600 text-white">
                 <Activity className="h-7 w-7" />
               </div>
               <h2 className="text-2xl font-bold">HospitalApp</h2>

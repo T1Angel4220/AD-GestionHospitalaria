@@ -1,6 +1,6 @@
 // utils/sidebarUtils.ts - Utilidades para el sidebar
 
-export type SidebarItem = 'dashboard' | 'consultas' | 'calendario' | 'medicos' | 'usuarios' | 'perfil' | 'centros' | 'especialidades' | 'empleados';
+export type SidebarItem = 'dashboard' | 'consultas' | 'calendario' | 'medicos' | 'usuarios' | 'perfil' | 'centros' | 'especialidades' | 'empleados' | 'pacientes';
 
 export const getActiveSidebarItem = (pathname: string): SidebarItem => {
   if (pathname.includes('/reportes')) {
@@ -8,6 +8,9 @@ export const getActiveSidebarItem = (pathname: string): SidebarItem => {
   }
   if (pathname.includes('/consultas')) {
     return 'consultas';
+  }
+  if (pathname.includes('/pacientes')) {
+    return 'pacientes';
   }
   if (pathname.includes('/calendario')) {
     return 'calendario';
@@ -42,15 +45,21 @@ export const getHeaderColors = (activeItem: SidebarItem): {
   switch (activeItem) {
     case 'dashboard':
       return {
-        gradient: 'bg-gradient-to-r from-amber-600 to-orange-600',
-        iconBg: 'bg-amber-600',
-        iconColor: 'text-amber-600'
+        gradient: 'bg-gradient-to-r from-red-600 to-orange-600',
+        iconBg: 'bg-red-600',
+        iconColor: 'text-red-600'
       };
     case 'consultas':
       return {
         gradient: 'bg-gradient-to-r from-emerald-600 to-green-600',
         iconBg: 'bg-emerald-600',
         iconColor: 'text-emerald-600'
+      };
+    case 'pacientes':
+      return {
+        gradient: 'bg-gradient-to-r from-red-600 to-red-600',
+        iconBg: 'bg-red-600',
+        iconColor: 'text-red-600'
       };
     case 'calendario':
       return {
@@ -96,9 +105,9 @@ export const getHeaderColors = (activeItem: SidebarItem): {
       };
     default:
       return {
-        gradient: 'bg-gradient-to-r from-amber-600 to-orange-600',
-        iconBg: 'bg-amber-600',
-        iconColor: 'text-amber-600'
+        gradient: 'bg-gradient-to-r from-red-600 to-orange-600',
+        iconBg: 'bg-red-600',
+        iconColor: 'text-red-600'
       };
   }
 };
@@ -113,9 +122,11 @@ export const getSidebarItemClasses = (
     // Opción activa según el tipo
     switch (item) {
       case 'dashboard':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-red-600 to-orange-600 rounded-xl shadow-lg";
       case 'consultas':
         return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl shadow-lg";
+      case 'pacientes':
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-red-600 to-red-600 rounded-xl shadow-lg";
       case 'calendario':
         return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl shadow-lg";
       case 'medicos':
@@ -152,9 +163,11 @@ export const getIconContainerClasses = (
   // Colores de hover específicos para cada opción
   switch (item) {
     case 'dashboard':
-      return "w-10 h-10 bg-gray-700 group-hover:bg-amber-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+      return "w-10 h-10 bg-gray-700 group-hover:bg-red-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'consultas':
       return "w-10 h-10 bg-gray-700 group-hover:bg-emerald-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+    case 'pacientes':
+      return "w-10 h-10 bg-gray-700 group-hover:bg-red-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'calendario':
       return "w-10 h-10 bg-gray-700 group-hover:bg-cyan-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'medicos':
@@ -183,9 +196,11 @@ export const getIconClasses = (
   if (isActive) {
     switch (item) {
       case 'dashboard':
-        return "h-5 w-5 text-amber-600";
+        return "h-5 w-5 text-red-600";
       case 'consultas':
         return "h-5 w-5 text-emerald-600";
+      case 'pacientes':
+        return "h-5 w-5 text-red-600";
       case 'calendario':
         return "h-5 w-5 text-cyan-600";
       case 'medicos':
@@ -225,6 +240,11 @@ export const getTextClasses = (
         return {
           main: "font-medium",
           sub: "text-xs text-green-100"
+        };
+      case 'pacientes':
+        return {
+          main: "font-medium",
+          sub: "text-xs text-red-100"
         };
       case 'calendario':
         return {
@@ -285,10 +305,10 @@ export const getButtonColors = (activeItem: SidebarItem): {
   switch (activeItem) {
     case 'dashboard':
       return {
-        primary: 'bg-gradient-to-r from-amber-600 to-orange-600',
-        primaryHover: 'hover:from-amber-700 hover:to-orange-700',
-        primaryFocus: 'focus:ring-amber-500',
-        primaryIcon: 'text-amber-600'
+        primary: 'bg-gradient-to-r from-red-600 to-orange-600',
+        primaryHover: 'hover:from-red-700 hover:to-orange-700',
+        primaryFocus: 'focus:ring-red-500',
+        primaryIcon: 'text-red-600'
       };
     case 'consultas':
       return {
@@ -296,6 +316,13 @@ export const getButtonColors = (activeItem: SidebarItem): {
         primaryHover: 'hover:from-emerald-700 hover:to-green-700',
         primaryFocus: 'focus:ring-emerald-500',
         primaryIcon: 'text-emerald-600'
+      };
+    case 'pacientes':
+      return {
+        primary: 'bg-gradient-to-r from-red-600 to-red-600',
+        primaryHover: 'hover:from-red-700 hover:to-red-700',
+        primaryFocus: 'focus:ring-red-500',
+        primaryIcon: 'text-red-600'
       };
     case 'calendario':
       return {
@@ -348,10 +375,10 @@ export const getButtonColors = (activeItem: SidebarItem): {
       };
     default:
       return {
-        primary: 'bg-gradient-to-r from-amber-600 to-orange-600',
-        primaryHover: 'hover:from-amber-700 hover:to-orange-700',
-        primaryFocus: 'focus:ring-amber-500',
-        primaryIcon: 'text-amber-600'
+        primary: 'bg-gradient-to-r from-red-600 to-orange-600',
+        primaryHover: 'hover:from-red-700 hover:to-orange-700',
+        primaryFocus: 'focus:ring-red-500',
+        primaryIcon: 'text-red-600'
       };
   }
 };

@@ -4,11 +4,14 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout } from '../layouts/AdminLayout';
 import { MedicoLayout } from '../layouts/MedicoLayout';
 import { ReportesPage } from '../pages/ReportesPage';
-import AdminPage from '../pages/AdminPage';
+import MedicosPage from '../pages/MedicosPage';
 import UsuariosPage from '../pages/UsuariosPage';
 import CentrosPage from '../pages/CentrosPage';
 import EspecialidadesPage from '../pages/EspecialidadesPage';
 import EmpleadosPage from '../pages/EmpleadosPage';
+import PacientesPage from '../pages/PacientesPage';
+import ConsultasPage from '../pages/ConsultasPage';
+import CalendarPage from '../pages/CalendarPage';
 import LoginPage from '../pages/LoginPage';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { useRouteSecurity } from '../hooks/useRouteSecurity';
@@ -93,7 +96,7 @@ const AppWithSecurity: React.FC = () => {
             </ProtectedRoute>
           }>
             <Route path="reportes" element={<ReportesPage />} />
-            <Route path="medicos" element={<AdminPage />} />
+            <Route path="medicos" element={<MedicosPage />} />
             <Route path="centros" element={<CentrosPage />} />
             <Route path="especialidades" element={<EspecialidadesPage />} />
             <Route path="empleados" element={<EmpleadosPage />} />
@@ -104,6 +107,23 @@ const AppWithSecurity: React.FC = () => {
           <Route path="/usuarios" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <UsuariosPage />
+            </ProtectedRoute>
+          } />
+          
+          {/* Rutas compartidas (Admin y Médico) */}
+          <Route path="/pacientes" element={
+            <ProtectedRoute allowedRoles={['admin', 'medico']}>
+              <PacientesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/consultas" element={
+            <ProtectedRoute allowedRoles={['admin', 'medico']}>
+              <ConsultasPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/calendario" element={
+            <ProtectedRoute allowedRoles={['admin', 'medico']}>
+              <CalendarPage />
             </ProtectedRoute>
           } />
           
