@@ -26,7 +26,9 @@ import {
   Clock,
   Building2,
   Eye,
-  BarChart3
+  BarChart3,
+  Heart,
+  UserCheck
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { getRoleText } from '../utils/roleUtils'
@@ -389,7 +391,7 @@ export default function MedicalConsultationsPage() {
           <div className="space-y-2">
             {/* Dashboard - solo para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/admin/reportes" className={getSidebarItemClasses('dashboard', activeItem)}>
+              <a href="/reportes" className={getSidebarItemClasses('dashboard', activeItem)}>
                 <div className={getIconContainerClasses('dashboard', activeItem)}>
                   <BarChart3 className={getIconClasses('dashboard', activeItem)} />
                 </div>
@@ -424,13 +426,52 @@ export default function MedicalConsultationsPage() {
             
             {/* Solo mostrar Médicos para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/admin" className={getSidebarItemClasses('medicos', activeItem)}>
+              <a href="/medicos" className={getSidebarItemClasses('medicos', activeItem)}>
                 <div className={getIconContainerClasses('medicos', activeItem)}>
                   <Stethoscope className={getIconClasses('medicos', activeItem)} />
                 </div>
                 <div>
                   <div className={getTextClasses('medicos', activeItem).main}>Médicos</div>
                   <div className={getTextClasses('medicos', activeItem).sub}>Personal médico</div>
+                </div>
+              </a>
+            )}
+
+            {/* Solo mostrar Centros para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/centros" className={getSidebarItemClasses('centros', activeItem)}>
+                <div className={getIconContainerClasses('centros', activeItem)}>
+                  <Building2 className={getIconClasses('centros', activeItem)} />
+                </div>
+                <div>
+                  <div className={getTextClasses('centros', activeItem).main}>Centros Médicos</div>
+                  <div className={getTextClasses('centros', activeItem).sub}>Gestión centros</div>
+                </div>
+              </a>
+            )}
+
+            {/* Solo mostrar Especialidades para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/especialidades" className={getSidebarItemClasses('especialidades', activeItem)}>
+                <div className={getIconContainerClasses('especialidades', activeItem)}>
+                  <Heart className={getIconClasses('especialidades', activeItem)} />
+                </div>
+                <div>
+                  <div className={getTextClasses('especialidades', activeItem).main}>Especialidades</div>
+                  <div className={getTextClasses('especialidades', activeItem).sub}>Gestión especialidades</div>
+                </div>
+              </a>
+            )}
+
+            {/* Solo mostrar Empleados para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/empleados" className={getSidebarItemClasses('empleados', activeItem)}>
+                <div className={getIconContainerClasses('empleados', activeItem)}>
+                  <UserCheck className={getIconClasses('empleados', activeItem)} />
+                </div>
+                <div>
+                  <div className={getTextClasses('empleados', activeItem).main}>Empleados</div>
+                  <div className={getTextClasses('empleados', activeItem).sub}>Personal administrativo</div>
                 </div>
               </a>
             )}

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ReportFilters } from '../../components/reports/ReportFilters';
-import { StatsCards } from '../../components/reports/StatsCards';
-import { ChartsSection } from '../../components/reports/ChartsSection';
-import { ConsultasTable } from '../../components/reports/ConsultasTable';
-import type { ReporteFiltros, ConsultaResumen } from '../../api/reports';
-import { apiService } from '../../api/reports';
-import { config } from '../../config/env';
+import { ReportFilters } from '../components/reports/ReportFilters';
+import { StatsCards } from '../components/reports/StatsCards';
+import { ChartsSection } from '../components/reports/ChartsSection';
+import { ConsultasTable } from '../components/reports/ConsultasTable';
+import type { ReporteFiltros, ConsultaResumen } from '../api/reports';
+import { apiService } from '../api/reports';
+import { config } from '../config/env';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -20,11 +20,15 @@ import {
   Stethoscope,
   BarChart3,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Building2,
+  Heart,
+  UserCheck
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { AdminBanner } from '../../components/AdminBanner';
-import { getRoleText } from '../../utils/roleUtils';
+import { useAuth } from '../contexts/AuthContext';
+import { AdminBanner } from '../components/AdminBanner';
+import { getRoleText } from '../utils/roleUtils';
+import { getActiveSidebarItem, getHeaderColors } from '../utils/sidebarUtils';
 
 export const ReportesPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -40,6 +44,10 @@ export const ReportesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Determinar el elemento activo del sidebar y obtener colores
+  const activeItem = getActiveSidebarItem(window.location.pathname);
+  const headerColors = getHeaderColors(activeItem);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -376,10 +384,10 @@ export const ReportesPage: React.FC = () => {
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-gray-900 to-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl`}>
         {/* Logo Section */}
-        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-amber-500 to-orange-500">
+        <div className={`flex items-center justify-between h-20 px-6 ${headerColors.gradient}`}>
           <div className="flex items-center">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
-              <Activity className="h-8 w-8 text-amber-600" />
+              <Activity className={`h-8 w-8 ${headerColors.iconColor}`} />
             </div>
     <div>
               <span className="text-white text-xl font-bold">HospitalApp</span>
@@ -397,7 +405,7 @@ export const ReportesPage: React.FC = () => {
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            <a href="/admin/reportes" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-lg">
+            <a href="/reportes" className="w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-lg">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
                 <BarChart3 className="h-5 w-5 text-amber-600" />
               </div>
@@ -424,13 +432,40 @@ export const ReportesPage: React.FC = () => {
                 <div className="text-xs text-gray-400">Vista mensual</div>
               </div>
             </a>
-            <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+            <a href="/medicos" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
               <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                 <Stethoscope className="h-5 w-5" />
               </div>
               <div>
                 <div className="font-medium">Médicos</div>
                 <div className="text-xs text-gray-400">Personal médico</div>
+              </div>
+            </a>
+            <a href="/centros" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-green-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Centros Médicos</div>
+                <div className="text-xs text-gray-400">Gestión centros</div>
+              </div>
+            </a>
+            <a href="/especialidades" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <Heart className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Especialidades</div>
+                <div className="text-xs text-gray-400">Gestión especialidades</div>
+              </div>
+            </a>
+            <a href="/empleados" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-orange-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Empleados</div>
+                <div className="text-xs text-gray-400">Personal administrativo</div>
               </div>
             </a>
             <a href="/usuarios" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
@@ -471,7 +506,7 @@ export const ReportesPage: React.FC = () => {
       {/* Main Content */}
       <div className="lg:ml-72">
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg">
+        <div className={`${headerColors.gradient} shadow-lg`}>
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-8">
               <div className="flex items-center">
@@ -483,7 +518,7 @@ export const ReportesPage: React.FC = () => {
                 </button>
                 <div className="ml-4">
                   <h1 className="text-3xl font-bold text-white flex items-center">
-                    <BarChart3 className="h-8 w-8 mr-3" />
+                    <BarChart3 className={`h-8 w-8 mr-3 ${headerColors.iconColor}`} />
                     Dashboard de Reportes
                   </h1>
                   <p className="text-amber-100 mt-1">Sistema de gestión hospitalaria - Análisis de consultas médicas</p>

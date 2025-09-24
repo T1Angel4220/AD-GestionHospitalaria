@@ -3,7 +3,12 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout } from '../layouts/AdminLayout';
 import { MedicoLayout } from '../layouts/MedicoLayout';
-import { ReportesPage } from '../pages/admin/ReportesPage';
+import { ReportesPage } from '../pages/ReportesPage';
+import AdminPage from '../pages/AdminPage';
+import UsuariosPage from '../pages/UsuariosPage';
+import CentrosPage from '../pages/CentrosPage';
+import EspecialidadesPage from '../pages/EspecialidadesPage';
+import EmpleadosPage from '../pages/EmpleadosPage';
 import LoginPage from '../pages/LoginPage';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
@@ -58,8 +63,19 @@ export const AppRouter: React.FC = () => {
             </ProtectedRoute>
           }>
             <Route path="reportes" element={<ReportesPage />} />
-            <Route index element={<Navigate to="/admin/reportes" replace />} />
+            <Route path="medicos" element={<AdminPage />} />
+            <Route path="centros" element={<CentrosPage />} />
+            <Route path="especialidades" element={<EspecialidadesPage />} />
+            <Route path="empleados" element={<EmpleadosPage />} />
+            <Route index element={<Navigate to="/reportes" replace />} />
           </Route>
+          
+          {/* Rutas adicionales de Admin */}
+          <Route path="/usuarios" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <UsuariosPage />
+            </ProtectedRoute>
+          } />
           
           {/* Rutas de Médico */}
           <Route path="/medico" element={

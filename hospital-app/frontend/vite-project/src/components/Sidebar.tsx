@@ -25,12 +25,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       icon: Home, 
       label: 'Dashboard', 
       subtitle: 'Panel principal',
-      href: '/admin/reportes' 
+      href: '/reportes' 
     },
     { icon: Activity, label: 'Consultas', href: '/consultas' },
     { icon: Users, label: 'Pacientes', href: '/pacientes' },
     { icon: Calendar, label: 'Citas', href: '/citas' },
-    { icon: FileText, label: 'Reportes', href: '/admin/reportes' },
+    { icon: FileText, label: 'Reportes', href: '/reportes' },
     { icon: Settings, label: 'Configuración', href: '/configuracion' },
   ];
 

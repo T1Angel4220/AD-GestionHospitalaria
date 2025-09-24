@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
-import { AdminApi } from '../api/adminApi'
-import type { AdminUsuario, AdminCentro, AdminMedico } from '../api/adminApi'
+import { AdminApi, type AdminEspecialidad, type AdminEspecialidadCreate } from '../api/adminApi'
 import { 
   Activity, 
   Users, 
@@ -20,38 +19,34 @@ import {
   FileText,
   BarChart3,
   Building2,
-  Heart,
-  UserCheck
+  Heart
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { getRoleText } from '../utils/roleUtils'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors } from '../utils/sidebarUtils'
 
-export default function UsuariosPage() {
+export default function EspecialidadesPage() {
   const { user, logout } = useAuth()
-  const [usuarios, setUsuarios] = useState<AdminUsuario[]>([])
-  const [centros, setCentros] = useState<AdminCentro[]>([])
-  const [medicosDisponibles, setMedicosDisponibles] = useState<AdminMedico[]>([])
+  const [especialidades, setEspecialidades] = useState<AdminEspecialidad[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   
+  // Estados para modales
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedEspecialidad, setSelectedEspecialidad] = useState<AdminEspecialidad | null>(null)
+
+  // Estados para formularios
+  const [especialidadForm, setEspecialidadForm] = useState<AdminEspecialidadCreate>({
+    nombre: ''
+  })
+
   // Determinar el elemento activo del sidebar y obtener colores
   const activeItem = getActiveSidebarItem(window.location.pathname);
   const headerColors = getHeaderColors(activeItem);
-
-  // Estados para modales
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
-
-  // Estados para formularios
-  const [userForm, setUserForm] = useState({
-    email: '',
-    password: '',
-    rol: 'medico' as 'admin' | 'medico',
-    id_centro: 1,
-    id_medico: undefined as number | undefined
-  })
 
   useEffect(() => {
     loadData()
@@ -60,41 +55,79 @@ export default function UsuariosPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [usuariosData, centrosData, medicosDisponiblesData] = await Promise.all([
-        AdminApi.getUsuarios(),
-        AdminApi.getCentros(),
-        AdminApi.getMedicos(),
-      ])
-      setUsuarios(usuariosData)
-      setCentros(centrosData)
-      setMedicosDisponibles(medicosDisponiblesData)
+      const especialidadesData = await AdminApi.getEspecialidades()
+      setEspecialidades(especialidadesData)
       setError(null)
     } catch (err) {
-      setError("Error al cargar los datos")
+      setError("Error al cargar las especialidades")
       console.error(err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleCreateEspecialidad = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
     try {
-      await AdminApi.createUsuario(userForm)
-      setIsUserModalOpen(false)
-      setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
-      // Recargar datos después de crear usuario
+      await AdminApi.createEspecialidad(especialidadForm)
+      setIsCreateModalOpen(false)
+      setEspecialidadForm({ nombre: '' })
       loadData()
     } catch (err) {
-      setError("Error al crear el usuario")
+      setError("Error al crear la especialidad")
       console.error(err)
     }
   }
 
-  const filteredUsuarios = usuarios.filter(usuario =>
-    usuario.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleEditEspecialidad = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedEspecialidad) return
+    setError(null)
+
+    try {
+      await AdminApi.updateEspecialidad(selectedEspecialidad.id, especialidadForm)
+      setIsEditModalOpen(false)
+      setEspecialidadForm({ nombre: '' })
+      setSelectedEspecialidad(null)
+      loadData()
+    } catch (err) {
+      setError("Error al actualizar la especialidad")
+      console.error(err)
+    }
+  }
+
+  const handleDeleteEspecialidad = async () => {
+    if (!selectedEspecialidad) return
+    setError(null)
+
+    try {
+      await AdminApi.deleteEspecialidad(selectedEspecialidad.id)
+      setIsDeleteModalOpen(false)
+      setSelectedEspecialidad(null)
+      loadData()
+    } catch (err) {
+      setError("Error al eliminar la especialidad")
+      console.error(err)
+    }
+  }
+
+  const openEditModal = (especialidad: AdminEspecialidad) => {
+    setSelectedEspecialidad(especialidad)
+    setEspecialidadForm({
+      nombre: especialidad.nombre
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const openDeleteModal = (especialidad: AdminEspecialidad) => {
+    setSelectedEspecialidad(especialidad)
+    setIsDeleteModalOpen(true)
+  }
+
+  const filteredEspecialidades = especialidades.filter(especialidad =>
+    especialidad.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
@@ -117,7 +150,7 @@ export default function UsuariosPage() {
             </div>
             <div>
               <span className="text-white text-xl font-bold">HospitalApp</span>
-              <p className="text-purple-100 text-xs">Sistema Médico</p>
+              <p className="text-orange-100 text-xs">Sistema Médico</p>
             </div>
           </div>
           <button
@@ -131,7 +164,7 @@ export default function UsuariosPage() {
         {/* Navigation */}
         <nav className="mt-8 px-4">
           <div className="space-y-2">
-            {/* Dashboard - solo para administradores */}
+            {/* Dashboard */}
             <a href="/reportes" className={getSidebarItemClasses('dashboard', activeItem)}>
               <div className={getIconContainerClasses('dashboard', activeItem)}>
                 <BarChart3 className={getIconClasses('dashboard', activeItem)} />
@@ -142,7 +175,7 @@ export default function UsuariosPage() {
               </div>
             </a>
             
-            {/* Consultas - visible para todos */}
+            {/* Consultas */}
             <a href="/consultas" className={getSidebarItemClasses('consultas', activeItem)}>
               <div className={getIconContainerClasses('consultas', activeItem)}>
                 <FileText className={getIconClasses('consultas', activeItem)} />
@@ -153,7 +186,7 @@ export default function UsuariosPage() {
               </div>
             </a>
 
-            {/* Calendario - visible para todos */}
+            {/* Calendario */}
             <a href="/calendario" className={getSidebarItemClasses('calendario', activeItem)}>
               <div className={getIconContainerClasses('calendario', activeItem)}>
                 <Calendar className={getIconClasses('calendario', activeItem)} />
@@ -164,7 +197,7 @@ export default function UsuariosPage() {
               </div>
             </a>
             
-            {/* Médicos - solo para administradores */}
+            {/* Médicos */}
             <a href="/medicos" className={getSidebarItemClasses('medicos', activeItem)}>
               <div className={getIconContainerClasses('medicos', activeItem)}>
                 <Stethoscope className={getIconClasses('medicos', activeItem)} />
@@ -174,33 +207,33 @@ export default function UsuariosPage() {
                 <div className={getTextClasses('medicos', activeItem).sub}>Personal médico</div>
               </div>
             </a>
-
-            {/* Centros Médicos - solo para administradores */}
+            
+            {/* Centros Médicos */}
             <a href="/centros" className={getSidebarItemClasses('centros', activeItem)}>
               <div className={getIconContainerClasses('centros', activeItem)}>
                 <Building2 className={getIconClasses('centros', activeItem)} />
               </div>
               <div>
-                <div className={getTextClasses('centros', activeItem).main}>Centros Médicos</div>
-                <div className={getTextClasses('centros', activeItem).sub}>Gestión centros</div>
+                <div className={getTextClasses('centros', activeItem).main}>Centros</div>
+                <div className={getTextClasses('centros', activeItem).sub}>Centros médicos</div>
               </div>
             </a>
-
-            {/* Especialidades - solo para administradores */}
+            
+            {/* Especialidades */}
             <a href="/especialidades" className={getSidebarItemClasses('especialidades', activeItem)}>
               <div className={getIconContainerClasses('especialidades', activeItem)}>
-                <Heart className={getIconClasses('especialidades', activeItem)} />
+                <Stethoscope className={getIconClasses('especialidades', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('especialidades', activeItem).main}>Especialidades</div>
-                <div className={getTextClasses('especialidades', activeItem).sub}>Gestión especialidades</div>
+                <div className={getTextClasses('especialidades', activeItem).sub}>Áreas médicas</div>
               </div>
             </a>
-
-            {/* Empleados - solo para administradores */}
+            
+            {/* Empleados */}
             <a href="/empleados" className={getSidebarItemClasses('empleados', activeItem)}>
               <div className={getIconContainerClasses('empleados', activeItem)}>
-                <UserCheck className={getIconClasses('empleados', activeItem)} />
+                <Users className={getIconClasses('empleados', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('empleados', activeItem).main}>Empleados</div>
@@ -208,7 +241,7 @@ export default function UsuariosPage() {
               </div>
             </a>
             
-            {/* Usuarios - solo para administradores */}
+            {/* Usuarios */}
             <a href="/usuarios" className={getSidebarItemClasses('usuarios', activeItem)}>
               <div className={getIconContainerClasses('usuarios', activeItem)}>
                 <Users className={getIconClasses('usuarios', activeItem)} />
@@ -218,19 +251,6 @@ export default function UsuariosPage() {
                 <div className={getTextClasses('usuarios', activeItem).sub}>Gestión usuarios</div>
               </div>
             </a>
-
-            {/* Perfil - solo para médicos */}
-            {user?.rol === 'medico' && (
-             <a href="/perfil" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
-               <div className="w-10 h-10 bg-gray-700 group-hover:bg-gray-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                 <Users className="h-5 w-5" />
-               </div>
-               <div>
-                 <div className="font-medium">Perfil</div>
-                 <div className="text-xs text-gray-400">Mi información</div>
-               </div>
-             </a>
-            )}
           </div>
         </nav>
 
@@ -238,7 +258,7 @@ export default function UsuariosPage() {
         <div className="absolute bottom-0 w-full p-4">
           <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
             <div className="flex items-center mb-3">
-              <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center mr-3">
+              <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center mr-3">
                 <Users className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
@@ -266,23 +286,23 @@ export default function UsuariosPage() {
               <div className="flex items-center">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="lg:hidden p-2 rounded-md text-white hover:bg-purple-500 transition-colors"
+                  className="lg:hidden p-2 rounded-md text-white hover:bg-orange-500 transition-colors"
                 >
                   <Menu className="h-6 w-6" />
                 </button>
                 <div className="ml-4">
                   <h1 className="text-3xl font-bold text-white flex items-center">
-                    <Users className={`h-8 w-8 mr-3 ${headerColors.iconColor}`} />
-                    Gestión de Usuarios
+                    <Heart className={`h-8 w-8 mr-3 ${headerColors.iconColor}`} />
+                    Gestión de Especialidades
                   </h1>
-                  <p className="text-purple-100 mt-1">Administra los usuarios del sistema</p>
+                  <p className="text-orange-100 mt-1">Administra las especialidades médicas</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
                 <AdminBanner 
-                  backgroundColor="bg-purple-600"
-                  iconBackgroundColor="bg-purple-700"
-                  icon={Users}
+                  backgroundColor="bg-orange-600"
+                  iconBackgroundColor="bg-orange-700"
+                  icon={Stethoscope}
                   roleText={getRoleText(user)}
                 />
               </div>
@@ -300,48 +320,37 @@ export default function UsuariosPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
               <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Users className="h-8 w-8 text-purple-600" />
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <Stethoscope className="h-8 w-8 text-orange-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Usuarios</p>
-                  <p className="text-2xl font-bold text-gray-900">{usuarios.length}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
-              <div className="flex items-center">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <Activity className="h-8 w-8 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Administradores</p>
-                  <p className="text-2xl font-bold text-gray-900">{usuarios.filter(u => u.rol === 'admin').length}</p>
+                  <p className="text-sm font-medium text-gray-600">Total Especialidades</p>
+                  <p className="text-2xl font-bold text-gray-900">{especialidades.length}</p>
                 </div>
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
               <div className="flex items-center">
                 <div className="p-3 bg-blue-100 rounded-lg">
-                  <Stethoscope className="h-8 w-8 text-blue-600" />
+                  <Users className="h-8 w-8 text-blue-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Médicos</p>
-                  <p className="text-2xl font-bold text-gray-900">{usuarios.filter(u => u.rol === 'medico').length}</p>
+                  <p className="text-sm font-medium text-gray-600">Más Común</p>
+                  <p className="text-2xl font-bold text-gray-900">Medicina General</p>
                 </div>
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
               <div className="flex items-center">
                 <div className="p-3 bg-green-100 rounded-lg">
-                  <Calendar className="h-8 w-8 text-green-600" />
+                  <Activity className="h-8 w-8 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Asociados</p>
-                  <p className="text-2xl font-bold text-gray-900">{usuarios.filter(u => u.id_medico).length}</p>
+                  <p className="text-sm font-medium text-gray-600">Activas</p>
+                  <p className="text-2xl font-bold text-gray-900">{especialidades.length}</p>
                 </div>
               </div>
             </div>
@@ -355,31 +364,31 @@ export default function UsuariosPage() {
               </div>
               <input
                 type="text"
-                placeholder="Buscar usuarios por email..."
+                placeholder="Buscar especialidades..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
               />
             </div>
             <div className="mt-4 sm:mt-0 sm:ml-4">
               <button
-                onClick={() => setIsUserModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all transform hover:scale-105"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all transform hover:scale-105"
               >
                 <Plus className="h-5 w-5 mr-2" />
-                Nuevo Usuario
+                Crear Especialidad
               </button>
             </div>
           </div>
 
-          {/* Usuarios List */}
+          {/* Especialidades List */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">
-                Lista de Usuarios
+                Lista de Especialidades
               </h3>
               <p className="mt-1 text-sm text-gray-600">
-                Gestiona los usuarios del sistema (excluyendo usuarios ya asociados a médicos)
+                Gestiona las especialidades médicas del sistema
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -387,16 +396,10 @@ export default function UsuariosPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Usuario
+                      Especialidad
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Rol
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Centro Médico
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Estado
+                      ID
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Acciones
@@ -404,53 +407,37 @@ export default function UsuariosPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsuarios.map((usuario) => (
-                    <tr key={usuario.id} className="hover:bg-gray-50 transition-colors">
+                  {filteredEspecialidades.map((especialidad) => (
+                    <tr key={especialidad.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4">
-                            <Users className="h-5 w-5 text-purple-600" />
+                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                            <Stethoscope className="h-5 w-5 text-orange-600" />
                           </div>
                           <div>
                             <div className="text-sm font-semibold text-gray-900">
-                              {usuario.email}
+                              {especialidad.nombre}
                             </div>
-                            <div className="text-sm text-gray-500">ID: {usuario.id}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-                          usuario.rol === 'admin' 
-                            ? 'bg-red-100 text-red-800' 
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {usuario.rol === 'admin' ? 'Administrador' : 'Médico'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {usuario.centro_nombre || `Centro ${usuario.id_centro}`}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-                          usuario.medico_nombres && usuario.medico_apellidos
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {usuario.medico_nombres && usuario.medico_apellidos 
-                            ? 'Asociado'
-                            : 'Disponible'
-                          }
+                        <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                          #{especialidad.id}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => openEditModal(especialidad)}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => openDeleteModal(especialidad)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -464,26 +451,26 @@ export default function UsuariosPage() {
         </div>
       </div>
 
-      {/* Modal para crear usuario */}
-      {isUserModalOpen && (
+      {/* Modal para crear especialidad */}
+      {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsUserModalOpen(false)}></div>
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsCreateModalOpen(false)}></div>
           
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
             {/* Header del modal */}
-            <div className="px-8 py-6 bg-gradient-to-r from-purple-600 to-purple-700 rounded-t-2xl">
+            <div className="px-8 py-6 bg-gradient-to-r from-orange-600 to-orange-700 rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
-                    <Users className="h-6 w-6 text-purple-600" />
+                    <Stethoscope className="h-6 w-6 text-orange-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Nuevo Usuario</h3>
-                    <p className="text-purple-100 text-sm">Crear cuenta de usuario</p>
+                    <h3 className="text-xl font-bold text-white">Nueva Especialidad</h3>
+                    <p className="text-orange-100 text-sm">Crear especialidad médica</p>
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsUserModalOpen(false)}
+                  onClick={() => setIsCreateModalOpen(false)}
                   className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
                 >
                   <X className="h-5 w-5" />
@@ -492,114 +479,156 @@ export default function UsuariosPage() {
             </div>
             
             {/* Contenido del modal */}
-            <form onSubmit={handleCreateUser} className="px-8 py-6 space-y-6">
+            <form onSubmit={handleCreateEspecialidad} className="px-8 py-6 space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Correo Electrónico
+                  Nombre de la Especialidad
                 </label>
                 <input
-                  type="email"
-                  value={userForm.email}
-                  onChange={(e) => setUserForm({...userForm, email: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  placeholder="usuario@hospital.com"
+                  type="text"
+                  value={especialidadForm.nombre}
+                  onChange={(e) => setEspecialidadForm({...especialidadForm, nombre: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  placeholder="Cardiología"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Contraseña
-                </label>
-                <input
-                  type="password"
-                  value={userForm.password}
-                  onChange={(e) => setUserForm({...userForm, password: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Rol
-                </label>
-                <select
-                  value={userForm.rol}
-                  onChange={(e) => setUserForm({...userForm, rol: e.target.value as 'admin' | 'medico'})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  required
-                >
-                  <option value="medico">Médico</option>
-                  <option value="admin">Administrador</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Centro Médico
-                </label>
-                <select
-                  value={userForm.id_centro}
-                  onChange={(e) => setUserForm({...userForm, id_centro: Number(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  required
-                >
-                  {centros.map((centro) => (
-                    <option key={centro.id} value={centro.id}>
-                      {centro.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {userForm.rol === 'medico' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Médico Asociado (Opcional)
-                  </label>
-                  <select
-                    value={userForm.id_medico || ''}
-                    onChange={(e) => setUserForm({...userForm, id_medico: e.target.value ? Number(e.target.value) : undefined})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                  >
-                    <option value="">
-                      {medicosDisponibles.filter(medico => medico.id_centro === userForm.id_centro).length === 0 
-                        ? 'No hay médicos disponibles en este centro' 
-                        : 'Seleccionar médico'
-                      }
-                    </option>
-                    {medicosDisponibles
-                      .filter(medico => medico.id_centro === userForm.id_centro)
-                      .map((medico) => (
-                        <option key={medico.id} value={medico.id}>
-                          {medico.nombres} {medico.apellidos} - {medico.especialidad_nombre || 'Sin especialidad'}
-                        </option>
-                      ))}
-                  </select>
-                  {medicosDisponibles.filter(medico => medico.id_centro === userForm.id_centro).length === 0 && (
-                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <p className="text-sm text-amber-700 flex items-center">
-                        <span className="mr-2">ℹ️</span>
-                        Todos los médicos de este centro ya tienen usuarios asociados
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={() => setIsUserModalOpen(false)}
+                  onClick={() => setIsCreateModalOpen(false)}
                   className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 rounded-xl transition-all duration-200 transform hover:scale-105"
                 >
-                  Crear Usuario
+                  Crear Especialidad
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar especialidad */}
+      {isEditModalOpen && selectedEspecialidad && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsEditModalOpen(false)}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
+            {/* Header del modal */}
+            <div className="px-8 py-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <Stethoscope className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Editar Especialidad</h3>
+                    <p className="text-blue-100 text-sm">Actualizar información</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Contenido del modal */}
+            <form onSubmit={handleEditEspecialidad} className="px-8 py-6 space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Nombre de la Especialidad
+                </label>
+                <input
+                  type="text"
+                  value={especialidadForm.nombre}
+                  onChange={(e) => setEspecialidadForm({...especialidadForm, nombre: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="Cardiología"
+                  required
+                />
+              </div>
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  Actualizar Especialidad
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para eliminar especialidad */}
+      {isDeleteModalOpen && selectedEspecialidad && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsDeleteModalOpen(false)}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+            {/* Header del modal */}
+            <div className="px-8 py-6 bg-gradient-to-r from-red-600 to-red-700 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <Trash2 className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Eliminar Especialidad</h3>
+                    <p className="text-red-100 text-sm">Esta acción no se puede deshacer</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Contenido del modal */}
+            <div className="px-8 py-6">
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">
+                  ¿Estás seguro de que deseas eliminar la especialidad <strong>{selectedEspecialidad.nombre}</strong>?
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-sm text-red-700">
+                    <strong>Advertencia:</strong> Esta acción eliminará permanentemente la especialidad y todos los datos asociados.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteEspecialidad}
+                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  Eliminar Especialidad
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

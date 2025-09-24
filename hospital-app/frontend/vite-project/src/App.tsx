@@ -4,11 +4,14 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ConsultasPage from './pages/ConsultasPage'
-import AdminPage from './pages/AdminPage'
+import MedicosPage from './pages/MedicosPage'
 import UsuariosPage from './pages/UsuariosPage'
 import PerfilPage from './pages/PerfilPage'
 import CalendarPage from './pages/CalendarPage'
-import { ReportesPage } from './pages/admin/ReportesPage'
+import { ReportesPage } from './pages/ReportesPage'
+import CentrosPage from './pages/CentrosPage'
+import EspecialidadesPage from './pages/EspecialidadesPage'
+import EmpleadosPage from './pages/EmpleadosPage'
 
 function App() {
   return (
@@ -39,17 +42,45 @@ function App() {
             />
             <Route 
               path="/admin" 
+              element={<Navigate to="/reportes" replace />} 
+            />
+            <Route 
+              path="/reportes" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <AdminPage />
+                  <ReportesPage />
                 </ProtectedRoute>
               } 
             />
             <Route 
-              path="/admin/reportes" 
+              path="/medicos" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ReportesPage />
+                  <MedicosPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/centros" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <CentrosPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/especialidades" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <EspecialidadesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/empleados" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <EmpleadosPage />
                 </ProtectedRoute>
               } 
             />

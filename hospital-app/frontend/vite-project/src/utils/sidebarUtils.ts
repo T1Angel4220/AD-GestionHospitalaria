@@ -1,9 +1,9 @@
 // utils/sidebarUtils.ts - Utilidades para el sidebar
 
-export type SidebarItem = 'dashboard' | 'consultas' | 'calendario' | 'medicos' | 'usuarios' | 'perfil';
+export type SidebarItem = 'dashboard' | 'consultas' | 'calendario' | 'medicos' | 'usuarios' | 'perfil' | 'centros' | 'especialidades' | 'empleados';
 
 export const getActiveSidebarItem = (pathname: string): SidebarItem => {
-  if (pathname.includes('/admin/reportes')) {
+  if (pathname.includes('/reportes')) {
     return 'dashboard';
   }
   if (pathname.includes('/consultas')) {
@@ -12,8 +12,17 @@ export const getActiveSidebarItem = (pathname: string): SidebarItem => {
   if (pathname.includes('/calendario')) {
     return 'calendario';
   }
-  if (pathname.includes('/admin') && !pathname.includes('/reportes')) {
+  if (pathname.includes('/medicos')) {
     return 'medicos';
+  }
+  if (pathname.includes('/centros')) {
+    return 'centros';
+  }
+  if (pathname.includes('/especialidades')) {
+    return 'especialidades';
+  }
+  if (pathname.includes('/empleados')) {
+    return 'empleados';
   }
   if (pathname.includes('/usuarios')) {
     return 'usuarios';
@@ -22,6 +31,76 @@ export const getActiveSidebarItem = (pathname: string): SidebarItem => {
     return 'perfil';
   }
   return 'dashboard'; // Por defecto
+};
+
+// Función para obtener los colores del header basados en la página activa
+export const getHeaderColors = (activeItem: SidebarItem): {
+  gradient: string;
+  iconBg: string;
+  iconColor: string;
+} => {
+  switch (activeItem) {
+    case 'dashboard':
+      return {
+        gradient: 'bg-gradient-to-r from-amber-600 to-orange-600',
+        iconBg: 'bg-amber-600',
+        iconColor: 'text-amber-600'
+      };
+    case 'consultas':
+      return {
+        gradient: 'bg-gradient-to-r from-emerald-600 to-green-600',
+        iconBg: 'bg-emerald-600',
+        iconColor: 'text-emerald-600'
+      };
+    case 'calendario':
+      return {
+        gradient: 'bg-gradient-to-r from-cyan-600 to-blue-600',
+        iconBg: 'bg-cyan-600',
+        iconColor: 'text-cyan-600'
+      };
+    case 'medicos':
+      return {
+        gradient: 'bg-gradient-to-r from-blue-600 to-indigo-600',
+        iconBg: 'bg-blue-600',
+        iconColor: 'text-blue-600'
+      };
+    case 'usuarios':
+      return {
+        gradient: 'bg-gradient-to-r from-purple-600 to-violet-600',
+        iconBg: 'bg-purple-600',
+        iconColor: 'text-purple-600'
+      };
+    case 'centros':
+      return {
+        gradient: 'bg-gradient-to-r from-teal-600 to-emerald-600',
+        iconBg: 'bg-teal-600',
+        iconColor: 'text-teal-600'
+      };
+    case 'especialidades':
+      return {
+        gradient: 'bg-gradient-to-r from-pink-600 to-rose-600',
+        iconBg: 'bg-pink-600',
+        iconColor: 'text-pink-600'
+      };
+    case 'empleados':
+      return {
+        gradient: 'bg-gradient-to-r from-orange-600 to-amber-600',
+        iconBg: 'bg-orange-600',
+        iconColor: 'text-orange-600'
+      };
+    case 'perfil':
+      return {
+        gradient: 'bg-gradient-to-r from-gray-600 to-slate-600',
+        iconBg: 'bg-gray-600',
+        iconColor: 'text-gray-600'
+      };
+    default:
+      return {
+        gradient: 'bg-gradient-to-r from-amber-600 to-orange-600',
+        iconBg: 'bg-amber-600',
+        iconColor: 'text-amber-600'
+      };
+  }
 };
 
 export const getSidebarItemClasses = (
@@ -34,17 +113,23 @@ export const getSidebarItemClasses = (
     // Opción activa según el tipo
     switch (item) {
       case 'dashboard':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-orange-600 to-orange-700 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl shadow-lg";
       case 'consultas':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl shadow-lg";
       case 'calendario':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl shadow-lg";
       case 'medicos':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg";
       case 'usuarios':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-purple-600 to-violet-600 rounded-xl shadow-lg";
       case 'perfil':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-gray-600 to-slate-600 rounded-xl shadow-lg";
+      case 'centros':
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-teal-600 to-emerald-600 rounded-xl shadow-lg";
+      case 'especialidades':
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-pink-600 to-rose-600 rounded-xl shadow-lg";
+      case 'empleados':
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl shadow-lg";
       default:
         return "w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group";
     }
@@ -67,9 +152,9 @@ export const getIconContainerClasses = (
   // Colores de hover específicos para cada opción
   switch (item) {
     case 'dashboard':
-      return "w-10 h-10 bg-gray-700 group-hover:bg-orange-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+      return "w-10 h-10 bg-gray-700 group-hover:bg-amber-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'consultas':
-      return "w-10 h-10 bg-gray-700 group-hover:bg-green-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+      return "w-10 h-10 bg-gray-700 group-hover:bg-emerald-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'calendario':
       return "w-10 h-10 bg-gray-700 group-hover:bg-cyan-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'medicos':
@@ -78,6 +163,12 @@ export const getIconContainerClasses = (
       return "w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'perfil':
       return "w-10 h-10 bg-gray-700 group-hover:bg-gray-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+    case 'centros':
+      return "w-10 h-10 bg-gray-700 group-hover:bg-teal-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+    case 'especialidades':
+      return "w-10 h-10 bg-gray-700 group-hover:bg-pink-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+    case 'empleados':
+      return "w-10 h-10 bg-gray-700 group-hover:bg-orange-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     default:
       return "w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
   }
@@ -92,9 +183,9 @@ export const getIconClasses = (
   if (isActive) {
     switch (item) {
       case 'dashboard':
-        return "h-5 w-5 text-orange-600";
+        return "h-5 w-5 text-amber-600";
       case 'consultas':
-        return "h-5 w-5 text-green-600";
+        return "h-5 w-5 text-emerald-600";
       case 'calendario':
         return "h-5 w-5 text-cyan-600";
       case 'medicos':
@@ -103,6 +194,12 @@ export const getIconClasses = (
         return "h-5 w-5 text-purple-600";
       case 'perfil':
         return "h-5 w-5 text-gray-600";
+      case 'centros':
+        return "h-5 w-5 text-teal-600";
+      case 'especialidades':
+        return "h-5 w-5 text-pink-600";
+      case 'empleados':
+        return "h-5 w-5 text-orange-600";
       default:
         return "h-5 w-5";
     }
@@ -148,6 +245,21 @@ export const getTextClasses = (
         return {
           main: "font-medium",
           sub: "text-xs text-gray-100"
+        };
+      case 'centros':
+        return {
+          main: "font-medium",
+          sub: "text-xs text-green-100"
+        };
+      case 'especialidades':
+        return {
+          main: "font-medium",
+          sub: "text-xs text-purple-100"
+        };
+      case 'empleados':
+        return {
+          main: "font-medium",
+          sub: "text-xs text-orange-100"
         };
       default:
         return {

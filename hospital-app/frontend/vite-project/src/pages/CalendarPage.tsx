@@ -11,13 +11,15 @@ import {
   Calendar, 
   FileText, 
   LogOut,
-  Home,
   Menu,
   X,
   AlertCircle,
   User,
   Stethoscope,
-  BarChart3
+  BarChart3,
+  Building2,
+  Heart,
+  UserCheck
 } from 'lucide-react'
 import { CalendarView } from '../components/Calendar/CalendarView'
 import { AdminBanner } from '../components/AdminBanner'
@@ -124,7 +126,7 @@ export default function CalendarPage() {
           <div className="space-y-2">
             {/* Solo mostrar Dashboard para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/admin/reportes" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <a href="/reportes" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
                 <div className="w-10 h-10 bg-gray-700 group-hover:bg-amber-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                   <BarChart3 className="h-5 w-5" />
                 </div>
@@ -159,13 +161,52 @@ export default function CalendarPage() {
             
             {/* Solo mostrar Médicos para administradores */}
             {user?.rol === 'admin' && (
-              <a href="/admin" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <a href="/medicos" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
                 <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
                   <Stethoscope className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="font-medium">Médicos</div>
                   <div className="text-xs text-gray-400">Personal médico</div>
+                </div>
+              </a>
+            )}
+
+            {/* Solo mostrar Centros para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/centros" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-green-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Centros Médicos</div>
+                  <div className="text-xs text-gray-400">Gestión centros</div>
+                </div>
+              </a>
+            )}
+
+            {/* Solo mostrar Especialidades para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/especialidades" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-purple-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <Heart className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Especialidades</div>
+                  <div className="text-xs text-gray-400">Gestión especialidades</div>
+                </div>
+              </a>
+            )}
+
+            {/* Solo mostrar Empleados para administradores */}
+            {user?.rol === 'admin' && (
+              <a href="/empleados" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+                <div className="w-10 h-10 bg-gray-700 group-hover:bg-orange-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-medium">Empleados</div>
+                  <div className="text-xs text-gray-400">Personal administrativo</div>
                 </div>
               </a>
             )}

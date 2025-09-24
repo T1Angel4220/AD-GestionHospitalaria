@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
-import { ConsultasApi } from '../api/consultasApi'
-import type { Medico } from '../types/consultas'
+import { AdminApi } from '../api/adminApi'
+import type { AdminMedico, AdminMedicoCreate, AdminEspecialidad, AdminCentro } from '../api/adminApi'
 import { 
   Activity, 
   Users, 
@@ -17,22 +17,42 @@ import {
   Calendar,
   FileText,
   X,
-  BarChart3
+  BarChart3,
+  Building2
 } from 'lucide-react'
-import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses } from '../utils/sidebarUtils'
+import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors } from '../utils/sidebarUtils'
 import { AdminBanner } from '../components/AdminBanner'
+import { MedicoModals } from '../components/MedicoModals'
 import { getRoleText } from '../utils/roleUtils'
 
-export default function AdminPage() {
+export default function MedicosPage() {
   const { user, logout } = useAuth()
-  const [medicos, setMedicos] = useState<Medico[]>([])
+  const [medicos, setMedicos] = useState<AdminMedico[]>([])
+  const [especialidades, setEspecialidades] = useState<AdminEspecialidad[]>([])
+  const [centros, setCentros] = useState<AdminCentro[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  
+  // Estados para modales
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedMedico, setSelectedMedico] = useState<AdminMedico | null>(null)
 
-  // Determinar el elemento activo del sidebar
-  const activeItem = getActiveSidebarItem(window.location.pathname)
+  // Determinar el elemento activo del sidebar y obtener colores
+  const activeItem = getActiveSidebarItem(window.location.pathname);
+  const headerColors = getHeaderColors(activeItem);
+
+  // Estados para formularios
+  const [medicoForm, setMedicoForm] = useState<AdminMedicoCreate>({
+    nombres: '',
+    apellidos: '',
+    id_especialidad: 1,
+    id_centro: 1
+  })
+
 
 
   useEffect(() => {
@@ -42,8 +62,14 @@ export default function AdminPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const medicosData = await ConsultasApi.getMedicos()
+      const [medicosData, especialidadesData, centrosData] = await Promise.all([
+        AdminApi.getMedicos(),
+        AdminApi.getEspecialidades(),
+        AdminApi.getCentros()
+      ])
       setMedicos(medicosData)
+      setEspecialidades(especialidadesData)
+      setCentros(centrosData)
       setError(null)
     } catch (err) {
       setError("Error al cargar los datos")
@@ -51,6 +77,69 @@ export default function AdminPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCreateMedico = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    try {
+      await AdminApi.createMedico(medicoForm)
+      setIsCreateModalOpen(false)
+      setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
+      loadData()
+    } catch (err) {
+      setError("Error al crear el médico")
+      console.error(err)
+    }
+  }
+
+  const handleEditMedico = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedMedico) return
+    setError(null)
+
+    try {
+      await AdminApi.updateMedico(selectedMedico.id, medicoForm)
+      setIsEditModalOpen(false)
+      setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
+      setSelectedMedico(null)
+      loadData()
+    } catch (err) {
+      setError("Error al actualizar el médico")
+      console.error(err)
+    }
+  }
+
+  const handleDeleteMedico = async () => {
+    if (!selectedMedico) return
+    setError(null)
+
+    try {
+      await AdminApi.deleteMedico(selectedMedico.id)
+      setIsDeleteModalOpen(false)
+      setSelectedMedico(null)
+      loadData()
+    } catch (err) {
+      setError("Error al eliminar el médico")
+      console.error(err)
+    }
+  }
+
+  const openEditModal = (medico: AdminMedico) => {
+    setSelectedMedico(medico)
+    setMedicoForm({
+      nombres: medico.nombres,
+      apellidos: medico.apellidos,
+      id_especialidad: medico.id_especialidad,
+      id_centro: medico.id_centro
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const openDeleteModal = (medico: AdminMedico) => {
+    setSelectedMedico(medico)
+    setIsDeleteModalOpen(true)
   }
 
   const filteredMedicos = medicos.filter(medico =>
@@ -70,10 +159,10 @@ export default function AdminPage() {
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-gray-900 to-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl`}>
         {/* Logo Section */}
-        <div className="flex items-center justify-between h-20 px-6 bg-gradient-to-r from-blue-600 to-blue-700">
+        <div className={`flex items-center justify-between h-20 px-6 ${headerColors.gradient}`}>
           <div className="flex items-center">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mr-3">
-              <Activity className="h-8 w-8 text-blue-600" />
+              <Activity className={`h-8 w-8 ${headerColors.iconColor}`} />
             </div>
             <div>
               <span className="text-white text-xl font-bold">HospitalApp</span>
@@ -92,7 +181,7 @@ export default function AdminPage() {
         <nav className="mt-8 px-4">
           <div className="space-y-2">
             {/* Dashboard - solo para administradores */}
-            <a href="/admin/reportes" className={getSidebarItemClasses('dashboard', activeItem)}>
+            <a href="/reportes" className={getSidebarItemClasses('dashboard', activeItem)}>
               <div className={getIconContainerClasses('dashboard', activeItem)}>
                 <BarChart3 className={getIconClasses('dashboard', activeItem)} />
               </div>
@@ -125,13 +214,46 @@ export default function AdminPage() {
             </a>
             
             {/* Médicos - solo para administradores */}
-            <a href="/admin" className={getSidebarItemClasses('medicos', activeItem)}>
+            <a href="/medicos" className={getSidebarItemClasses('medicos', activeItem)}>
               <div className={getIconContainerClasses('medicos', activeItem)}>
                 <Stethoscope className={getIconClasses('medicos', activeItem)} />
               </div>
               <div>
                 <div className={getTextClasses('medicos', activeItem).main}>Médicos</div>
                 <div className={getTextClasses('medicos', activeItem).sub}>Personal médico</div>
+              </div>
+            </a>
+            
+            {/* Centros Médicos */}
+            <a href="/centros" className={getSidebarItemClasses('centros', activeItem)}>
+              <div className={getIconContainerClasses('centros', activeItem)}>
+                <Building2 className={getIconClasses('centros', activeItem)} />
+              </div>
+              <div>
+                <div className={getTextClasses('centros', activeItem).main}>Centros</div>
+                <div className={getTextClasses('centros', activeItem).sub}>Centros médicos</div>
+              </div>
+            </a>
+            
+            {/* Especialidades */}
+            <a href="/especialidades" className={getSidebarItemClasses('especialidades', activeItem)}>
+              <div className={getIconContainerClasses('especialidades', activeItem)}>
+                <Activity className={getIconClasses('especialidades', activeItem)} />
+              </div>
+              <div>
+                <div className={getTextClasses('especialidades', activeItem).main}>Especialidades</div>
+                <div className={getTextClasses('especialidades', activeItem).sub}>Especialidades médicas</div>
+              </div>
+            </a>
+            
+            {/* Empleados */}
+            <a href="/empleados" className={getSidebarItemClasses('empleados', activeItem)}>
+              <div className={getIconContainerClasses('empleados', activeItem)}>
+                <Users className={getIconClasses('empleados', activeItem)} />
+              </div>
+              <div>
+                <div className={getTextClasses('empleados', activeItem).main}>Empleados</div>
+                <div className={getTextClasses('empleados', activeItem).sub}>Personal administrativo</div>
               </div>
             </a>
             
@@ -187,7 +309,7 @@ export default function AdminPage() {
       {/* Main Content */}
       <div className="lg:ml-72">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg">
+        <div className={`${headerColors.gradient} shadow-lg`}>
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-8">
               <div className="flex items-center">
@@ -198,7 +320,10 @@ export default function AdminPage() {
                   <Menu className="h-6 w-6" />
                 </button>
                 <div className="ml-4">
-                  <h1 className="text-3xl font-bold text-white">Gestión de Médicos</h1>
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    <Stethoscope className={`h-8 w-8 mr-3 ${headerColors.iconColor}`} />
+                    Gestión de Médicos
+                  </h1>
                   <p className="text-blue-100 mt-1">Administra el personal médico del hospital</p>
                 </div>
               </div>
@@ -276,13 +401,14 @@ export default function AdminPage() {
                     />
                   </div>
             <div className="mt-4 sm:mt-0 sm:ml-4">
-                  <button
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
                 className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-105"
               >
                 <Stethoscope className="h-5 w-5 mr-2" />
-                    Crear Médico
-                  </button>
-          </div>
+                Crear Médico
+              </button>
+            </div>
         </div>
 
           {/* Médicos List */}
@@ -341,23 +467,45 @@ export default function AdminPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => openEditModal(medico)}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          >
                             <Edit className="h-4 w-4" />
-                  </button>
-                          <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                          </button>
+                          <button 
+                            onClick={() => openDeleteModal(medico)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          >
                             <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            </div>
           </div>
         </div>
+      </div>
 
+      <MedicoModals
+        isCreateModalOpen={isCreateModalOpen}
+        setIsCreateModalOpen={setIsCreateModalOpen}
+        isEditModalOpen={isEditModalOpen}
+        setIsEditModalOpen={setIsEditModalOpen}
+        isDeleteModalOpen={isDeleteModalOpen}
+        setIsDeleteModalOpen={setIsDeleteModalOpen}
+        selectedMedico={selectedMedico}
+        medicoForm={medicoForm}
+        setMedicoForm={setMedicoForm}
+        especialidades={especialidades}
+        centros={centros}
+        handleCreateMedico={handleCreateMedico}
+        handleEditMedico={handleEditMedico}
+        handleDeleteMedico={handleDeleteMedico}
+      />
     </div>
   )
 }
