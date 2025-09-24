@@ -392,6 +392,175 @@ export const useValidation = () => {
     return validateEspecialidad(formData.nombre);
   }, [validateEspecialidad]);
 
+  // Validar cédula
+  const validateCedula = useCallback((cedula: string): boolean => {
+    if (!cedula || typeof cedula !== 'string') {
+      setError('cedula', 'Cédula es obligatoria');
+      return false;
+    }
+    
+    const trimmedCedula = cedula.trim();
+    
+    if (trimmedCedula.length < 7) {
+      setError('cedula', 'Cédula debe tener al menos 7 caracteres');
+      return false;
+    }
+    
+    if (trimmedCedula.length > 15) {
+      setError('cedula', 'Cédula no puede exceder 15 caracteres');
+      return false;
+    }
+    
+    // Solo números
+    if (!/^[0-9]+$/.test(trimmedCedula)) {
+      setError('cedula', 'Cédula solo puede contener números');
+      return false;
+    }
+    
+    clearError('cedula');
+    return true;
+  }, [setError, clearError]);
+
+  // Validar teléfono
+  const validateTelefono = useCallback((telefono: string): boolean => {
+    if (!telefono || typeof telefono !== 'string') {
+      setError('telefono', 'Teléfono es obligatorio');
+      return false;
+    }
+    
+    const trimmedTelefono = telefono.trim();
+    
+    if (trimmedTelefono.length < 7) {
+      setError('telefono', 'Teléfono debe tener al menos 7 caracteres');
+      return false;
+    }
+    
+    if (trimmedTelefono.length > 15) {
+      setError('telefono', 'Teléfono no puede exceder 15 caracteres');
+      return false;
+    }
+    
+    // Solo números
+    if (!/^[0-9]+$/.test(trimmedTelefono)) {
+      setError('telefono', 'Teléfono solo puede contener números');
+      return false;
+    }
+    
+    clearError('telefono');
+    return true;
+  }, [setError, clearError]);
+
+  // Validar email obligatorio
+  const validateEmailRequired = useCallback((email: string): boolean => {
+    if (!email || typeof email !== 'string') {
+      setError('email', 'Email es obligatorio');
+      return false;
+    }
+    
+    const trimmedEmail = email.trim();
+    
+    if (trimmedEmail.length > 150) {
+      setError('email', 'Email no puede exceder 150 caracteres');
+      return false;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('email', 'Formato de email inválido');
+      return false;
+    }
+    
+    clearError('email');
+    return true;
+  }, [setError, clearError]);
+
+  // Validar fecha de nacimiento
+  const validateFechaNacimiento = useCallback((fecha: string): boolean => {
+    if (!fecha || typeof fecha !== 'string') {
+      setError('fecha_nacimiento', 'Fecha de nacimiento es obligatoria');
+      return false;
+    }
+    
+    const fechaNacimiento = new Date(fecha);
+    
+    // Verificar que la fecha es válida
+    if (isNaN(fechaNacimiento.getTime())) {
+      setError('fecha_nacimiento', 'Formato de fecha inválido');
+      return false;
+    }
+    
+    // No permitir fechas futuras (incluyendo el día siguiente)
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Establecer a medianoche
+    if (fechaNacimiento >= hoy) {
+      setError('fecha_nacimiento', 'La fecha de nacimiento debe ser anterior a hoy');
+      return false;
+    }
+    
+    // No permitir fechas muy antiguas (más de 120 años)
+    const fechaLimite = new Date();
+    fechaLimite.setFullYear(fechaLimite.getFullYear() - 120);
+    if (fechaNacimiento < fechaLimite) {
+      setError('fecha_nacimiento', 'La fecha de nacimiento no puede ser anterior a hace 120 años');
+      return false;
+    }
+    
+    clearError('fecha_nacimiento');
+    return true;
+  }, [setError, clearError]);
+
+  // Validar género
+  const validateGenero = useCallback((genero: string): boolean => {
+    if (!genero || typeof genero !== 'string') {
+      setError('genero', 'Género es obligatorio');
+      return false;
+    }
+    
+    if (!['M', 'F', 'O'].includes(genero)) {
+      setError('genero', 'Género debe ser Masculino, Femenino u Otro');
+      return false;
+    }
+    
+    clearError('genero');
+    return true;
+  }, [setError, clearError]);
+
+  // Validar dirección
+  const validateDireccion = useCallback((direccion: string): boolean => {
+    if (!direccion || typeof direccion !== 'string') {
+      setError('direccion', 'Dirección es obligatoria');
+      return false;
+    }
+    
+    const trimmedDireccion = direccion.trim();
+    
+    if (trimmedDireccion.length > 200) {
+      setError('direccion', 'Dirección no puede exceder 200 caracteres');
+      return false;
+    }
+    
+    clearError('direccion');
+    return true;
+  }, [setError, clearError]);
+
+  // Validar formulario completo de paciente
+  const validatePaciente = useCallback((formData: any): boolean => {
+    let isValid = true;
+    
+    // Validar todos los campos (ahora todos son obligatorios)
+    if (!validateName(formData.nombres, 'nombres')) isValid = false;
+    if (!validateName(formData.apellidos, 'apellidos')) isValid = false;
+    if (!validateCedula(formData.cedula)) isValid = false;
+    if (!validateTelefono(formData.telefono)) isValid = false;
+    if (!validateEmailRequired(formData.email)) isValid = false;
+    if (!validateFechaNacimiento(formData.fecha_nacimiento)) isValid = false;
+    if (!validateGenero(formData.genero)) isValid = false;
+    if (!validateDireccion(formData.direccion)) isValid = false;
+    if (!validateId(formData.id_centro, 'id_centro')) isValid = false;
+    
+    return isValid;
+  }, [validateName, validateId, validateCedula, validateTelefono, validateEmailRequired, validateFechaNacimiento, validateGenero, validateDireccion]);
+
   return {
     errors,
     clearError,
@@ -409,12 +578,19 @@ export const useValidation = () => {
     validateCentroName,
     validateCiudad,
     validateEspecialidad,
+    validateCedula,
+    validateTelefono,
+    validateEmailRequired,
+    validateFechaNacimiento,
+    validateGenero,
+    validateDireccion,
     sanitizeText,
     validateConsulta,
     validateMedico,
     validateUsuario,
     validateEmpleado,
     validateCentro,
-    validateEspecialidadForm
+    validateEspecialidadForm,
+    validatePaciente
   };
 };

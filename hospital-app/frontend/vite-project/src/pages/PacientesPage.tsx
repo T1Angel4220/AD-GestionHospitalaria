@@ -37,7 +37,20 @@ import { getRoleText } from '../utils/roleUtils'
 
 export default function PacientesPage() {
   const { user, logout } = useAuth()
-  const { errors, clearAllErrors, sanitizeText } = useValidation()
+  const { 
+    errors, 
+    clearAllErrors, 
+    sanitizeText,
+    validatePaciente,
+    validateName,
+    validateCedula,
+    validateTelefono,
+    validateEmailRequired,
+    validateFechaNacimiento,
+    validateGenero,
+    validateDireccion,
+    validateId
+  } = useValidation()
   const [pacientes, setPacientes] = useState<Paciente[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +108,6 @@ export default function PacientesPage() {
       setPacientes(data)
     } catch (err) {
       setError("Error al cargar los pacientes")
-      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -106,7 +118,7 @@ export default function PacientesPage() {
       const centrosData = await PacientesApi.getCentros()
       setCentros(centrosData)
     } catch (err) {
-      console.error("Error al cargar datos relacionados:", err)
+      // Error silencioso al cargar datos relacionados
     }
   }
 
@@ -126,9 +138,9 @@ export default function PacientesPage() {
       direccion: sanitizeText(formData.direccion || '')
     }
 
-    // Validar formulario básico
-    if (!sanitizedFormData.nombres?.trim() || !sanitizedFormData.apellidos?.trim()) {
-      setError("Nombres y apellidos son obligatorios")
+    // Validar formulario completo
+    if (!validatePaciente(sanitizedFormData)) {
+      setError("Por favor corrige los errores en el formulario")
       return
     }
 
@@ -167,19 +179,110 @@ export default function PacientesPage() {
       }
     } catch (err) {
       setError("Error al guardar el paciente")
-      console.error(err)
+    }
+  }
+
+  // Funciones de validación en tiempo real
+  const handleNombresChange = (value: string) => {
+    setFormData(prev => ({ ...prev, nombres: value }))
+    validateName(value, 'nombres')
+  }
+
+  const handleApellidosChange = (value: string) => {
+    setFormData(prev => ({ ...prev, apellidos: value }))
+    validateName(value, 'apellidos')
+  }
+
+  const handleCedulaChange = (value: string) => {
+    setFormData(prev => ({ ...prev, cedula: value }))
+    validateCedula(value)
+  }
+
+  const handleTelefonoChange = (value: string) => {
+    setFormData(prev => ({ ...prev, telefono: value }))
+    validateTelefono(value)
+  }
+
+  const handleEmailChange = (value: string) => {
+    setFormData(prev => ({ ...prev, email: value }))
+    validateEmailRequired(value)
+  }
+
+  const handleFechaNacimientoChange = (value: string) => {
+    setFormData(prev => ({ ...prev, fecha_nacimiento: value }))
+    validateFechaNacimiento(value)
+  }
+
+  const handleGeneroChange = (value: string) => {
+    setFormData(prev => ({ ...prev, genero: value as 'M' | 'F' | 'O' }))
+    validateGenero(value)
+  }
+
+  const handleDireccionChange = (value: string) => {
+    setFormData(prev => ({ ...prev, direccion: value }))
+    validateDireccion(value)
+  }
+
+  const handleCentroChange = (value: string) => {
+    const centroId = Number(value)
+    setFormData(prev => ({ ...prev, id_centro: centroId }))
+    validateId(centroId, 'id_centro')
+    const centro = centros.find(c => c.id === centroId)
+    if (centro) {
+      setSelectedCentro(`${centro.nombre} - ${centro.ciudad}`)
+    }
+  }
+
+  // Funciones para bloquear caracteres no permitidos
+  const handleKeyDownNumbers = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Permitir teclas de control (backspace, delete, tab, escape, enter, etc.)
+    if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
+        e.key === 'Escape' || e.key === 'Enter' || e.key === 'ArrowLeft' || 
+        e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End' ||
+        (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))) {
+      return;
+    }
+    
+    // Solo permitir números
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  }
+
+  const handleKeyDownLetters = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Permitir teclas de control (backspace, delete, tab, escape, enter, etc.)
+    if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
+        e.key === 'Escape' || e.key === 'Enter' || e.key === 'ArrowLeft' || 
+        e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End' ||
+        (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))) {
+      return;
+    }
+    
+    // Solo permitir letras y espacios
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]$/.test(e.key)) {
+      e.preventDefault();
     }
   }
 
   const handleEdit = (paciente: Paciente) => {
     setEditingPaciente(paciente)
+    
+    // Formatear fecha de nacimiento para el input de tipo date
+    let fechaFormateada = ''
+    if (paciente.fecha_nacimiento) {
+      const fecha = new Date(paciente.fecha_nacimiento)
+      if (!isNaN(fecha.getTime())) {
+        fechaFormateada = fecha.toISOString().split('T')[0]
+      }
+    }
+    
     setFormData({
       nombres: paciente.nombres,
       apellidos: paciente.apellidos,
       cedula: paciente.cedula,
       telefono: paciente.telefono,
       email: paciente.email,
-      fecha_nacimiento: paciente.fecha_nacimiento,
+      fecha_nacimiento: fechaFormateada,
       genero: paciente.genero,
       direccion: paciente.direccion,
       id_centro: paciente.id_centro,
@@ -208,7 +311,6 @@ export default function PacientesPage() {
       setPacienteToDelete(null)
     } catch (err) {
       setError("Error al eliminar el paciente")
-      console.error(err)
     }
   }
 
@@ -228,7 +330,6 @@ export default function PacientesPage() {
       resetForm()
     } catch (err) {
       setError("Error al actualizar el paciente")
-      console.error(err)
     }
   }
 
@@ -761,22 +862,6 @@ export default function PacientesPage() {
                             <CalendarIcon className="h-3 w-3" />
                             <span>Registrado</span>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEdit(paciente)}
-                              className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-white hover:bg-red-600 rounded-xl transition-all duration-200 transform hover:scale-105"
-                            >
-                              Editar
-                            </button>
-                            {user?.rol === 'admin' && (
-                              <button
-                                onClick={() => handleDeleteClick(paciente)}
-                                className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-white hover:bg-red-500 rounded-xl transition-all duration-200 transform hover:scale-105"
-                              >
-                                Eliminar
-                              </button>
-                            )}
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -848,34 +933,44 @@ export default function PacientesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="nombres" className="block text-base font-semibold text-gray-700 mb-1">
-                      Nombres
+                      Nombres <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       id="nombres"
                       value={formData.nombres || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, nombres: e.target.value }))}
+                      onChange={(e) => handleNombresChange(e.target.value)}
+                      onKeyDown={handleKeyDownLetters}
                       required
                       className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.nombres ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Ingresa los nombres del paciente"
                     />
                     {errors.nombres && (
-                      <p className="mt-1 text-sm text-red-600">{errors.nombres}</p>
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.nombres}
+                      </p>
                     )}
                   </div>
                   <div>
                     <label htmlFor="apellidos" className="block text-base font-semibold text-gray-700 mb-1">
-                      Apellidos
+                      Apellidos <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       id="apellidos"
                       value={formData.apellidos || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, apellidos: e.target.value }))}
+                      onChange={(e) => handleApellidosChange(e.target.value)}
+                      onKeyDown={handleKeyDownLetters}
                       required
                       className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.apellidos ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Ingresa los apellidos del paciente"
                     />
                     {errors.apellidos && (
-                      <p className="mt-1 text-sm text-red-600">{errors.apellidos}</p>
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.apellidos}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -883,77 +978,117 @@ export default function PacientesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="cedula" className="block text-base font-semibold text-gray-700 mb-1">
-                      Cédula
+                      Cédula <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       id="cedula"
                       value={formData.cedula || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, cedula: e.target.value }))}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                      onChange={(e) => handleCedulaChange(e.target.value)}
+                      onKeyDown={handleKeyDownNumbers}
+                      required
+                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.cedula ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Solo números"
                     />
+                    {errors.cedula && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.cedula}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label htmlFor="telefono" className="block text-base font-semibold text-gray-700 mb-1">
-                      Teléfono
+                      Teléfono <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
                       id="telefono"
                       value={formData.telefono || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, telefono: e.target.value }))}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                      onChange={(e) => handleTelefonoChange(e.target.value)}
+                      onKeyDown={handleKeyDownNumbers}
+                      required
+                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Solo números"
                     />
+                    {errors.telefono && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.telefono}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="email" className="block text-base font-semibold text-gray-700 mb-1">
-                      Email
+                      Email <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="email"
                       id="email"
                       value={formData.email || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      required
+                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Ej: paciente@email.com"
                     />
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.email}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label htmlFor="fecha_nacimiento" className="block text-base font-semibold text-gray-700 mb-1">
-                      Fecha de Nacimiento
+                      Fecha de Nacimiento <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
                       id="fecha_nacimiento"
                       value={formData.fecha_nacimiento || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, fecha_nacimiento: e.target.value }))}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                      onChange={(e) => handleFechaNacimientoChange(e.target.value)}
+                      required
+                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.fecha_nacimiento ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.fecha_nacimiento && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.fecha_nacimiento}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="genero" className="block text-base font-semibold text-gray-700 mb-1">
-                      Género
+                      Género <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="genero"
                       value={formData.genero || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, genero: e.target.value as 'M' | 'F' | 'O' }))}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                      onChange={(e) => handleGeneroChange(e.target.value)}
+                      required
+                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.genero ? 'border-red-500' : 'border-gray-300'}`}
                     >
                       <option value="">Seleccionar género</option>
                       <option value="M">Masculino</option>
                       <option value="F">Femenino</option>
                       <option value="O">Otro</option>
                     </select>
+                    {errors.genero && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.genero}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label htmlFor="id_centro" className="block text-base font-semibold text-gray-700 mb-1">
-                      Centro Médico
+                      Centro Médico <span className="text-red-500">*</span>
                     </label>
                     {user?.rol === 'medico' ? (
                       <input
@@ -966,16 +1101,9 @@ export default function PacientesPage() {
                       <select
                         id="id_centro"
                         value={formData.id_centro || ''}
-                        onChange={(e) => {
-                          const centroId = Number(e.target.value)
-                          setFormData((prev) => ({ ...prev, id_centro: centroId }))
-                          const centro = centros.find(c => c.id === centroId)
-                          if (centro) {
-                            setSelectedCentro(`${centro.nombre} - ${centro.ciudad}`)
-                          }
-                        }}
+                        onChange={(e) => handleCentroChange(e.target.value)}
                         required
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                        className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.id_centro ? 'border-red-500' : 'border-gray-300'}`}
                       >
                         <option value="">Seleccionar centro</option>
                         {centros.map((centro) => (
@@ -985,37 +1113,67 @@ export default function PacientesPage() {
                         ))}
                       </select>
                     )}
+                    {errors.id_centro && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.id_centro}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <label htmlFor="direccion" className="block text-base font-semibold text-gray-700 mb-1">
-                    Dirección
+                    Dirección <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     id="direccion"
                     value={formData.direccion || ''}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, direccion: e.target.value }))}
+                    onChange={(e) => handleDireccionChange(e.target.value)}
                     placeholder="Dirección completa del paciente..."
                     rows={3}
-                    className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                    required
+                    className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all ${errors.direccion ? 'border-red-500' : 'border-gray-300'}`}
                   />
+                  {errors.direccion && (
+                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.direccion}
+                    </p>
+                  )}
                 </div>
 
-                <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 transform hover:scale-105"
-                  >
-                    {editingPaciente ? "Actualizar" : "Crear"} Paciente
-                  </button>
+                <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                  <div className="text-sm text-gray-500">
+                    <span className="text-red-500">*</span> Campos obligatorios
+                  </div>
+                  <div className="flex space-x-4">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={
+                        Object.keys(errors).length > 0 || 
+                        !formData.nombres?.trim() || 
+                        !formData.apellidos?.trim() || 
+                        !formData.cedula?.trim() ||
+                        !formData.telefono?.trim() ||
+                        !formData.email?.trim() ||
+                        !formData.fecha_nacimiento ||
+                        !formData.genero ||
+                        !formData.direccion?.trim() ||
+                        !formData.id_centro
+                      }
+                      className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    >
+                      {editingPaciente ? "Actualizar" : "Crear"} Paciente
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
