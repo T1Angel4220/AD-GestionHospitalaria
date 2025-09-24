@@ -190,12 +190,19 @@ export const ReportesPage: React.FC = () => {
 
       let yPosition = 20;
 
-      // Encabezado principal
-      addRect(0, 0, 210, 30, primaryColor);
-      addText('HOSPITALAPP', 20, 15, { fontSize: 20, color: [255, 255, 255] });
-      addText('Sistema de Gestión Hospitalaria', 20, 22, { fontSize: 10, color: [255, 255, 255] });
+      // Encabezado principal mejorado
+      addRect(0, 0, 210, 35, primaryColor);
       
-      // Fecha de generación
+      // Logo/Icono
+      addRect(10, 5, 25, 25, [255, 255, 255]);
+      addText('🏥', 18, 18, { fontSize: 16, color: primaryColor });
+      
+      // Título principal
+      addText('HOSPITALAPP', 40, 15, { fontSize: 22, color: [255, 255, 255] });
+      addText('Sistema de Gestión Hospitalaria', 40, 22, { fontSize: 11, color: [255, 255, 255] });
+      addText('Reporte de Consultas Médicas', 40, 28, { fontSize: 9, color: [255, 248, 220] });
+      
+      // Fecha de generación con mejor formato
       const fechaActual = new Date().toLocaleDateString('es-ES', {
         year: 'numeric',
         month: 'long',
@@ -203,53 +210,61 @@ export const ReportesPage: React.FC = () => {
         hour: '2-digit',
         minute: '2-digit'
       });
-      addText(`Generado el: ${fechaActual}`, 150, 15, { fontSize: 10, color: [255, 255, 255] });
+      addText(`📅 Generado: ${fechaActual}`, 130, 15, { fontSize: 9, color: [255, 255, 255] });
+      addText(`👤 Usuario: ${user?.email || 'Sistema'}`, 130, 22, { fontSize: 8, color: [255, 248, 220] });
 
       yPosition = 40;
 
-      // Título del reporte
-      addText('REPORTE DE CONSULTAS MÉDICAS', 20, yPosition, { fontSize: 16, color: primaryColor });
-      yPosition += 10;
+      // Título del reporte con mejor diseño
+      addText('📊 REPORTE DE CONSULTAS MÉDICAS', 20, yPosition, { fontSize: 16, color: primaryColor });
+      yPosition += 12;
 
-      // Información de filtros
-      addText('Parámetros del Reporte:', 20, yPosition, { fontSize: 12, color: textColor });
+      // Caja de información de filtros
+      addRect(15, yPosition - 5, 180, 35, [248, 250, 252]); // gris muy claro
+      addLine(15, yPosition - 5, 195, yPosition - 5, primaryColor);
+      addLine(15, yPosition + 30, 195, yPosition + 30, primaryColor);
+      
+      addText('🔍 Parámetros del Reporte:', 20, yPosition + 5, { fontSize: 12, color: primaryColor });
       yPosition += 8;
 
       const filtrosInfo = [
-        `Período: ${filtros.desde && filtros.hasta ? `${filtros.desde} - ${filtros.hasta}` : filtros.desde ? `Desde ${filtros.desde}` : filtros.hasta ? `Hasta ${filtros.hasta}` : 'Todos los registros'}`,
-        `Centro Médico: ID ${filtros.centroId}`,
-        `Búsqueda: ${filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}`,
-        `Total de registros: ${data.length} médico${data.length !== 1 ? 's' : ''}`
+        `📅 Período: ${filtros.desde && filtros.hasta ? `${filtros.desde} - ${filtros.hasta}` : filtros.desde ? `Desde ${filtros.desde}` : filtros.hasta ? `Hasta ${filtros.hasta}` : 'Todos los registros'}`,
+        `🏥 Centro Médico: ID ${filtros.centroId}`,
+        `🔎 Búsqueda: ${filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}`,
+        `👥 Total de registros: ${data.length} médico${data.length !== 1 ? 's' : ''}`
       ];
 
-      filtrosInfo.forEach(info => {
-        addText(`• ${info}`, 25, yPosition, { fontSize: 10, color: textColor });
-        yPosition += 6;
+      filtrosInfo.forEach((info, index) => {
+        addText(info, 25, yPosition + (index * 4), { fontSize: 9, color: textColor });
       });
 
-      yPosition += 10;
+      yPosition += 40;
 
-      // Estadísticas resumidas
+      // Estadísticas resumidas con mejor diseño
       const totalConsultas = data.reduce((sum, medico) => sum + medico.total_consultas, 0);
       const promedioConsultas = data.length > 0 ? (totalConsultas / data.length).toFixed(1) : 0;
       const especialidadesUnicas = new Set(data.map(medico => medico.especialidad)).size;
 
-      addText('Resumen Estadístico:', 20, yPosition, { fontSize: 12, color: textColor });
+      // Caja de estadísticas
+      addRect(15, yPosition - 5, 180, 30, [240, 248, 255]); // azul muy claro
+      addLine(15, yPosition - 5, 195, yPosition - 5, [59, 130, 246]);
+      addLine(15, yPosition + 25, 195, yPosition + 25, [59, 130, 246]);
+      
+      addText('📈 Resumen Estadístico:', 20, yPosition + 5, { fontSize: 12, color: [59, 130, 246] });
       yPosition += 8;
 
       const estadisticas = [
-        `Total de Consultas: ${totalConsultas.toLocaleString()}`,
-        `Médicos Activos: ${data.length}`,
-        `Promedio por Médico: ${promedioConsultas}`,
-        `Especialidades: ${especialidadesUnicas}`
+        `📊 Total de Consultas: ${totalConsultas.toLocaleString()}`,
+        `👨‍⚕️ Médicos Activos: ${data.length}`,
+        `📊 Promedio por Médico: ${promedioConsultas}`,
+        `🏥 Especialidades: ${especialidadesUnicas}`
       ];
 
-      estadisticas.forEach(stat => {
-        addText(`• ${stat}`, 25, yPosition, { fontSize: 10, color: textColor });
-        yPosition += 6;
+      estadisticas.forEach((stat, index) => {
+        addText(stat, 25, yPosition + (index * 4), { fontSize: 9, color: textColor });
       });
 
-      yPosition += 15;
+      yPosition += 35;
 
       // Tabla de datos
       addText('Detalle por Médico:', 20, yPosition, { fontSize: 12, color: textColor });
@@ -298,75 +313,98 @@ export const ReportesPage: React.FC = () => {
       let currentY = finalY + 20;
 
       // Agregar detalles de consultas por médico
-      addText('DETALLES DE CONSULTAS POR MÉDICO', 20, currentY, { fontSize: 14, color: primaryColor });
+      addText('📋 DETALLES DE CONSULTAS POR MÉDICO', 20, currentY, { fontSize: 14, color: primaryColor });
       currentY += 15;
 
+      // Función para verificar espacio y agregar nueva página si es necesario
+      const checkPageSpace = (requiredSpace: number) => {
+        const pageHeight = doc.internal.pageSize.height;
+        const availableSpace = pageHeight - currentY - 50;
+        
+        if (availableSpace < requiredSpace) {
+          doc.addPage();
+          currentY = 20;
+          return true;
+        }
+        return false;
+      };
+
+      // Función para agregar sección de médico con mejor diseño
+      const addMedicoSection = (medico: ConsultaResumen, consultas: ConsultaDetalle[]) => {
+        if (consultas.length === 0) return;
+
+        // Verificar espacio para la sección completa
+        const estimatedSpace = 80 + (consultas.length * 8);
+        checkPageSpace(estimatedSpace);
+
+        // Fondo para el título del médico
+        addRect(15, currentY - 5, 180, 25, [240, 248, 255]); // azul muy claro
+        addLine(15, currentY - 5, 195, currentY - 5, [59, 130, 246]); // línea azul superior
+        addLine(15, currentY + 20, 195, currentY + 20, [59, 130, 246]); // línea azul inferior
+
+        // Título del médico con mejor formato
+        addText(`👨‍⚕️ Dr. ${medico.nombres} ${medico.apellidos}`, 20, currentY + 5, { fontSize: 12, color: [59, 130, 246] });
+        addText(`🏥 ${medico.especialidad}`, 20, currentY + 12, { fontSize: 10, color: [107, 114, 128] });
+        addText(`📊 Total consultas: ${consultas.length}`, 120, currentY + 12, { fontSize: 10, color: [107, 114, 128] });
+        currentY += 25;
+
+        // Crear tabla de detalles con mejor diseño
+        const detalleTableData = consultas.map((consulta, index) => [
+          new Date(consulta.fecha).toLocaleDateString('es-ES'),
+          `${consulta.paciente_nombre} ${consulta.paciente_apellido}`,
+          consulta.cedula || 'N/A',
+          consulta.motivo || 'Sin motivo',
+          consulta.diagnostico || 'Sin diagnóstico',
+          consulta.estado.charAt(0).toUpperCase() + consulta.estado.slice(1)
+        ]);
+
+        autoTable(doc, {
+          head: [['📅 Fecha', '👤 Paciente', '🆔 Cédula', '📝 Motivo', '🔍 Diagnóstico', '📊 Estado']],
+          body: detalleTableData,
+          startY: currentY,
+          styles: {
+            fontSize: 8,
+            cellPadding: 3,
+            overflow: 'linebreak',
+            halign: 'left',
+            lineColor: [209, 213, 219]
+          },
+          headStyles: {
+            fillColor: [59, 130, 246],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 9
+          },
+          alternateRowStyles: {
+            fillColor: [249, 250, 251]
+          },
+          columnStyles: {
+            0: { cellWidth: 25, halign: 'center' }, // Fecha
+            1: { cellWidth: 35 }, // Paciente
+            2: { cellWidth: 20, halign: 'center' }, // Cédula
+            3: { cellWidth: 30 }, // Motivo
+            4: { cellWidth: 30 }, // Diagnóstico
+            5: { cellWidth: 20, halign: 'center' }  // Estado
+          },
+          margin: { left: 20, right: 20 },
+          tableLineColor: [59, 130, 246],
+          tableLineWidth: 0.5
+        });
+
+        // Obtener la posición final después de esta tabla
+        const detalleFinalY = (doc as any).lastAutoTable.finalY || currentY + 50;
+        currentY = detalleFinalY + 15;
+
+        // Línea separadora decorativa
+        addLine(20, currentY, 190, currentY, [59, 130, 246]);
+        addLine(20, currentY + 1, 190, currentY + 1, [209, 213, 219]);
+        currentY += 10;
+      };
+
+      // Procesar cada médico
       for (const medico of data) {
         const consultasDetalle = detallesConsultas[medico.medico_id] || [];
-        
-        if (consultasDetalle.length > 0) {
-          // Verificar si necesitamos una nueva página
-          const pageHeight = doc.internal.pageSize.height;
-          const availableSpace = pageHeight - currentY - 50;
-          
-          if (availableSpace < 100) {
-            doc.addPage();
-            currentY = 20;
-          }
-
-          // Título del médico
-          addText(`Dr. ${medico.nombres} ${medico.apellidos} - ${medico.especialidad}`, 20, currentY, { fontSize: 12, color: textColor });
-          currentY += 8;
-          addText(`Total de consultas: ${consultasDetalle.length}`, 25, currentY, { fontSize: 10, color: [107, 114, 128] });
-          currentY += 10;
-
-          // Crear tabla de detalles para este médico
-          const detalleTableData = consultasDetalle.map(consulta => [
-            new Date(consulta.fecha).toLocaleDateString('es-ES'),
-            `${consulta.paciente_nombre} ${consulta.paciente_apellido}`,
-            consulta.cedula || 'N/A',
-            consulta.motivo || 'Sin motivo',
-            consulta.diagnostico || 'Sin diagnóstico',
-            consulta.estado
-          ]);
-
-          autoTable(doc, {
-            head: [['Fecha', 'Paciente', 'Cédula', 'Motivo', 'Diagnóstico', 'Estado']],
-            body: detalleTableData,
-            startY: currentY,
-            styles: {
-              fontSize: 8,
-              cellPadding: 2,
-              overflow: 'linebreak',
-              halign: 'left'
-            },
-            headStyles: {
-              fillColor: [59, 130, 246], // azul
-              textColor: [255, 255, 255],
-              fontStyle: 'bold'
-            },
-            alternateRowStyles: {
-              fillColor: [249, 250, 251]
-            },
-            columnStyles: {
-              0: { cellWidth: 25 }, // Fecha
-              1: { cellWidth: 40 }, // Paciente
-              2: { cellWidth: 20 }, // Cédula
-              3: { cellWidth: 35 }, // Motivo
-              4: { cellWidth: 35 }, // Diagnóstico
-              5: { cellWidth: 20 }  // Estado
-            },
-            margin: { left: 20, right: 20 }
-          });
-
-          // Obtener la posición final después de esta tabla
-          const detalleFinalY = (doc as any).lastAutoTable.finalY || currentY + 50;
-          currentY = detalleFinalY + 15;
-
-          // Línea separadora
-          addLine(20, currentY, 190, currentY, [209, 213, 219]);
-          currentY += 10;
-        }
+        addMedicoSection(medico, consultasDetalle);
       }
 
       // Agregar gráficos si hay datos
