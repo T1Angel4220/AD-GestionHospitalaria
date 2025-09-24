@@ -17,7 +17,8 @@ import {
   Stethoscope,
   Building2,
   Mail,
-  Shield
+  Shield,
+  UserPlus
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { getRoleText } from '../utils/roleUtils'
@@ -136,6 +137,17 @@ export default function PerfilPage() {
               <div>
                 <div className="font-medium">Consultas</div>
                 <div className="text-xs text-gray-400">Citas médicas</div>
+              </div>
+            </a>
+
+            {/* Pacientes - visible para todos */}
+            <a href="/pacientes" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-red-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <UserPlus className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Pacientes</div>
+                <div className="text-xs text-gray-400">Gestión pacientes</div>
               </div>
             </a>
 

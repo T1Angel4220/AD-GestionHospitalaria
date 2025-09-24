@@ -571,7 +571,7 @@ export default function PacientesPage() {
         <div className="absolute bottom-0 w-full p-4">
           <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
             <div className="flex items-center mb-3">
-              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center mr-3">
+              <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center mr-3">
                 <Users className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
@@ -1148,15 +1148,15 @@ export default function PacientesPage() {
                     <span className="text-red-500">*</span> Campos obligatorios
                   </div>
                   <div className="flex space-x-4">
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-6 py-3 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
                       disabled={
                         Object.keys(errors).length > 0 || 
                         !formData.nombres?.trim() || 
@@ -1170,9 +1170,9 @@ export default function PacientesPage() {
                         !formData.id_centro
                       }
                       className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    >
-                      {editingPaciente ? "Actualizar" : "Crear"} Paciente
-                    </button>
+                  >
+                    {editingPaciente ? "Actualizar" : "Crear"} Paciente
+                  </button>
                   </div>
                 </div>
               </form>
