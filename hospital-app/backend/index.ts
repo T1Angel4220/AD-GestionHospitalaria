@@ -5,6 +5,11 @@ import dotenv from "dotenv";
 import consultasRouter from "./src/routes/consultas";
 import authRouter from "./src/routes/auth";
 import reportsRouter from "./src/routes/reports";
+import medicosRouter from "./src/routes/medicos.routes";
+import empleadosRouter from "./src/routes/empleados.routes";
+import centrosRouter from "./src/routes/centros.routes";
+import especialidadesRouter from "./src/routes/especialidades.routes";
+import usuariosRouter from "./src/routes/usuarios.routes";
 
 dotenv.config();
 
@@ -28,6 +33,13 @@ app.use("/api/consultas", consultasRouter);
 
 // Rutas de reportes
 app.use("/api/reports", reportsRouter);
+
+// Rutas de administración
+app.use("/api/admin/medicos", medicosRouter);
+app.use("/api/admin/empleados", empleadosRouter);
+app.use("/api/admin/centros", centrosRouter);
+app.use("/api/admin/especialidades", especialidadesRouter);
+app.use("/api/admin/usuarios", usuariosRouter);
 
 // Ruta de prueba para verificar conexión
 app.get("/ping", async (req: Request, res: Response) => {
