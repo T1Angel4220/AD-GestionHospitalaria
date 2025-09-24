@@ -45,9 +45,9 @@ export const getHeaderColors = (activeItem: SidebarItem): {
   switch (activeItem) {
     case 'dashboard':
       return {
-        gradient: 'bg-gradient-to-r from-red-600 to-orange-600',
-        iconBg: 'bg-red-600',
-        iconColor: 'text-red-600'
+        gradient: 'bg-gradient-to-r from-orange-600 to-orange-600',
+        iconBg: 'bg-orange-600',
+        iconColor: 'text-orange-600'
       };
     case 'consultas':
       return {
@@ -122,7 +122,7 @@ export const getSidebarItemClasses = (
     // Opción activa según el tipo
     switch (item) {
       case 'dashboard':
-        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-red-600 to-orange-600 rounded-xl shadow-lg";
+        return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-orange-600 to-orange-600 rounded-xl shadow-lg";
       case 'consultas':
         return "w-full flex items-center px-4 py-3 text-white bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl shadow-lg";
       case 'pacientes':
@@ -163,7 +163,7 @@ export const getIconContainerClasses = (
   // Colores de hover específicos para cada opción
   switch (item) {
     case 'dashboard':
-      return "w-10 h-10 bg-gray-700 group-hover:bg-red-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
+      return "w-10 h-10 bg-gray-700 group-hover:bg-orange-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'consultas':
       return "w-10 h-10 bg-gray-700 group-hover:bg-emerald-600 rounded-lg flex items-center justify-center mr-3 transition-colors";
     case 'pacientes':
@@ -196,7 +196,7 @@ export const getIconClasses = (
   if (isActive) {
     switch (item) {
       case 'dashboard':
-        return "h-5 w-5 text-red-600";
+        return "h-5 w-5 text-orange-600";
       case 'consultas':
         return "h-5 w-5 text-emerald-600";
       case 'pacientes':
@@ -305,10 +305,10 @@ export const getButtonColors = (activeItem: SidebarItem): {
   switch (activeItem) {
     case 'dashboard':
       return {
-        primary: 'bg-gradient-to-r from-red-600 to-orange-600',
-        primaryHover: 'hover:from-red-700 hover:to-orange-700',
-        primaryFocus: 'focus:ring-red-500',
-        primaryIcon: 'text-red-600'
+        primary: 'bg-gradient-to-r from-orange-600 to-orange-600',
+        primaryHover: 'hover:from-orange-700 hover:to-orange-700',
+        primaryFocus: 'focus:ring-orange-500',
+        primaryIcon: 'text-orange-600'
       };
     case 'consultas':
       return {
@@ -375,10 +375,10 @@ export const getButtonColors = (activeItem: SidebarItem): {
       };
     default:
       return {
-        primary: 'bg-gradient-to-r from-red-600 to-orange-600',
-        primaryHover: 'hover:from-red-700 hover:to-orange-700',
-        primaryFocus: 'focus:ring-red-500',
-        primaryIcon: 'text-red-600'
+        primary: 'bg-gradient-to-r from-orange-600 to-orange-600',
+        primaryHover: 'hover:from-orange-700 hover:to-orange-700',
+        primaryFocus: 'focus:ring-orange-500',
+        primaryIcon: 'text-orange-600'
       };
   }
 };

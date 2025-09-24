@@ -23,7 +23,8 @@ import {
   TrendingUp,
   Building2,
   Heart,
-  UserCheck
+  UserCheck,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { AdminBanner } from '../components/AdminBanner';
@@ -421,6 +422,15 @@ export const ReportesPage: React.FC = () => {
               <div>
                 <div className="font-medium">Consultas</div>
                 <div className="text-xs text-gray-400">Citas médicas</div>
+              </div>
+            </a>
+            <a href="/pacientes" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">
+              <div className="w-10 h-10 bg-gray-700 group-hover:bg-blue-600 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                <UserPlus className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-medium">Pacientes</div>
+                <div className="text-xs text-gray-400">Gestión pacientes</div>
               </div>
             </a>
             <a href="/calendario" className="w-full flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl transition-all duration-200 group">

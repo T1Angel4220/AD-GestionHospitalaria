@@ -20,7 +20,8 @@ import {
   BarChart3,
   Stethoscope,
   Heart,
-  UserCheck
+  UserCheck,
+  UserPlus
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { getRoleText } from '../utils/roleUtils'
@@ -189,6 +190,17 @@ export default function CentrosPage() {
               <div>
                 <div className={getTextClasses('consultas', activeItem).main}>Consultas</div>
                 <div className={getTextClasses('consultas', activeItem).sub}>Citas médicas</div>
+              </div>
+            </a>
+
+            {/* Pacientes */}
+            <a href="/pacientes" className={getSidebarItemClasses('pacientes', activeItem)}>
+              <div className={getIconContainerClasses('pacientes', activeItem)}>
+                <UserPlus className={getIconClasses('pacientes', activeItem)} />
+              </div>
+              <div>
+                <div className={getTextClasses('pacientes', activeItem).main}>Pacientes</div>
+                <div className={getTextClasses('pacientes', activeItem).sub}>Gestión pacientes</div>
               </div>
             </a>
 

@@ -20,7 +20,8 @@ import {
   BarChart3,
   Building2,
   Heart,
-  UserCheck
+  UserCheck,
+  UserPlus
 } from 'lucide-react'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors, getButtonColors } from '../utils/sidebarUtils'
 import { AdminBanner } from '../components/AdminBanner'
@@ -202,6 +203,17 @@ export default function MedicosPage() {
               <div>
                 <div className={getTextClasses('consultas', activeItem).main}>Consultas</div>
                 <div className={getTextClasses('consultas', activeItem).sub}>Citas médicas</div>
+              </div>
+            </a>
+
+            {/* Pacientes - visible para todos */}
+            <a href="/pacientes" className={getSidebarItemClasses('pacientes', activeItem)}>
+              <div className={getIconContainerClasses('pacientes', activeItem)}>
+                <UserPlus className={getIconClasses('pacientes', activeItem)} />
+              </div>
+              <div>
+                <div className={getTextClasses('pacientes', activeItem).main}>Pacientes</div>
+                <div className={getTextClasses('pacientes', activeItem).sub}>Gestión pacientes</div>
               </div>
             </a>
 

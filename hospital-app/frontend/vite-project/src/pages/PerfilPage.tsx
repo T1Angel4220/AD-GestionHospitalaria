@@ -34,19 +34,36 @@ export default function PerfilPage() {
   }, [])
 
   const loadMedicoActual = async () => {
-    if (user?.rol === 'medico' && user.id_medico) {
+    if (user?.rol === 'medico') {
       try {
         setLoading(true)
-        const medicos = await ConsultasApi.getMedicos()
-        const medico = medicos.find(m => m.id === user.id_medico)
-        if (medico) {
-          setMedicoActual(medico)
+        
+        // Si el usuario ya tiene información del médico, usarla directamente
+        if (user.medico) {
+          const medicoData: Medico = {
+            id: user.medico.id,
+            nombres: user.medico.nombres,
+            apellidos: user.medico.apellidos,
+            especialidad_nombre: user.medico.especialidad,
+            centro_nombre: user.centro.nombre,
+            id_centro: user.centro.id,
+            id_especialidad: 0 // No disponible en el contexto actual
+          }
+          setMedicoActual(medicoData)
+        } else if (user.id_medico) {
+          // Fallback: buscar médico por ID si no está en el contexto
+          const medicos = await ConsultasApi.getMedicos()
+          const medico = medicos.find(m => m.id === user.id_medico)
+          if (medico) {
+            setMedicoActual(medico)
+          } else {
+            setError("No se encontró información del médico")
+          }
         } else {
-          setError("No se encontró información del médico")
+          setError("Usuario médico sin información asociada")
         }
       } catch (err) {
         setError("Error al cargar los datos del médico")
-        console.error(err)
       } finally {
         setLoading(false)
       }

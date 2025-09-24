@@ -20,7 +20,8 @@ import {
   BarChart3,
   Building2,
   Heart,
-  UserCheck
+  UserCheck,
+  UserPlus
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { UsuarioModals } from '../components/UsuarioModals'
@@ -71,11 +72,20 @@ export default function UsuariosPage() {
       ])
       setUsuarios(usuariosData)
       setCentros(centrosData)
-      setMedicosDisponibles(medicosDisponiblesData)
+      
+      // Filtrar médicos que ya tienen cuenta asociada
+      const medicosConCuenta = usuariosData
+        .filter(u => u.rol === 'medico' && u.id_medico)
+        .map(u => u.id_medico)
+      
+      const medicosDisponiblesFiltrados = medicosDisponiblesData.filter(medico => 
+        !medicosConCuenta.includes(medico.id)
+      )
+      
+      setMedicosDisponibles(medicosDisponiblesFiltrados)
       setError(null)
     } catch (err) {
       setError("Error al cargar los datos")
-      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -85,15 +95,28 @@ export default function UsuariosPage() {
     e.preventDefault()
     setError(null)
 
+    // Validar que no se cree múltiples cuentas para el mismo médico
+    if (userForm.rol === 'medico' && userForm.id_medico) {
+      const medicoYaAsociado = usuarios.find(u => 
+        u.rol === 'medico' && u.id_medico === userForm.id_medico
+      )
+      
+      if (medicoYaAsociado) {
+        const medicoInfo = medicosDisponibles.find(m => m.id === userForm.id_medico)
+        const nombreMedico = medicoInfo ? `${medicoInfo.nombres} ${medicoInfo.apellidos}` : 'este médico'
+        setError(`El médico ${nombreMedico} ya tiene una cuenta asociada. Un médico solo puede tener una cuenta.`)
+        return
+      }
+    }
+
     try {
       await AdminApi.createUsuario(userForm)
       setIsCreateModalOpen(false)
       setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
       // Recargar datos después de crear usuario
-      loadData()
+      await loadData()
     } catch (err) {
       setError("Error al crear el usuario")
-      console.error(err)
     }
   }
 
@@ -101,17 +124,32 @@ export default function UsuariosPage() {
     e.preventDefault()
     setError(null)
 
+    // Validar que no se asocie un médico ya asociado a otro usuario
+    if (userForm.rol === 'medico' && userForm.id_medico && selectedUsuario) {
+      const medicoYaAsociado = usuarios.find(u => 
+        u.rol === 'medico' && 
+        u.id_medico === userForm.id_medico && 
+        u.id !== selectedUsuario.id // Excluir el usuario actual
+      )
+      
+      if (medicoYaAsociado) {
+        const medicoInfo = medicosDisponibles.find(m => m.id === userForm.id_medico)
+        const nombreMedico = medicoInfo ? `${medicoInfo.nombres} ${medicoInfo.apellidos}` : 'este médico'
+        setError(`El médico ${nombreMedico} ya está asociado a otro usuario. Un médico solo puede tener una cuenta.`)
+        return
+      }
+    }
+
     try {
       if (selectedUsuario) {
         await AdminApi.updateUsuario(selectedUsuario.id, userForm)
         setIsEditModalOpen(false)
         setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
         setSelectedUsuario(null)
-        loadData()
+        await loadData()
       }
     } catch (err) {
       setError("Error al actualizar el usuario")
-      console.error(err)
     }
   }
 
@@ -121,10 +159,9 @@ export default function UsuariosPage() {
         await AdminApi.deleteUsuario(selectedUsuario.id)
         setIsDeleteModalOpen(false)
         setSelectedUsuario(null)
-        loadData()
+        await loadData()
       } catch (err) {
         setError("Error al eliminar el usuario")
-        console.error(err)
       }
     }
   }
@@ -203,6 +240,17 @@ export default function UsuariosPage() {
               <div>
                 <div className={getTextClasses('consultas', activeItem).main}>Consultas</div>
                 <div className={getTextClasses('consultas', activeItem).sub}>Citas médicas</div>
+              </div>
+            </a>
+
+            {/* Pacientes - visible para todos */}
+            <a href="/pacientes" className={getSidebarItemClasses('pacientes', activeItem)}>
+              <div className={getIconContainerClasses('pacientes', activeItem)}>
+                <UserPlus className={getIconClasses('pacientes', activeItem)} />
+              </div>
+              <div>
+                <div className={getTextClasses('pacientes', activeItem).main}>Pacientes</div>
+                <div className={getTextClasses('pacientes', activeItem).sub}>Gestión pacientes</div>
               </div>
             </a>
 
