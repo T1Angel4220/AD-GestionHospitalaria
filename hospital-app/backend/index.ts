@@ -10,6 +10,7 @@ import empleadosRouter from "./src/routes/empleados.routes";
 import centrosRouter from "./src/routes/centros.routes";
 import especialidadesRouter from "./src/routes/especialidades.routes";
 import usuariosRouter from "./src/routes/usuarios.routes";
+import pacientesRouter from "./src/routes/pacientes.routes";
 
 dotenv.config();
 
@@ -40,6 +41,9 @@ app.use("/api/admin/empleados", empleadosRouter);
 app.use("/api/admin/centros", centrosRouter);
 app.use("/api/admin/especialidades", especialidadesRouter);
 app.use("/api/admin/usuarios", usuariosRouter);
+
+// Rutas de pacientes
+app.use("/api/pacientes", pacientesRouter);
 
 // Ruta de prueba para verificar conexión
 app.get("/ping", async (req: Request, res: Response) => {

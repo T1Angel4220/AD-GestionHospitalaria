@@ -43,6 +43,23 @@ CREATE TABLE empleados (
     FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE
 );
 
+-- Tabla Pacientes
+CREATE TABLE pacientes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    cedula VARCHAR(20) UNIQUE,
+    telefono VARCHAR(20),
+    email VARCHAR(150),
+    fecha_nacimiento DATE,
+    genero ENUM('M','F','O'),
+    direccion TEXT,
+    id_centro INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id) ON DELETE CASCADE
+);
+
 -- Tabla Usuarios (para login)
 CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -76,3 +93,8 @@ ADD COLUMN estado ENUM('pendiente','programada','completada','cancelada')
 DEFAULT 'pendiente';
 ALTER TABLE consultas 
 ADD COLUMN duracion_minutos INT DEFAULT 0 COMMENT 'Duración de la consulta en minutos';
+
+-- Relacionar consultas con pacientes
+ALTER TABLE consultas 
+ADD COLUMN id_paciente INT NULL,
+ADD FOREIGN KEY (id_paciente) REFERENCES pacientes(id) ON DELETE SET NULL;

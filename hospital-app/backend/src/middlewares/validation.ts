@@ -421,3 +421,141 @@ export const validateEspecialidad = (req: Request, res: Response, next: NextFunc
 
   next();
 };
+
+// Middleware para validar pacientes
+export const validatePaciente = (req: Request, res: Response, next: NextFunction) => {
+  const errors: ValidationError[] = [];
+  const { 
+    nombres, 
+    apellidos, 
+    cedula, 
+    telefono, 
+    email, 
+    fecha_nacimiento, 
+    genero, 
+    direccion, 
+    id_centro 
+  } = req.body;
+
+  // Validar nombres (obligatorio)
+  if (!nombres || typeof nombres !== 'string') {
+    errors.push({ field: 'nombres', message: 'Nombres son obligatorios' });
+  } else {
+    const trimmedNombres = nombres.trim();
+    if (trimmedNombres.length < 2) {
+      errors.push({ field: 'nombres', message: 'Nombres deben tener al menos 2 caracteres' });
+    } else if (trimmedNombres.length > 100) {
+      errors.push({ field: 'nombres', message: 'Nombres no pueden exceder 100 caracteres' });
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedNombres)) {
+      errors.push({ field: 'nombres', message: 'Nombres solo pueden contener letras y espacios' });
+    }
+  }
+
+  // Validar apellidos (obligatorio)
+  if (!apellidos || typeof apellidos !== 'string') {
+    errors.push({ field: 'apellidos', message: 'Apellidos son obligatorios' });
+  } else {
+    const trimmedApellidos = apellidos.trim();
+    if (trimmedApellidos.length < 2) {
+      errors.push({ field: 'apellidos', message: 'Apellidos deben tener al menos 2 caracteres' });
+    } else if (trimmedApellidos.length > 100) {
+      errors.push({ field: 'apellidos', message: 'Apellidos no pueden exceder 100 caracteres' });
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedApellidos)) {
+      errors.push({ field: 'apellidos', message: 'Apellidos solo pueden contener letras y espacios' });
+    }
+  }
+
+  // Validar cédula (opcional pero si se proporciona debe ser válida)
+  if (cedula && typeof cedula === 'string') {
+    const trimmedCedula = cedula.trim();
+    if (trimmedCedula.length > 0) {
+      if (trimmedCedula.length < 7 || trimmedCedula.length > 20) {
+        errors.push({ field: 'cedula', message: 'Cédula debe tener entre 7 y 20 caracteres' });
+      } else if (!/^[0-9-]+$/.test(trimmedCedula)) {
+        errors.push({ field: 'cedula', message: 'Cédula solo puede contener números y guiones' });
+      }
+    }
+  }
+
+  // Validar teléfono (opcional)
+  if (telefono && typeof telefono === 'string') {
+    const trimmedTelefono = telefono.trim();
+    if (trimmedTelefono.length > 0) {
+      if (trimmedTelefono.length < 7 || trimmedTelefono.length > 20) {
+        errors.push({ field: 'telefono', message: 'Teléfono debe tener entre 7 y 20 caracteres' });
+      } else if (!/^[0-9+\-\s()]+$/.test(trimmedTelefono)) {
+        errors.push({ field: 'telefono', message: 'Teléfono contiene caracteres inválidos' });
+      }
+    }
+  }
+
+  // Validar email (opcional)
+  if (email && typeof email === 'string') {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail.length > 0) {
+      if (trimmedEmail.length > 150) {
+        errors.push({ field: 'email', message: 'Email no puede exceder 150 caracteres' });
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        errors.push({ field: 'email', message: 'Email tiene formato inválido' });
+      }
+    }
+  }
+
+  // Validar fecha de nacimiento (opcional)
+  if (fecha_nacimiento && typeof fecha_nacimiento === 'string') {
+    const trimmedFecha = fecha_nacimiento.trim();
+    if (trimmedFecha.length > 0) {
+      const fecha = new Date(trimmedFecha);
+      const hoy = new Date();
+      
+      if (isNaN(fecha.getTime())) {
+        errors.push({ field: 'fecha_nacimiento', message: 'Fecha de nacimiento tiene formato inválido' });
+      } else if (fecha > hoy) {
+        errors.push({ field: 'fecha_nacimiento', message: 'Fecha de nacimiento no puede ser futura' });
+      } else if (hoy.getFullYear() - fecha.getFullYear() > 150) {
+        errors.push({ field: 'fecha_nacimiento', message: 'Fecha de nacimiento no puede ser anterior a 150 años' });
+      }
+    }
+  }
+
+  // Validar género (opcional)
+  if (genero && typeof genero === 'string') {
+    const trimmedGenero = genero.trim().toUpperCase();
+    if (!['M', 'F', 'O'].includes(trimmedGenero)) {
+      errors.push({ field: 'genero', message: 'Género debe ser M, F u O' });
+    }
+  }
+
+  // Validar dirección (opcional)
+  if (direccion && typeof direccion === 'string') {
+    const trimmedDireccion = direccion.trim();
+    if (trimmedDireccion.length > 500) {
+      errors.push({ field: 'direccion', message: 'Dirección no puede exceder 500 caracteres' });
+    }
+  }
+
+  // Validar id_centro (obligatorio)
+  if (!id_centro || isNaN(Number(id_centro))) {
+    errors.push({ field: 'id_centro', message: 'ID del centro es obligatorio y debe ser un número' });
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ 
+      error: 'Datos de paciente inválidos', 
+      details: errors 
+    });
+  }
+
+  // Sanitizar datos
+  req.body.nombres = ValidationUtils.sanitizeText(nombres);
+  req.body.apellidos = ValidationUtils.sanitizeText(apellidos);
+  req.body.cedula = cedula ? ValidationUtils.sanitizeText(cedula) : null;
+  req.body.telefono = telefono ? ValidationUtils.sanitizeText(telefono) : null;
+  req.body.email = email ? ValidationUtils.sanitizeText(email) : null;
+  req.body.fecha_nacimiento = fecha_nacimiento || null;
+  req.body.genero = genero ? genero.trim().toUpperCase() : null;
+  req.body.direccion = direccion ? ValidationUtils.sanitizeText(direccion) : null;
+  req.body.id_centro = Number(id_centro);
+
+  next();
+};
