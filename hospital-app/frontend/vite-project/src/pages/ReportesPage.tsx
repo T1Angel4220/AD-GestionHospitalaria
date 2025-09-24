@@ -142,7 +142,7 @@ export const ReportesPage: React.FC = () => {
 
     try {
       // Mostrar progreso
-      setSuccess('🔄 Generando reporte PDF con detalles completos...');
+      setSuccess('Generando reporte PDF con detalles completos...');
       
       // Obtener detalles de consultas para cada médico
       const detallesConsultas: { [medicoId: number]: ConsultaDetalle[] } = {};
@@ -150,7 +150,7 @@ export const ReportesPage: React.FC = () => {
       for (let i = 0; i < data.length; i++) {
         const medico = data[i];
         try {
-          setSuccess(`📊 Obteniendo detalles del médico ${i + 1}/${data.length}: Dr. ${medico.nombres} ${medico.apellidos}...`);
+          setSuccess(`Obteniendo detalles del medico ${i + 1}/${data.length}: Dr. ${medico.nombres} ${medico.apellidos}...`);
           
           const response = await apiService.getDetalleConsultasMedico(
             medico.medico_id, 
@@ -165,9 +165,12 @@ export const ReportesPage: React.FC = () => {
         }
       }
 
-      setSuccess('📝 Creando documento PDF...');
+      setSuccess('Creando documento PDF...');
       // Crear nuevo documento PDF
       const doc = new jsPDF();
+      
+      // Configurar fuente para evitar problemas de codificación
+      doc.setFont('helvetica', 'normal');
       
       // Configurar colores del tema
       const primaryColor = [245, 158, 11]; // amber-500
@@ -176,6 +179,7 @@ export const ReportesPage: React.FC = () => {
 
       // Función para agregar texto con estilo
       const addText = (text: string, x: number, y: number, options: any = {}) => {
+        doc.setFont('helvetica', options.fontStyle || 'normal');
         doc.setFontSize(options.fontSize || 12);
         if (options.color && Array.isArray(options.color) && options.color.length === 3) {
           doc.setTextColor(options.color[0], options.color[1], options.color[2]);
@@ -562,10 +566,10 @@ export const ReportesPage: React.FC = () => {
       // Fondo del pie de página
       addRect(15, footerY - 5, 180, 15, [248, 250, 252]);
       
-      addText('🏥 HospitalApp - Sistema de Gestión Hospitalaria', 20, footerY, { fontSize: 8, color: [107, 114, 128] });
-      addText(`📄 Página ${doc.internal.pages.length}`, 150, footerY, { fontSize: 8, color: [107, 114, 128] });
-      addText('📧 soporte@hospitalapp.com', 20, footerY + 5, { fontSize: 7, color: [156, 163, 175] });
-      addText('🌐 www.hospitalapp.com', 150, footerY + 5, { fontSize: 7, color: [156, 163, 175] });
+      addText('HospitalApp - Sistema de Gestion Hospitalaria', 20, footerY, { fontSize: 8, color: [107, 114, 128] });
+      addText(`Pagina ${doc.internal.pages.length}`, 150, footerY, { fontSize: 8, color: [107, 114, 128] });
+      addText('soporte@hospitalapp.com', 20, footerY + 5, { fontSize: 7, color: [156, 163, 175] });
+      addText('www.hospitalapp.com', 150, footerY + 5, { fontSize: 7, color: [156, 163, 175] });
 
       // Guardar el PDF con nombre más descriptivo
       const fechaFormateada = new Date().toISOString().split('T')[0];
@@ -573,10 +577,10 @@ export const ReportesPage: React.FC = () => {
       const fileName = `Reporte_Consultas_${fechaFormateada}_${horaFormateada}.pdf`;
       doc.save(fileName);
 
-      setSuccess('✅ Reporte PDF exportado exitosamente con detalles completos');
+      setSuccess('Reporte PDF exportado exitosamente con detalles completos');
     } catch (err) {
       console.error('Error al generar PDF:', err);
-      setError('❌ Error al exportar el reporte PDF');
+      setError('Error al exportar el reporte PDF');
     } finally {
       setLoading(false);
     }
