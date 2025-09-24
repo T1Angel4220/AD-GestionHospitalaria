@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { query } from "../config/db";
 import bcrypt from "bcrypt";
+import { validateUsuario } from "../middlewares/validation";
 
 // =========================
 // GET /api/admin/usuarios
@@ -72,14 +73,7 @@ export async function create(req: Request, res: Response) {
   try {
     const { email, password, rol, id_centro, id_medico } = req.body ?? {};
 
-    if (!email?.trim() || !password?.trim() || !rol || !id_centro) {
-      return res.status(400).json({ error: "email, password, rol e id_centro son obligatorios" });
-    }
-
-    // Validar rol
-    if (!['admin', 'medico'].includes(rol)) {
-      return res.status(400).json({ error: "rol debe ser 'admin' o 'medico'" });
-    }
+    // Las validaciones detalladas ya se hicieron en el middleware
 
     // Validar centro
     const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
@@ -96,22 +90,22 @@ export async function create(req: Request, res: Response) {
     }
 
     // Verificar si el email ya existe
-    const existingUsers = await query("SELECT id FROM usuarios WHERE email = ?", [email.trim()]);
+    const existingUsers = await query("SELECT id FROM usuarios WHERE email = ?", [email]);
     if (existingUsers.length > 0) {
       return res.status(409).json({ error: "El email ya está registrado" });
     }
 
     // Hash de la contraseña
-    const passwordHash = await bcrypt.hash(password.trim(), 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await query(`
       INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) 
       VALUES (?, ?, ?, ?, ?)
-    `, [email.trim(), passwordHash, rol, Number(id_centro), id_medico ? Number(id_medico) : null]);
+    `, [email, passwordHash, rol, Number(id_centro), id_medico ? Number(id_medico) : null]);
 
     const created = {
       id: result.insertId,
-      email: email.trim(),
+      email: email,
       rol,
       id_centro: Number(id_centro),
       id_medico: id_medico ? Number(id_medico) : null

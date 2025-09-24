@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { query } from "../config/db";
+import { validateMedico } from "../middlewares/validation";
 
 // =========================
 // GET /api/admin/medicos
@@ -69,9 +70,7 @@ export async function create(req: Request, res: Response) {
   try {
     const { nombres, apellidos, id_especialidad, id_centro } = req.body ?? {};
 
-    if (!nombres?.trim() || !apellidos?.trim() || !id_especialidad || !id_centro) {
-      return res.status(400).json({ error: "nombres, apellidos, id_especialidad e id_centro son obligatorios" });
-    }
+    // Las validaciones detalladas ya se hicieron en el middleware
 
     // Validar centro
     const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
@@ -84,12 +83,12 @@ export async function create(req: Request, res: Response) {
     const result = await query(`
       INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro) 
       VALUES (?, ?, ?, ?)
-    `, [nombres.trim(), apellidos.trim(), Number(id_especialidad), Number(id_centro)]);
+    `, [nombres, apellidos, Number(id_especialidad), Number(id_centro)]);
 
     const created = {
       id: result.insertId,
-      nombres: nombres.trim(),
-      apellidos: apellidos.trim()
+      nombres: nombres,
+      apellidos: apellidos
     };
 
     res.status(201).json(created);
@@ -109,10 +108,7 @@ export async function update(req: Request, res: Response) {
 
     const { nombres, apellidos, id_especialidad, id_centro } = req.body ?? {};
 
-    // Validaciones mínimas
-    if (!nombres?.trim() || !apellidos?.trim() || !id_especialidad || !id_centro) {
-      return res.status(400).json({ error: "nombres, apellidos, id_especialidad e id_centro son obligatorios" });
-    }
+    // Las validaciones detalladas ya se hicieron en el middleware
 
     // Validar existencia del médico
     const medicos = await query("SELECT id FROM medicos WHERE id = ?", [id]);
@@ -130,12 +126,12 @@ export async function update(req: Request, res: Response) {
       UPDATE medicos 
       SET nombres = ?, apellidos = ?, id_especialidad = ?, id_centro = ?
       WHERE id = ?
-    `, [nombres.trim(), apellidos.trim(), Number(id_especialidad), Number(id_centro), id]);
+    `, [nombres, apellidos, Number(id_especialidad), Number(id_centro), id]);
 
     const updated = {
       id,
-      nombres: nombres.trim(),
-      apellidos: apellidos.trim()
+      nombres: nombres,
+      apellidos: apellidos
     };
 
     res.json(updated);

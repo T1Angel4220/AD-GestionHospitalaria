@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from '../contexts/AuthContext'
 import type { LoginRequest } from '../types/auth'
+import { useValidation } from '../hooks/useValidation'
 import { 
   Activity, 
   Eye, 
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 
 export default function LoginPage() {
+  const { errors, validateEmail, validatePassword, clearAllErrors } = useValidation()
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
     password: ''
@@ -39,7 +41,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    clearAllErrors()
     setLoading(true)
+
+    // Validar formulario
+    const isEmailValid = validateEmail(formData.email)
+    const isPasswordValid = validatePassword(formData.password)
+
+    if (!isEmailValid || !isPasswordValid) {
+      setError("Por favor corrige los errores en el formulario")
+      setLoading(false)
+      return
+    }
 
     try {
       await login(formData.email, formData.password)
@@ -113,10 +126,13 @@ export default function LoginPage() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="usuario@hospital.com"
                 />
               </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
             {/* Password */}
@@ -136,7 +152,7 @@ export default function LoginPage() {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className={`block w-full pl-10 pr-12 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="••••••••"
                 />
                 <button
@@ -151,6 +167,9 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
             {/* Submit Button */}
@@ -187,15 +206,6 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="text-center">
-          <p className="text-sm text-gray-600">
-            ¿No tienes cuenta?{' '}
-            <button
-              onClick={() => navigate('/register')}
-              className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
-            >
-              Solicitar acceso
-            </button>
-          </p>
         </div>
       </div>
     </div>

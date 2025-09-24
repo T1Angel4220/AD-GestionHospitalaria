@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
 import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico } from '../types/consultas'
+import { useValidation } from '../hooks/useValidation'
 import { getStatusColor, getStatusText } from '../utils/statusUtils'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses } from '../utils/sidebarUtils'
 import { 
@@ -35,6 +36,7 @@ import { getRoleText } from '../utils/roleUtils'
 
 export default function MedicalConsultationsPage() {
   const { user, logout } = useAuth()
+  const { errors, validateConsulta, clearAllErrors, sanitizeText } = useValidation()
   const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -161,41 +163,58 @@ export default function MedicalConsultationsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    clearAllErrors()
+
+    // Sanitizar datos antes de validar
+    const sanitizedFormData = {
+      ...formData,
+      paciente_nombre: sanitizeText(formData.paciente_nombre || ''),
+      paciente_apellido: sanitizeText(formData.paciente_apellido || ''),
+      motivo: sanitizeText(formData.motivo || ''),
+      diagnostico: sanitizeText(formData.diagnostico || ''),
+      tratamiento: sanitizeText(formData.tratamiento || '')
+    }
+
+    // Validar formulario
+    if (!validateConsulta(sanitizedFormData)) {
+      setError("Por favor corrige los errores en el formulario")
+      return
+    }
 
     try {
       if (editingConsulta) {
         const updateData: ConsultaUpdate = {
-          paciente_nombre: formData.paciente_nombre,
-          paciente_apellido: formData.paciente_apellido,
-          id_medico: formData.id_medico,
-          id_centro: formData.id_centro,
-          fecha: formData.fecha,
-          motivo: formData.motivo,
-          diagnostico: formData.diagnostico,
-          tratamiento: formData.tratamiento,
-          estado: formData.estado!,
-          duracion_minutos: formData.duracion_minutos,
+          paciente_nombre: sanitizedFormData.paciente_nombre,
+          paciente_apellido: sanitizedFormData.paciente_apellido,
+          id_medico: sanitizedFormData.id_medico,
+          id_centro: sanitizedFormData.id_centro,
+          fecha: sanitizedFormData.fecha,
+          motivo: sanitizedFormData.motivo,
+          diagnostico: sanitizedFormData.diagnostico,
+          tratamiento: sanitizedFormData.tratamiento,
+          estado: sanitizedFormData.estado!,
+          duracion_minutos: sanitizedFormData.duracion_minutos,
         }
         // Guardar datos pendientes y mostrar modal de confirmación
         setPendingUpdateData(updateData)
         setShowEditConfirmModal(true)
       } else {
         const newData: ConsultaCreate = {
-          paciente_nombre: formData.paciente_nombre!,
-          paciente_apellido: formData.paciente_apellido!,
-          id_medico: formData.id_medico!,
-          id_centro: formData.id_centro!,
-          fecha: formData.fecha!,
-          motivo: formData.motivo,
-          diagnostico: formData.diagnostico,
-          tratamiento: formData.tratamiento,
-          estado: formData.estado!,
-          duracion_minutos: formData.duracion_minutos,
+          paciente_nombre: sanitizedFormData.paciente_nombre!,
+          paciente_apellido: sanitizedFormData.paciente_apellido!,
+          id_medico: sanitizedFormData.id_medico!,
+          id_centro: sanitizedFormData.id_centro!,
+          fecha: sanitizedFormData.fecha!,
+          motivo: sanitizedFormData.motivo,
+          diagnostico: sanitizedFormData.diagnostico,
+          tratamiento: sanitizedFormData.tratamiento,
+          estado: sanitizedFormData.estado!,
+          duracion_minutos: sanitizedFormData.duracion_minutos,
         }
         await ConsultasApi.createConsulta(newData)
         setShowSuccessModal(true)
-      await loadConsultas()
-      resetForm()
+        await loadConsultas()
+        resetForm()
       }
     } catch (err) {
       setError("Error al guardar la consulta")
@@ -902,8 +921,11 @@ export default function MedicalConsultationsPage() {
                       onChange={(e) => setFormData((prev) => ({ ...prev, paciente_nombre: e.target.value }))}
                       required
                       disabled={isReadOnly}
-                      className={`block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''} ${errors.paciente_nombre ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.paciente_nombre && (
+                      <p className="mt-1 text-sm text-red-600">{errors.paciente_nombre}</p>
+                    )}
                   </div>
                   <div>
                     <label htmlFor="paciente_apellido" className="block text-base font-semibold text-gray-700 mb-1">
@@ -916,8 +938,11 @@ export default function MedicalConsultationsPage() {
                       onChange={(e) => setFormData((prev) => ({ ...prev, paciente_apellido: e.target.value }))}
                       required
                       disabled={isReadOnly}
-                      className={`block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''} ${errors.paciente_apellido ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.paciente_apellido && (
+                      <p className="mt-1 text-sm text-red-600">{errors.paciente_apellido}</p>
+                    )}
                   </div>
                 </div>
 
@@ -1051,16 +1076,19 @@ export default function MedicalConsultationsPage() {
                       step="15"
                       required={formData.estado === 'programada' || formData.estado === 'completada'}
                       disabled={isReadOnly || formData.estado === 'pendiente' || formData.estado === 'cancelada'}
-                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                         isReadOnly || formData.estado === 'pendiente' || formData.estado === 'cancelada' 
                           ? 'bg-gray-100 cursor-not-allowed' 
                           : ''
-                      }`}
+                      } ${errors.duracion_minutos ? 'border-red-500' : 'border-gray-300'}`}
                       placeholder="Ej: 30, 45, 60"
                     />
                     <p className="mt-1 text-xs text-gray-500">
                       Duración estimada o real de la consulta en minutos
                     </p>
+                    {errors.duracion_minutos && (
+                      <p className="mt-1 text-sm text-red-600">{errors.duracion_minutos}</p>
+                    )}
                     {formData.estado === 'pendiente' && (
                       <p className="mt-1 text-xs text-amber-600">
                         Las consultas pendientes no requieren duración específica
@@ -1094,7 +1122,7 @@ export default function MedicalConsultationsPage() {
                         onChange={(e) => setFormData((prev) => ({ ...prev, fecha: e.target.value }))}
                         required={formData.estado === 'programada'}
                         disabled={isReadOnly}
-                        className={`block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        className={`block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''} ${errors.fecha ? 'border-red-500' : 'border-gray-300'}`}
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                         <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1111,6 +1139,9 @@ export default function MedicalConsultationsPage() {
                       <p className="mt-1 text-xs text-blue-600">
                         Las consultas programadas requieren fecha y hora específica
                       </p>
+                    )}
+                    {errors.fecha && (
+                      <p className="mt-1 text-sm text-red-600">{errors.fecha}</p>
                     )}
                   </div>
                   <div></div>

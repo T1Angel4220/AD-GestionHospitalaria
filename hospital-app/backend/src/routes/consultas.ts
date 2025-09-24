@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../config/db";
 import { authenticateToken, requireCentroAccess, requireRole } from "../middlewares/auth";
+import { validateConsultation, validateMedico, validateUsuario, validateEmpleado, validateCentro, validateEspecialidad } from "../middlewares/validation";
 import jwt from "jsonwebtoken";
 
 const router = Router();
@@ -19,24 +20,16 @@ function getCentroId(req: Request): number | null {
 }
 
 // Crear consulta
-router.post("/", requireCentroAccess, async (req: Request, res: Response) => {
+router.post("/", requireCentroAccess, validateConsultation, async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
     const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
-    if (!id_medico || !paciente_nombre || !paciente_apellido || !fecha) {
-      return res.status(400).json({ error: "id_medico, paciente_nombre, paciente_apellido y fecha son obligatorios" });
-    }
-
-    // Validar duración según el estado
-    if (estado === 'programada' || estado === 'completada') {
-      if (!duracion_minutos || duracion_minutos <= 0) {
-        return res.status(400).json({ error: `La duración es obligatoria para consultas ${estado === 'programada' ? 'programadas' : 'completadas'}` });
-      }
-      if (duracion_minutos > 480) {
-        return res.status(400).json({ error: "La duración no puede ser mayor a 8 horas (480 minutos)" });
-      }
+    
+    // Validaciones básicas (las validaciones detalladas ya se hicieron en el middleware)
+    if (!id_medico) {
+      return res.status(400).json({ error: "id_medico es obligatorio" });
     }
 
     // Obtener información del usuario autenticado
@@ -313,7 +306,7 @@ router.get("/:id", requireCentroAccess, async (req: Request, res: Response) => {
 });
 
 // Actualizar una consulta
-router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
+router.put("/:id", requireCentroAccess, validateConsultation, async (req: Request, res: Response) => {
   try {
     const idCentro = getCentroId(req);
     if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
@@ -325,12 +318,7 @@ router.put("/:id", requireCentroAccess, async (req: Request, res: Response) => {
 
     const { id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos } = req.body || {};
 
-    // Validar duración según el estado si se está actualizando
-    if (estado === 'programada' || estado === 'completada') {
-      if (duracion_minutos !== undefined && (duracion_minutos <= 0 || duracion_minutos > 480)) {
-        return res.status(400).json({ error: "La duración debe estar entre 1 y 480 minutos para consultas programadas o completadas" });
-      }
-    }
+    // Las validaciones detalladas ya se hicieron en el middleware
 
     console.log('Actualizando consulta:', { id, id_medico, paciente_nombre, paciente_apellido, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos });
 
@@ -437,13 +425,11 @@ router.delete("/:id", requireCentroAccess, async (req: Request, res: Response) =
 });
 
 // Crear médico (solo admin)
-router.post("/medicos", requireRole(['admin']), async (req: Request, res: Response) => {
+router.post("/medicos", requireRole(['admin']), validateMedico, async (req: Request, res: Response) => {
   try {
     const { nombres, apellidos, id_especialidad, id_centro } = req.body;
 
-    if (!nombres || !apellidos || !id_especialidad || !id_centro) {
-      return res.status(400).json({ error: 'nombres, apellidos, id_especialidad e id_centro son requeridos' });
-    }
+    // Las validaciones detalladas ya se hicieron en el middleware
 
     // Verificar que la especialidad existe
     const [especialidadRows] = await pool.query('SELECT id FROM especialidades WHERE id = ?', [id_especialidad]);
@@ -487,13 +473,11 @@ router.post("/medicos", requireRole(['admin']), async (req: Request, res: Respon
 });
 
 // Crear usuario (solo admin)
-router.post("/usuarios", requireRole(['admin']), async (req: Request, res: Response) => {
+router.post("/usuarios", requireRole(['admin']), validateUsuario, async (req: Request, res: Response) => {
   try {
     const { email, password, rol, id_centro, id_medico } = req.body;
 
-    if (!email || !password || !rol || !id_centro) {
-      return res.status(400).json({ error: 'email, password, rol e id_centro son requeridos' });
-    }
+    // Las validaciones detalladas ya se hicieron en el middleware
 
     // Verificar que el centro existe
     const [centroRows] = await pool.query('SELECT id FROM centros_medicos WHERE id = ?', [id_centro]);

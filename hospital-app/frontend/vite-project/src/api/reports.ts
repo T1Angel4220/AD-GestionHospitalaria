@@ -89,7 +89,8 @@ class ApiService {
 
   async getDetalleConsultasMedico(
     medicoId: number,
-    filtros: Omit<ReporteFiltros, 'centroId'>
+    filtros: Omit<ReporteFiltros, 'centroId'>,
+    centroId: number = 1
   ): Promise<ApiResponse<ConsultaDetalle[]>> {
     const params = new URLSearchParams();
     
@@ -100,7 +101,7 @@ class ApiService {
     const queryString = params.toString();
     const endpoint = `/reports/consultas/${medicoId}/detalle${queryString ? `?${queryString}` : ''}`;
 
-    return this.request<ConsultaDetalle[]>(endpoint, { method: 'GET' }, (filtros as any).centroId);
+    return this.request<ConsultaDetalle[]>(endpoint, { method: 'GET' }, centroId);
   }
 
   // Health check

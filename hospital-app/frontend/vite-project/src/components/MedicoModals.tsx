@@ -1,5 +1,6 @@
 import { X, Stethoscope, Trash2 } from 'lucide-react'
 import type { AdminMedico, AdminMedicoCreate, AdminEspecialidad, AdminCentro } from '../api/adminApi'
+import { useValidation } from '../hooks/useValidation'
 
 interface MedicoModalsProps {
   isCreateModalOpen: boolean
@@ -34,6 +35,7 @@ export function MedicoModals({
   handleEditMedico,
   handleDeleteMedico
 }: MedicoModalsProps) {
+  const { errors, validateMedico, clearAllErrors, sanitizeText } = useValidation()
   return (
     <>
       {/* Modal para crear médico */}
@@ -64,7 +66,22 @@ export function MedicoModals({
             </div>
             
             {/* Contenido del modal */}
-            <form onSubmit={handleCreateMedico} className="px-8 py-6 space-y-6">
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              clearAllErrors()
+              
+              // Sanitizar datos
+              const sanitizedForm = {
+                ...medicoForm,
+                nombres: sanitizeText(medicoForm.nombres),
+                apellidos: sanitizeText(medicoForm.apellidos)
+              }
+              
+              // Validar formulario
+              if (validateMedico(sanitizedForm)) {
+                handleCreateMedico(e)
+              }
+            }} className="px-8 py-6 space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Nombres
@@ -73,10 +90,13 @@ export function MedicoModals({
                   type="text"
                   value={medicoForm.nombres}
                   onChange={(e) => setMedicoForm({...medicoForm, nombres: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.nombres ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="Juan"
                   required
                 />
+                {errors.nombres && (
+                  <p className="mt-1 text-sm text-red-600">{errors.nombres}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -86,10 +106,13 @@ export function MedicoModals({
                   type="text"
                   value={medicoForm.apellidos}
                   onChange={(e) => setMedicoForm({...medicoForm, apellidos: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.apellidos ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="Pérez"
                   required
                 />
+                {errors.apellidos && (
+                  <p className="mt-1 text-sm text-red-600">{errors.apellidos}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">

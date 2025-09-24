@@ -42,6 +42,7 @@ export async function getResumenConsultas(req: Request, res: Response) {
 
     const sql = `
       SELECT
+        m.id,
         m.id AS medico_id,
         m.nombres,
         m.apellidos,
@@ -108,7 +109,8 @@ export async function getDetalleConsultasMedico(req: Request, res: Response) {
         c.paciente_apellido,
         c.motivo,
         c.diagnostico,
-        c.tratamiento
+        c.tratamiento,
+        c.estado
       FROM consultas c
       WHERE ${cond.join(" AND ")}
       ORDER BY c.fecha DESC, c.id DESC

@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
 import ConsultasPage from './pages/ConsultasPage'
 import MedicosPage from './pages/MedicosPage'
 import UsuariosPage from './pages/UsuariosPage'
@@ -21,7 +20,6 @@ function App() {
           <Routes>
             {/* Rutas públicas */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
             
             {/* Rutas protegidas */}
             <Route 
