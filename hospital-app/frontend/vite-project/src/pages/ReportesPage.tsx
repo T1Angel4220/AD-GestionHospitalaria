@@ -142,7 +142,11 @@ export const ReportesPage: React.FC = () => {
       
       for (const medico of data) {
         try {
-          const response = await apiService.getDetalleConsultas(medico.medico_id, filtros);
+          const response = await apiService.getDetalleConsultasMedico(
+            medico.medico_id, 
+            { desde: filtros.desde, hasta: filtros.hasta, q: filtros.q },
+            filtros.centroId
+          );
           if (response.data) {
             detallesConsultas[medico.medico_id] = response.data;
           }
@@ -292,6 +296,78 @@ export const ReportesPage: React.FC = () => {
       // Obtener la posición final después de la tabla
       const finalY = (doc as any).lastAutoTable.finalY || yPosition + 50;
       let currentY = finalY + 20;
+
+      // Agregar detalles de consultas por médico
+      addText('DETALLES DE CONSULTAS POR MÉDICO', 20, currentY, { fontSize: 14, color: primaryColor });
+      currentY += 15;
+
+      for (const medico of data) {
+        const consultasDetalle = detallesConsultas[medico.medico_id] || [];
+        
+        if (consultasDetalle.length > 0) {
+          // Verificar si necesitamos una nueva página
+          const pageHeight = doc.internal.pageSize.height;
+          const availableSpace = pageHeight - currentY - 50;
+          
+          if (availableSpace < 100) {
+            doc.addPage();
+            currentY = 20;
+          }
+
+          // Título del médico
+          addText(`Dr. ${medico.nombres} ${medico.apellidos} - ${medico.especialidad}`, 20, currentY, { fontSize: 12, color: textColor });
+          currentY += 8;
+          addText(`Total de consultas: ${consultasDetalle.length}`, 25, currentY, { fontSize: 10, color: [107, 114, 128] });
+          currentY += 10;
+
+          // Crear tabla de detalles para este médico
+          const detalleTableData = consultasDetalle.map(consulta => [
+            new Date(consulta.fecha).toLocaleDateString('es-ES'),
+            `${consulta.paciente_nombre} ${consulta.paciente_apellido}`,
+            consulta.cedula || 'N/A',
+            consulta.motivo || 'Sin motivo',
+            consulta.diagnostico || 'Sin diagnóstico',
+            consulta.estado
+          ]);
+
+          autoTable(doc, {
+            head: [['Fecha', 'Paciente', 'Cédula', 'Motivo', 'Diagnóstico', 'Estado']],
+            body: detalleTableData,
+            startY: currentY,
+            styles: {
+              fontSize: 8,
+              cellPadding: 2,
+              overflow: 'linebreak',
+              halign: 'left'
+            },
+            headStyles: {
+              fillColor: [59, 130, 246], // azul
+              textColor: [255, 255, 255],
+              fontStyle: 'bold'
+            },
+            alternateRowStyles: {
+              fillColor: [249, 250, 251]
+            },
+            columnStyles: {
+              0: { cellWidth: 25 }, // Fecha
+              1: { cellWidth: 40 }, // Paciente
+              2: { cellWidth: 20 }, // Cédula
+              3: { cellWidth: 35 }, // Motivo
+              4: { cellWidth: 35 }, // Diagnóstico
+              5: { cellWidth: 20 }  // Estado
+            },
+            margin: { left: 20, right: 20 }
+          });
+
+          // Obtener la posición final después de esta tabla
+          const detalleFinalY = (doc as any).lastAutoTable.finalY || currentY + 50;
+          currentY = detalleFinalY + 15;
+
+          // Línea separadora
+          addLine(20, currentY, 190, currentY, [209, 213, 219]);
+          currentY += 10;
+        }
+      }
 
       // Agregar gráficos si hay datos
       if (data.length > 0) {
