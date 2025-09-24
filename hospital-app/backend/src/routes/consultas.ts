@@ -44,17 +44,19 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
     let centroConsulta = idCentro;
     
     if (userRole === 'admin') {
-      // Para admin, obtener el centro del médico seleccionado
+      // Para admin, usar el centro seleccionado en el header X-Centro-Id
+      // Esto permite que el admin asigne consultas a cualquier centro
+      centroConsulta = idCentro;
+      
+      // Solo validar que el médico existe
       const [medicoRows] = await pool.query(
-        "SELECT id_centro FROM medicos WHERE id = ?",
+        "SELECT id FROM medicos WHERE id = ?",
         [id_medico]
       );
       // @ts-ignore
       if (!medicoRows[0]) {
         return res.status(400).json({ error: "Médico no encontrado" });
       }
-      // @ts-ignore
-      centroConsulta = medicoRows[0].id_centro;
     } else {
       // Para médico, validar que el médico es el mismo usuario médico
       const userId = decoded.id;

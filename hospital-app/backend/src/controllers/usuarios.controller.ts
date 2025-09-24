@@ -103,6 +103,23 @@ export async function create(req: Request, res: Response) {
       VALUES (?, ?, ?, ?, ?)
     `, [email, passwordHash, rol, Number(id_centro), id_medico ? Number(id_medico) : null]);
 
+    // SINCRONIZACIÓN AUTOMÁTICA: Si se creó un usuario médico, 
+    // también actualizar el centro del médico en la tabla medicos
+    if (rol === 'medico' && id_medico) {
+      try {
+        await execute(`
+          UPDATE medicos 
+          SET id_centro = ?
+          WHERE id = ?
+        `, [Number(id_centro), Number(id_medico)]);
+        
+        console.log(`[SYNC] Centro del médico ${id_medico} actualizado a centro ${id_centro} al crear usuario`);
+      } catch (syncError) {
+        console.error("[ERROR] Error sincronizando centro del médico:", syncError);
+        // No fallar la operación principal por un error de sincronización
+      }
+    }
+
     const created = {
       id: result.insertId,
       email: email,
@@ -194,6 +211,23 @@ export async function update(req: Request, res: Response) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
+    // SINCRONIZACIÓN AUTOMÁTICA: Si se actualizó el centro de un usuario médico, 
+    // también actualizar el centro del médico en la tabla medicos
+    if (id_centro !== undefined && id_medico !== undefined && id_medico) {
+      try {
+        await execute(`
+          UPDATE medicos 
+          SET id_centro = ?
+          WHERE id = ?
+        `, [Number(id_centro), Number(id_medico)]);
+        
+        console.log(`[SYNC] Centro del médico ${id_medico} actualizado a centro ${id_centro}`);
+      } catch (syncError) {
+        console.error("[ERROR] Error sincronizando centro del médico:", syncError);
+        // No fallar la operación principal por un error de sincronización
+      }
+    }
+
     const updated = {
       id,
       email: email?.trim(),
@@ -227,5 +261,58 @@ export async function remove(req: Request, res: Response) {
   } catch (err) {
     console.error("[ERROR] eliminando usuario:", err);
     res.status(500).json({ error: "Error interno al eliminar usuario" });
+  }
+}
+
+// =========================
+// POST /api/admin/usuarios/sync-centros
+// =========================
+export async function syncCentros(req: Request, res: Response) {
+  try {
+    console.log('[SYNC] Iniciando sincronización de centros...');
+    
+    // Obtener todos los usuarios médicos con sus centros
+    const usuariosMedicos = await query(`
+      SELECT u.id, u.id_centro, u.id_medico, m.id_centro as medico_centro_actual
+      FROM usuarios u
+      INNER JOIN medicos m ON u.id_medico = m.id
+      WHERE u.rol = 'medico' AND u.id_medico IS NOT NULL
+    `);
+    
+    let sincronizados = 0;
+    let errores = 0;
+    
+    for (const usuario of usuariosMedicos) {
+      try {
+        // Si el centro del usuario es diferente al centro del médico, sincronizar
+        if (usuario.id_centro !== usuario.medico_centro_actual) {
+          await execute(`
+            UPDATE medicos 
+            SET id_centro = ?
+            WHERE id = ?
+          `, [usuario.id_centro, usuario.id_medico]);
+          
+          console.log(`[SYNC] Médico ${usuario.id_medico} sincronizado: centro ${usuario.medico_centro_actual} → ${usuario.id_centro}`);
+          sincronizados++;
+        }
+      } catch (error) {
+        console.error(`[ERROR] Error sincronizando médico ${usuario.id_medico}:`, error);
+        errores++;
+      }
+    }
+    
+    const resultado = {
+      mensaje: "Sincronización completada",
+      usuarios_revisados: usuariosMedicos.length,
+      medicos_sincronizados: sincronizados,
+      errores: errores
+    };
+    
+    console.log('[SYNC] Resultado:', resultado);
+    res.json(resultado);
+    
+  } catch (err) {
+    console.error("[ERROR] sincronizando centros:", err);
+    res.status(500).json({ error: "Error interno al sincronizar centros" });
   }
 }

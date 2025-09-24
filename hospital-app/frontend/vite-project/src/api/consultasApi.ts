@@ -9,6 +9,12 @@ export class ConsultasApi {
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
     
+    console.log('🔍 Debug getAuthHeaders:', {
+      user,
+      centroId: user?.centro?.id,
+      token: token ? 'present' : 'missing'
+    });
+    
     return {
       'Content-Type': 'application/json',
       'X-Centro-Id': user?.centro?.id?.toString() || '1',
@@ -18,20 +24,38 @@ export class ConsultasApi {
 
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
+    const headers = {
+      ...this.getAuthHeaders(),
+      ...options.headers,
+    };
+    
+    console.log('🌐 Request:', {
+      url,
+      endpoint,
+      headers,
+      method: options.method || 'GET'
+    });
+    
     const response = await fetch(url, {
-      headers: {
-        ...this.getAuthHeaders(),
-        ...options.headers,
-      },
+      headers,
       ...options,
+    });
+
+    console.log('📡 Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.url
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('❌ Error response:', errorText);
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log('✅ Response data:', data);
+    return data;
   }
 
   static async getConsultas(): Promise<Consulta[]> {

@@ -101,15 +101,15 @@ router.get("/:id", async (req, res, next) => {
 
 // =========================
 // POST /api/pacientes
-// Crear un nuevo paciente (solo admin)
+// Crear un nuevo paciente (admin y medico)
 // =========================
-router.post("/", requireRole(['admin']), validatePaciente, create);
+router.post("/", requireRole(['admin', 'medico']), validatePaciente, create);
 
 // =========================
 // PUT /api/pacientes/:id
-// Actualizar un paciente (solo admin)
+// Actualizar un paciente (admin y medico)
 // =========================
-router.put("/:id", requireRole(['admin']), validatePaciente, update);
+router.put("/:id", requireRole(['admin', 'medico']), validatePaciente, update);
 
 // =========================
 // DELETE /api/pacientes/:id

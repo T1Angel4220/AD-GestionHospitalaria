@@ -1,20 +1,17 @@
 import React from 'react';
-import { Users, Stethoscope, Calendar, TrendingUp } from 'lucide-react';
-import type { ConsultaResumen } from '../../api/reports';
-import { calculateStatistics } from '../../lib/utils';
+import { Users, Stethoscope, Calendar, TrendingUp, UserCheck, Clock, CheckCircle, XCircle } from 'lucide-react';
+import type { EstadisticasGenerales } from '../../api/reports';
 
 interface StatsCardsProps {
-  data: ConsultaResumen[];
+  data: EstadisticasGenerales | null;
   loading?: boolean;
 }
 
 export const StatsCards: React.FC<StatsCardsProps> = ({ data, loading = false }) => {
-  const stats = calculateStatistics(data);
-
   const cards = [
     {
       title: 'Total Consultas',
-      value: stats.totalConsultas,
+      value: data?.total_consultas || 0,
       icon: Calendar,
       color: 'bg-blue-500',
       bgColor: 'bg-blue-50',
@@ -22,8 +19,8 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ data, loading = false })
       borderColor: 'border-blue-200'
     },
     {
-      title: 'Médicos Activos',
-      value: stats.totalMedicos,
+      title: 'Total Médicos',
+      value: data?.total_medicos || 0,
       icon: Users,
       color: 'bg-green-500',
       bgColor: 'bg-green-50',
@@ -31,29 +28,65 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ data, loading = false })
       borderColor: 'border-green-200'
     },
     {
-      title: 'Promedio por Médico',
-      value: stats.promedioConsultasPorMedico,
-      icon: TrendingUp,
+      title: 'Total Pacientes',
+      value: data?.total_pacientes || 0,
+      icon: UserCheck,
       color: 'bg-purple-500',
       bgColor: 'bg-purple-50',
       textColor: 'text-purple-600',
       borderColor: 'border-purple-200'
     },
     {
-      title: 'Especialidad Más Común',
-      value: stats.especialidadMasComun,
+      title: 'Pacientes con Consultas',
+      value: data?.pacientes_con_consultas || 0,
       icon: Stethoscope,
       color: 'bg-orange-500',
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-600',
       borderColor: 'border-orange-200'
+    },
+    {
+      title: 'Consultas Pendientes',
+      value: data?.consultas_pendientes || 0,
+      icon: Clock,
+      color: 'bg-yellow-500',
+      bgColor: 'bg-yellow-50',
+      textColor: 'text-yellow-600',
+      borderColor: 'border-yellow-200'
+    },
+    {
+      title: 'Consultas Completadas',
+      value: data?.consultas_completadas || 0,
+      icon: CheckCircle,
+      color: 'bg-emerald-500',
+      bgColor: 'bg-emerald-50',
+      textColor: 'text-emerald-600',
+      borderColor: 'border-emerald-200'
+    },
+    {
+      title: 'Consultas Canceladas',
+      value: data?.consultas_canceladas || 0,
+      icon: XCircle,
+      color: 'bg-red-500',
+      bgColor: 'bg-red-50',
+      textColor: 'text-red-600',
+      borderColor: 'border-red-200'
+    },
+    {
+      title: 'Duración Promedio',
+      value: data?.duracion_promedio_minutos ? `${Math.round(data.duracion_promedio_minutos)} min` : 'N/A',
+      icon: TrendingUp,
+      color: 'bg-indigo-500',
+      bgColor: 'bg-indigo-50',
+      textColor: 'text-indigo-600',
+      borderColor: 'border-indigo-200'
     }
   ];
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {cards.map((_, index) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6 mb-8">
+        {Array.from({ length: 8 }).map((_, index) => (
           <div key={index} className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-gray-200 rounded-lg animate-pulse"></div>
@@ -70,7 +103,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ data, loading = false })
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6 mb-8">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (

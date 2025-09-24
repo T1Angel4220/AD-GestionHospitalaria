@@ -15,6 +15,7 @@ export interface ConsultaResumen {
   apellidos: string;
   especialidad: string;
   total_consultas: number;
+  pacientes_unicos: number;
   primera_consulta: string | null;
   ultima_consulta: string | null;
 }
@@ -24,10 +25,17 @@ export interface ConsultaDetalle {
   fecha: string;
   paciente_nombre: string;
   paciente_apellido: string;
+  id_paciente: number | null;
+  cedula: string | null;
+  telefono: string | null;
+  email: string | null;
+  fecha_nacimiento: string | null;
+  genero: 'M' | 'F' | 'O' | null;
   motivo: string | null;
   diagnostico: string | null;
   tratamiento: string | null;
   estado: 'pendiente' | 'programada' | 'completada' | 'cancelada';
+  duracion_minutos: number;
 }
 
 export interface ReporteFiltros {
@@ -35,6 +43,34 @@ export interface ReporteFiltros {
   hasta?: string;
   q?: string;
   centroId: number;
+}
+
+export interface EstadisticasGenerales {
+  total_medicos: number;
+  total_pacientes: number;
+  total_empleados: number;
+  total_consultas: number;
+  pacientes_con_consultas: number;
+  consultas_pendientes: number;
+  consultas_programadas: number;
+  consultas_completadas: number;
+  consultas_canceladas: number;
+  duracion_promedio_minutos: number | null;
+}
+
+export interface PacienteFrecuente {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  cedula: string | null;
+  telefono: string | null;
+  email: string | null;
+  fecha_nacimiento: string | null;
+  genero: 'M' | 'F' | 'O' | null;
+  total_consultas: number;
+  primera_consulta: string;
+  ultima_consulta: string;
+  medicos_atendidos: string | null;
 }
 
 class ApiService {
@@ -102,6 +138,36 @@ class ApiService {
     const endpoint = `/reports/consultas/${medicoId}/detalle${queryString ? `?${queryString}` : ''}`;
 
     return this.request<ConsultaDetalle[]>(endpoint, { method: 'GET' }, centroId);
+  }
+
+  // Estadísticas generales
+  async getEstadisticasGenerales(filtros: Omit<ReporteFiltros, 'q'>): Promise<ApiResponse<EstadisticasGenerales>> {
+    const params = new URLSearchParams();
+    
+    if (filtros.desde) params.append('desde', filtros.desde);
+    if (filtros.hasta) params.append('hasta', filtros.hasta);
+
+    const queryString = params.toString();
+    const endpoint = `/reports/estadisticas${queryString ? `?${queryString}` : ''}`;
+
+    return this.request<EstadisticasGenerales>(endpoint, { method: 'GET' }, filtros.centroId);
+  }
+
+  // Pacientes más frecuentes
+  async getPacientesFrecuentes(
+    filtros: Omit<ReporteFiltros, 'q'>,
+    limite: number = 10
+  ): Promise<ApiResponse<PacienteFrecuente[]>> {
+    const params = new URLSearchParams();
+    
+    if (filtros.desde) params.append('desde', filtros.desde);
+    if (filtros.hasta) params.append('hasta', filtros.hasta);
+    params.append('limite', limite.toString());
+
+    const queryString = params.toString();
+    const endpoint = `/reports/pacientes-frecuentes${queryString ? `?${queryString}` : ''}`;
+
+    return this.request<PacienteFrecuente[]>(endpoint, { method: 'GET' }, filtros.centroId);
   }
 
   // Health check

@@ -7,5 +7,6 @@ r.get("/:id", u.getOne);
 r.post("/", u.create);
 r.put("/:id", u.update);
 r.delete("/:id", u.remove);
+r.post("/sync-centros", u.syncCentros);
 
 export default r;

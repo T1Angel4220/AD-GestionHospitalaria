@@ -3,7 +3,8 @@ import { ReportFilters } from '../components/reports/ReportFilters';
 import { StatsCards } from '../components/reports/StatsCards';
 import { ChartsSection } from '../components/reports/ChartsSection';
 import { ConsultasTable } from '../components/reports/ConsultasTable';
-import type { ReporteFiltros, ConsultaResumen } from '../api/reports';
+import { PacientesFrecuentesTable } from '../components/reports/PacientesFrecuentesTable';
+import type { ReporteFiltros, ConsultaResumen, EstadisticasGenerales, PacienteFrecuente } from '../api/reports';
 import { apiService } from '../api/reports';
 import { config } from '../config/env';
 import jsPDF from 'jspdf';
@@ -44,7 +45,11 @@ export const ReportesPage: React.FC = () => {
   });
 
   const [data, setData] = useState<ConsultaResumen[]>([]);
+  const [estadisticas, setEstadisticas] = useState<EstadisticasGenerales | null>(null);
+  const [pacientesFrecuentes, setPacientesFrecuentes] = useState<PacienteFrecuente[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingEstadisticas, setLoadingEstadisticas] = useState(false);
+  const [loadingPacientes, setLoadingPacientes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -60,24 +65,55 @@ export const ReportesPage: React.FC = () => {
 
   const generarReporte = async () => {
     setLoading(true);
+    setLoadingEstadisticas(true);
+    setLoadingPacientes(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const response = await apiService.getResumenConsultas(filtros);
+      // Cargar datos en paralelo
+      const [consultasResponse, estadisticasResponse, pacientesResponse] = await Promise.all([
+        apiService.getResumenConsultas(filtros),
+        apiService.getEstadisticasGenerales(filtros),
+        apiService.getPacientesFrecuentes(filtros, 10)
+      ]);
       
-      if (response.error) {
-        setError(response.error);
+      // Procesar respuesta de consultas
+      if (consultasResponse.error) {
+        setError(consultasResponse.error);
         setData([]);
-      } else if (response.data) {
-        setData(response.data);
-        setSuccess(`Reporte generado exitosamente. ${response.data.length} médico${response.data.length !== 1 ? 's' : ''} encontrado${response.data.length !== 1 ? 's' : ''}.`);
+      } else if (consultasResponse.data) {
+        setData(consultasResponse.data);
+      }
+
+      // Procesar respuesta de estadísticas
+      if (estadisticasResponse.error) {
+        console.error('Error cargando estadísticas:', estadisticasResponse.error);
+        setEstadisticas(null);
+      } else if (estadisticasResponse.data) {
+        setEstadisticas(estadisticasResponse.data);
+      }
+
+      // Procesar respuesta de pacientes frecuentes
+      if (pacientesResponse.error) {
+        console.error('Error cargando pacientes frecuentes:', pacientesResponse.error);
+        setPacientesFrecuentes([]);
+      } else if (pacientesResponse.data) {
+        setPacientesFrecuentes(pacientesResponse.data);
+      }
+
+      if (!consultasResponse.error) {
+        setSuccess(`Reporte generado exitosamente. ${consultasResponse.data?.length || 0} médico${(consultasResponse.data?.length || 0) !== 1 ? 's' : ''} encontrado${(consultasResponse.data?.length || 0) !== 1 ? 's' : ''}.`);
       }
     } catch (err) {
       setError('Error inesperado al generar el reporte');
       setData([]);
+      setEstadisticas(null);
+      setPacientesFrecuentes([]);
     } finally {
       setLoading(false);
+      setLoadingEstadisticas(false);
+      setLoadingPacientes(false);
     }
   };
 
@@ -610,21 +646,26 @@ export const ReportesPage: React.FC = () => {
 
           {/* Stats Cards */}
           <div className="mb-6">
-      <StatsCards data={data} loading={loading} />
+            <StatsCards data={estadisticas} loading={loadingEstadisticas} />
           </div>
 
           {/* Charts */}
           <div className="mb-6">
-      <ChartsSection data={data} loading={loading} />
+            <ChartsSection data={data} loading={loading} />
+          </div>
+
+          {/* Pacientes Frecuentes */}
+          <div className="mb-6">
+            <PacientesFrecuentesTable data={pacientesFrecuentes} loading={loadingPacientes} />
           </div>
 
           {/* Table */}
           <div className="bg-white rounded-xl shadow-lg">
-      <ConsultasTable
-        data={data}
-        loading={loading}
-        onError={handleError}
-      />
+            <ConsultasTable
+              data={data}
+              loading={loading}
+              onError={handleError}
+            />
           </div>
 
       {/* Información adicional */}

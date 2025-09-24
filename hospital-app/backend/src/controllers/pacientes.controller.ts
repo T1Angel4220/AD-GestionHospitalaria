@@ -1,6 +1,21 @@
 import { Request, Response } from "express";
 import { query, execute } from "../config/db";
 
+// Extender el tipo Request para incluir user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        email: string;
+        rol: 'admin' | 'medico';
+        id_centro: number;
+        id_medico?: number;
+      };
+    }
+  }
+}
+
 // =========================
 // GET /api/pacientes
 // =========================
@@ -89,12 +104,27 @@ export async function create(req: Request, res: Response) {
       id_centro 
     } = req.body ?? {};
 
-    if (!nombres?.trim() || !apellidos?.trim() || !id_centro) {
-      return res.status(400).json({ error: "nombres, apellidos e id_centro son obligatorios" });
+    if (!nombres?.trim() || !apellidos?.trim()) {
+      return res.status(400).json({ error: "nombres y apellidos son obligatorios" });
+    }
+
+    // Determinar el centro a usar
+    let centroId: number;
+    if (req.user?.rol === 'admin') {
+      // Admin puede especificar cualquier centro
+      if (!id_centro) {
+        return res.status(400).json({ error: "id_centro es obligatorio para administradores" });
+      }
+      centroId = Number(id_centro);
+    } else if (req.user?.rol === 'medico') {
+      // Médico usa su centro asignado
+      centroId = req.user.id_centro;
+    } else {
+      return res.status(403).json({ error: "Rol no válido para crear pacientes" });
     }
 
     // Validar centro
-    const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
+    const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [centroId]);
     if (centros.length === 0) {
       return res.status(400).json({ error: "El centro especificado no existe" });
     }
@@ -130,7 +160,7 @@ export async function create(req: Request, res: Response) {
       fecha_nacimiento || null, 
       genero || null, 
       direccion?.trim() || null, 
-      Number(id_centro)
+      centroId
     ]);
 
     const created = {
@@ -143,7 +173,7 @@ export async function create(req: Request, res: Response) {
       fecha_nacimiento: fecha_nacimiento || null,
       genero: genero || null,
       direccion: direccion?.trim() || null,
-      id_centro: Number(id_centro)
+      id_centro: centroId
     };
 
     res.status(201).json(created);
