@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { CalendarView } from '../components/Calendar/CalendarView'
 import { AdminBanner } from '../components/AdminBanner'
+import { LogoutModal } from '../components/LogoutModal'
 import { getRoleText } from '../utils/roleUtils'
 
 export default function CalendarPage() {
@@ -35,6 +36,7 @@ export default function CalendarPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentView, setCurrentView] = useState('month')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   // Estados para modales
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
@@ -68,6 +70,19 @@ export default function CalendarPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleLogout = () => {
+    setShowLogoutModal(true)
+  }
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false)
+    logout()
+  }
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false)
   }
 
 
@@ -267,7 +282,7 @@ export default function CalendarPage() {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="w-full flex items-center justify-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
             >
               <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
@@ -506,6 +521,12 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+      {/* Modal de confirmación de logout */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={cancelLogout}
+        onConfirm={confirmLogout}
+      />
     </div>
   )
 }

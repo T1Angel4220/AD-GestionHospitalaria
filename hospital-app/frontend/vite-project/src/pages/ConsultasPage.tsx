@@ -33,6 +33,7 @@ import {
   UserPlus
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
+import { LogoutModal } from '../components/LogoutModal'
 import { getRoleText } from '../utils/roleUtils'
 
 export default function MedicalConsultationsPage() {
@@ -42,6 +43,7 @@ export default function MedicalConsultationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   
   // Determinar el elemento activo del sidebar
   const activeItem = getActiveSidebarItem(window.location.pathname)
@@ -123,6 +125,19 @@ export default function MedicalConsultationsPage() {
         console.error('Error cargando médico actual:', error)
       }
     }
+  }
+
+  const handleLogout = () => {
+    setShowLogoutModal(true)
+  }
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false)
+    logout()
+  }
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false)
   }
 
   // Cargar médico actual cuando se carguen los médicos
@@ -551,7 +566,7 @@ export default function MedicalConsultationsPage() {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="w-full flex items-center justify-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
             >
               <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
@@ -1386,6 +1401,12 @@ export default function MedicalConsultationsPage() {
           </div>
         </div>
       )}
+      {/* Modal de confirmación de logout */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={cancelLogout}
+        onConfirm={confirmLogout}
+      />
     </div>
   )
 }

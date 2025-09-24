@@ -24,6 +24,7 @@ import {
   UserPlus
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
+import { LogoutModal } from '../components/LogoutModal'
 import { getRoleText } from '../utils/roleUtils'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses, getHeaderColors, getButtonColors } from '../utils/sidebarUtils'
 
@@ -34,6 +35,7 @@ export default function EspecialidadesPage() {
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   
   // Estados para modales
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -114,6 +116,19 @@ export default function EspecialidadesPage() {
       setError("Error al eliminar la especialidad")
       console.error(err)
     }
+  }
+
+  const handleLogout = () => {
+    setShowLogoutModal(true)
+  }
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false)
+    logout()
+  }
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false)
   }
 
   const openEditModal = (especialidad: AdminEspecialidad) => {
@@ -281,7 +296,7 @@ export default function EspecialidadesPage() {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="w-full flex items-center justify-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
             >
               <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
@@ -646,6 +661,13 @@ export default function EspecialidadesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de confirmación de logout */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={cancelLogout}
+        onConfirm={confirmLogout}
+      />
     </div>
   )
 }

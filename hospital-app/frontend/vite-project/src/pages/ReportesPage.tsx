@@ -28,12 +28,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { AdminBanner } from '../components/AdminBanner';
+import { LogoutModal } from '../components/LogoutModal';
 import { getRoleText } from '../utils/roleUtils';
 import { getActiveSidebarItem, getHeaderColors } from '../utils/sidebarUtils';
 
 export const ReportesPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [filtros, setFiltros] = useState<ReporteFiltros>({
     centroId: config.defaultCentroId,
     desde: undefined,
@@ -77,6 +79,19 @@ export const ReportesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    logout();
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   const exportarReporte = async () => {
@@ -503,7 +518,7 @@ export const ReportesPage: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="w-full flex items-center justify-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-200 group"
             >
               <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
@@ -654,6 +669,12 @@ export const ReportesPage: React.FC = () => {
       )}
         </main>
       </div>
+      {/* Modal de confirmación de logout */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={cancelLogout}
+        onConfirm={confirmLogout}
+      />
     </div>
   );
 };
