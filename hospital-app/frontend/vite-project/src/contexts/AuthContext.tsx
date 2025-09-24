@@ -36,6 +36,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const savedUser = AuthApi.getUser()
     if (savedUser && AuthApi.isAuthenticated()) {
       setUser(savedUser)
+    } else if (AuthApi.isAuthenticated()) {
+      // Si el token es válido pero no hay usuario guardado, obtenerlo del token
+      const userFromToken = AuthApi.getUserFromToken()
+      if (userFromToken) {
+        setUser(userFromToken)
+      }
     }
     setIsLoading(false)
   }, [])

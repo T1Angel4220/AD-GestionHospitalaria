@@ -11,19 +11,44 @@ import EspecialidadesPage from '../pages/EspecialidadesPage';
 import EmpleadosPage from '../pages/EmpleadosPage';
 import LoginPage from '../pages/LoginPage';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { useRouteSecurity } from '../hooks/useRouteSecurity';
 
 // Componente de protección de rutas
 const ProtectedRoute: React.FC<{ 
   children: React.ReactNode; 
-  allowedRoles: ('admin' | 'medico')[] 
-}> = ({ children, allowedRoles }) => {
-  const { user, isAuthenticated } = useAuth();
+  allowedRoles: ('admin' | 'medico')[];
+  requireAuth?: boolean;
+}> = ({ children, allowedRoles, requireAuth = true }) => {
+  const { user, isAuthenticated, isLoading } = useAuth();
   
-  if (!isAuthenticated || !user) {
+  // Mostrar loading mientras se verifica la autenticación
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Si requiere autenticación y no está autenticado
+  if (requireAuth && (!isAuthenticated || !user)) {
     return <Navigate to="/login" replace />;
   }
   
-  if (!allowedRoles.includes(user.rol)) {
+  // Si no requiere autenticación pero está autenticado, redirigir según rol
+  if (!requireAuth && isAuthenticated && user) {
+    if (user.rol === 'admin') {
+      return <Navigate to="/admin" replace />;
+    } else if (user.rol === 'medico') {
+      return <Navigate to="/medico" replace />;
+    }
+  }
+  
+  // Verificar roles si se especificaron
+  if (allowedRoles.length > 0 && (!user || !allowedRoles.includes(user.rol))) {
     return <Navigate to="/unauthorized" replace />;
   }
   
@@ -47,13 +72,18 @@ const UnauthorizedPage: React.FC = () => (
   </div>
 );
 
-export const AppRouter: React.FC = () => {
+// Componente wrapper para aplicar seguridad de rutas
+const AppWithSecurity: React.FC = () => {
+  useRouteSecurity();
+  
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+    <Routes>
           {/* Rutas públicas */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={
+            <ProtectedRoute allowedRoles={[]} requireAuth={false}>
+              <LoginPage />
+            </ProtectedRoute>
+          } />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           
           {/* Rutas de Admin */}
@@ -105,7 +135,15 @@ export const AppRouter: React.FC = () => {
               </div>
             </div>
           } />
-        </Routes>
+    </Routes>
+  );
+};
+
+export const AppRouter: React.FC = () => {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppWithSecurity />
       </BrowserRouter>
     </AuthProvider>
   );
