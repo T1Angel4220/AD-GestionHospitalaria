@@ -4,7 +4,7 @@ import { StatsCards } from '../components/reports/StatsCards';
 import { ChartsSection } from '../components/reports/ChartsSection';
 import { ConsultasTable } from '../components/reports/ConsultasTable';
 import { PacientesFrecuentesTable } from '../components/reports/PacientesFrecuentesTable';
-import type { ReporteFiltros, ConsultaResumen, EstadisticasGenerales, PacienteFrecuente } from '../api/reports';
+import type { ReporteFiltros, ConsultaResumen, ConsultaDetalle, EstadisticasGenerales, PacienteFrecuente } from '../api/reports';
 import { apiService } from '../api/reports';
 import { config } from '../config/env';
 import jsPDF from 'jspdf';

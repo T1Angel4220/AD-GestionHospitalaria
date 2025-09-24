@@ -39,7 +39,7 @@ export default function UsuariosPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [showLogoutModal, setShowLogoutModal] = useState(false)
-  
+
   // Estados para modales
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
