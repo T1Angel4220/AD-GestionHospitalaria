@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { query, execute } from "../config/db";
 
 // Extender el tipo Request para incluir user
 declare global {
@@ -21,7 +20,7 @@ declare global {
 // =========================
 export async function list(req: Request, res: Response) {
   try {
-    const pacientes = await query(`
+    const pacientes = await req.dbPool.query(`
       SELECT 
         p.id,
         p.nombres,
@@ -57,7 +56,7 @@ export async function getOne(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const pacientes = await query(`
+    const pacientes = await req.dbPool.query(`
       SELECT 
         p.id,
         p.nombres,
@@ -124,14 +123,14 @@ export async function create(req: Request, res: Response) {
     }
 
     // Validar centro
-    const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [centroId]);
+    const centros = await req.dbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [centroId]);
     if (centros.length === 0) {
       return res.status(400).json({ error: "El centro especificado no existe" });
     }
 
     // Verificar si la cédula ya existe (si se proporciona)
     if (cedula?.trim()) {
-      const existingCedula = await query("SELECT id FROM pacientes WHERE cedula = ?", [cedula.trim()]);
+      const existingCedula = await req.dbPool.query("SELECT id FROM pacientes WHERE cedula = ?", [cedula.trim()]);
       if (existingCedula.length > 0) {
         return res.status(409).json({ error: "La cédula ya está registrada" });
       }
@@ -139,13 +138,13 @@ export async function create(req: Request, res: Response) {
 
     // Verificar si el email ya existe (si se proporciona)
     if (email?.trim()) {
-      const existingEmail = await query("SELECT id FROM pacientes WHERE email = ?", [email.trim()]);
+      const existingEmail = await req.dbPool.query("SELECT id FROM pacientes WHERE email = ?", [email.trim()]);
       if (existingEmail.length > 0) {
         return res.status(409).json({ error: "El email ya está registrado" });
       }
     }
 
-    const result = await execute(`
+    const result = await req.dbPool.execute(`
       INSERT INTO pacientes (
         nombres, apellidos, cedula, telefono, email, 
         fecha_nacimiento, genero, direccion, id_centro
@@ -229,7 +228,7 @@ export async function update(req: Request, res: Response) {
     if (cedula !== undefined) {
       // Verificar si la cédula ya existe (excluyendo el paciente actual)
       if (cedula?.trim()) {
-        const existingCedula = await query("SELECT id FROM pacientes WHERE cedula = ? AND id != ?", [cedula.trim(), id]);
+        const existingCedula = await req.dbPool.query("SELECT id FROM pacientes WHERE cedula = ? AND id != ?", [cedula.trim(), id]);
         if (existingCedula.length > 0) {
           return res.status(409).json({ error: "La cédula ya está registrada" });
         }
@@ -244,7 +243,7 @@ export async function update(req: Request, res: Response) {
     if (email !== undefined) {
       // Verificar si el email ya existe (excluyendo el paciente actual)
       if (email?.trim()) {
-        const existingEmail = await query("SELECT id FROM pacientes WHERE email = ? AND id != ?", [email.trim(), id]);
+        const existingEmail = await req.dbPool.query("SELECT id FROM pacientes WHERE email = ? AND id != ?", [email.trim(), id]);
         if (existingEmail.length > 0) {
           return res.status(409).json({ error: "El email ya está registrado" });
         }
@@ -266,7 +265,7 @@ export async function update(req: Request, res: Response) {
     }
     if (id_centro !== undefined) {
       // Validar centro
-      const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
+      const centros = await req.dbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
       if (centros.length === 0) {
         return res.status(400).json({ error: "El centro especificado no existe" });
       }
@@ -280,7 +279,7 @@ export async function update(req: Request, res: Response) {
 
     values.push(id);
 
-    const result = await execute(`
+    const result = await req.dbPool.execute(`
       UPDATE pacientes 
       SET ${updates.join(", ")}
       WHERE id = ?
@@ -329,7 +328,7 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const result = await execute("DELETE FROM pacientes WHERE id = ?", [id]);
+    const result = await req.dbPool.execute("DELETE FROM pacientes WHERE id = ?", [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Paciente no encontrado" });
@@ -370,7 +369,7 @@ export async function search(req: Request, res: Response) {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
 
-    const pacientes = await query(`
+    const pacientes = await req.dbPool.query(`
       SELECT 
         p.id,
         p.nombres,

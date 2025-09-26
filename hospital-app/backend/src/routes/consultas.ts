@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import { pool } from "../config/db";
 import { authenticateToken, requireCentroAccess, requireRole } from "../middlewares/auth";
 import { validateConsultation, validateMedico, validateUsuario, validateEmpleado, validateCentro, validateEspecialidad } from "../middlewares/validation";
 import jwt from "jsonwebtoken";
@@ -49,7 +48,7 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
       centroConsulta = idCentro;
       
       // Solo validar que el médico existe
-      const [medicoRows] = await pool.query(
+      const [medicoRows] = await req.dbPool.query(
         "SELECT id FROM medicos WHERE id = ?",
         [id_medico]
       );
@@ -60,7 +59,7 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
     } else {
       // Para médico, validar que el médico es el mismo usuario médico
       const userId = decoded.id;
-    const [medicoRows] = await pool.query(
+    const [medicoRows] = await req.dbPool.query(
         "SELECT id FROM medicos WHERE id = ? AND id = (SELECT id_medico FROM usuarios WHERE id = ?)",
         [id_medico, userId]
     );
@@ -86,7 +85,7 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
       duracion_minutos
     });
 
-    const [result] = await pool.execute(
+    const [result] = await req.dbPool.execute(
       `INSERT INTO consultas (id_centro, id_medico, paciente_nombre, paciente_apellido, id_paciente, fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [centroConsulta, id_medico, paciente_nombre, paciente_apellido, id_paciente ?? null, fecha, motivo ?? null, diagnostico ?? null, tratamiento ?? null, estado ?? 'pendiente', duracion_minutos ?? 0]
@@ -94,7 +93,7 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
 
     // @ts-ignore - mysql2 returns OkPacket
     const insertedId = result.insertId as number;
-    const [rows] = await pool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [insertedId, centroConsulta]);
+    const [rows] = await req.dbPool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [insertedId, centroConsulta]);
     // @ts-ignore
     res.status(201).json(rows[0]);
   } catch (error) {
@@ -165,7 +164,7 @@ router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
     console.log('SQL Query:', sql);
     console.log('Params:', params);
     
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await req.dbPool.query(sql, params);
     console.log('Query result:', rows);
     
     res.json(rows);
@@ -179,7 +178,7 @@ router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
 // Obtener médicos disponibles para asociar (solo admin)
 router.get("/medicos-disponibles", requireRole(['admin']), async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query(`
+    const [rows] = await req.dbPool.query(`
       SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
       FROM medicos m
       LEFT JOIN especialidades e ON m.id_especialidad = e.id
@@ -240,7 +239,7 @@ router.get("/medicos", async (req: Request, res: Response) => {
       params = [idCentro];
     }
     
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await req.dbPool.query(sql, params);
     console.log('Médicos encontrados:', (rows as any[]).length);
     res.json(rows);
   } catch (error) {
@@ -252,7 +251,7 @@ router.get("/medicos", async (req: Request, res: Response) => {
 // Obtener especialidades
 router.get("/especialidades", async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM especialidades ORDER BY nombre");
+    const [rows] = await req.dbPool.query("SELECT * FROM especialidades ORDER BY nombre");
     res.json(rows);
   } catch (error) {
     console.error(error);
@@ -264,7 +263,7 @@ router.get("/especialidades", async (req: Request, res: Response) => {
 router.get("/centros", async (req: Request, res: Response) => {
   try {
     console.log('Obteniendo centros médicos...');
-    const [rows] = await pool.query("SELECT * FROM centros_medicos ORDER BY nombre");
+    const [rows] = await req.dbPool.query("SELECT * FROM centros_medicos ORDER BY nombre");
     console.log('Centros encontrados:', rows);
     res.json(rows);
   } catch (error) {
@@ -326,7 +325,7 @@ router.get("/pacientes", requireCentroAccess, async (req: Request, res: Response
       params = [idCentro];
     }
     
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await req.dbPool.query(sql, params);
     console.log('Pacientes encontrados:', (rows as any[]).length);
     res.json(rows);
   } catch (error) {
@@ -338,7 +337,7 @@ router.get("/pacientes", requireCentroAccess, async (req: Request, res: Response
 // Obtener usuarios (solo admin)
 router.get("/usuarios", requireRole(['admin']), async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query(`
+    const [rows] = await req.dbPool.query(`
       SELECT u.*, 
              cm.nombre as centro_nombre, 
              m.nombres as medico_nombres, 
@@ -366,7 +365,7 @@ router.get("/:id", requireCentroAccess, async (req: Request, res: Response) => {
       return res.status(400).json({ error: "ID de consulta inválido" });
     }
 
-    const [rows] = await pool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [id, idCentro]);
+    const [rows] = await req.dbPool.query("SELECT * FROM consultas WHERE id = ? AND id_centro = ?", [id, idCentro]);
     // @ts-ignore
     const item = rows[0];
     if (!item) return res.status(404).json({ error: "Consulta no encontrada" });
@@ -419,7 +418,7 @@ router.put("/:id", requireCentroAccess, validateConsultation, async (req: Reques
 
     // Si se intenta cambiar el médico, validar que pertenezca al centro (solo para médicos)
     if (id_medico !== undefined && userRole === 'medico') {
-      const [medicoRows] = await pool.query(
+      const [medicoRows] = await req.dbPool.query(
         "SELECT id FROM medicos WHERE id = ? AND id_centro = ?",
         [id_medico, idCentro]
       );
@@ -444,12 +443,12 @@ router.put("/:id", requireCentroAccess, validateConsultation, async (req: Reques
     params.push(...whereParams);
     console.log('SQL de actualización:', sql);
     console.log('Parámetros:', params);
-    const [result] = await pool.execute(sql, params);
+    const [result] = await req.dbPool.execute(sql, params);
     // @ts-ignore
     if (result.affectedRows === 0) return res.status(404).json({ error: "Consulta no encontrada" });
 
     // Obtener la consulta actualizada
-    const [rows] = await pool.query(`SELECT * FROM consultas ${whereClause}`, whereParams);
+    const [rows] = await req.dbPool.query(`SELECT * FROM consultas ${whereClause}`, whereParams);
     // @ts-ignore
     res.json(rows[0]);
   } catch (error) {
@@ -487,7 +486,7 @@ router.delete("/:id", requireCentroAccess, async (req: Request, res: Response) =
     }
     // Los admins pueden eliminar consultas de cualquier centro
 
-    const [result] = await pool.execute(`DELETE FROM consultas ${whereClause}`, whereParams);
+    const [result] = await req.dbPool.execute(`DELETE FROM consultas ${whereClause}`, whereParams);
     // @ts-ignore
     if (result.affectedRows === 0) return res.status(404).json({ error: "Consulta no encontrada" });
     res.status(204).send();
@@ -505,21 +504,21 @@ router.post("/medicos", requireRole(['admin']), validateMedico, async (req: Requ
     // Las validaciones detalladas ya se hicieron en el middleware
 
     // Verificar que la especialidad existe
-    const [especialidadRows] = await pool.query('SELECT id FROM especialidades WHERE id = ?', [id_especialidad]);
+    const [especialidadRows] = await req.dbPool.query('SELECT id FROM especialidades WHERE id = ?', [id_especialidad]);
     // @ts-ignore
     if (!especialidadRows[0]) {
       return res.status(400).json({ error: 'La especialidad no existe' });
     }
 
     // Verificar que el centro existe
-    const [centroRows] = await pool.query('SELECT id FROM centros_medicos WHERE id = ?', [id_centro]);
+    const [centroRows] = await req.dbPool.query('SELECT id FROM centros_medicos WHERE id = ?', [id_centro]);
     // @ts-ignore
     if (!centroRows[0]) {
       return res.status(400).json({ error: 'El centro médico no existe' });
     }
 
     // Crear médico
-    const [result] = await pool.execute(
+    const [result] = await req.dbPool.execute(
       'INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro) VALUES (?, ?, ?, ?)',
       [nombres, apellidos, id_especialidad, id_centro]
     );
@@ -528,7 +527,7 @@ router.post("/medicos", requireRole(['admin']), validateMedico, async (req: Requ
     const medicoId = result.insertId;
 
     // Obtener el médico creado con datos relacionados
-    const [rows] = await pool.query(`
+    const [rows] = await req.dbPool.query(`
       SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
       FROM medicos m
       LEFT JOIN especialidades e ON m.id_especialidad = e.id
@@ -553,7 +552,7 @@ router.post("/usuarios", requireRole(['admin']), validateUsuario, async (req: Re
     // Las validaciones detalladas ya se hicieron en el middleware
 
     // Verificar que el centro existe
-    const [centroRows] = await pool.query('SELECT id FROM centros_medicos WHERE id = ?', [id_centro]);
+    const [centroRows] = await req.dbPool.query('SELECT id FROM centros_medicos WHERE id = ?', [id_centro]);
     // @ts-ignore
     if (!centroRows[0]) {
       return res.status(400).json({ error: 'El centro médico no existe' });
@@ -561,7 +560,7 @@ router.post("/usuarios", requireRole(['admin']), validateUsuario, async (req: Re
 
     // Si es médico, verificar que el médico existe y pertenece al centro
     if (rol === 'medico' && id_medico) {
-      const [medicoRows] = await pool.query('SELECT id FROM medicos WHERE id = ? AND id_centro = ?', [id_medico, id_centro]);
+      const [medicoRows] = await req.dbPool.query('SELECT id FROM medicos WHERE id = ? AND id_centro = ?', [id_medico, id_centro]);
       // @ts-ignore
       if (!medicoRows[0]) {
         return res.status(400).json({ error: 'El médico no existe o no pertenece al centro' });
@@ -569,7 +568,7 @@ router.post("/usuarios", requireRole(['admin']), validateUsuario, async (req: Re
     }
 
     // Verificar que el email no existe
-    const [emailRows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
+    const [emailRows] = await req.dbPool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
     // @ts-ignore
     if (emailRows[0]) {
       return res.status(400).json({ error: 'El email ya está registrado' });
@@ -581,7 +580,7 @@ router.post("/usuarios", requireRole(['admin']), validateUsuario, async (req: Re
     const password_hash = await bcrypt.hash(password, saltRounds);
 
     // Crear usuario
-    const [result] = await pool.execute(
+    const [result] = await req.dbPool.execute(
       'INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) VALUES (?, ?, ?, ?, ?)',
       [email, password_hash, rol, id_centro, id_medico || null]
     );
@@ -590,7 +589,7 @@ router.post("/usuarios", requireRole(['admin']), validateUsuario, async (req: Re
     const userId = result.insertId;
 
     // Obtener el usuario creado
-    const [rows] = await pool.query(`
+    const [rows] = await req.dbPool.query(`
       SELECT u.*, cm.nombre as centro_nombre, m.nombres as medico_nombres, m.apellidos as medico_apellidos
       FROM usuarios u
       LEFT JOIN centros_medicos cm ON u.id_centro = cm.id

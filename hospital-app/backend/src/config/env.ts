@@ -27,14 +27,38 @@ function asNumber(name: keyof Raw, raw: Raw, def?: number): number {
 
 // Construir la config validada una sola vez
 export const CONFIG = {
-  DB_HOST:        required("DB_HOST", process.env),
-  DB_PORT:        asNumber("DB_PORT", process.env, 3306),
-  DB_USER:        required("DB_USER", process.env),
-  DB_PASS:        (process.env.DB_PASS ?? ""),    // puede ser vacío
-  DB_NAME:        required("DB_NAME", process.env),
-
+  // Configuración general
   PORT:           asNumber("PORT", process.env, 3000),
+  NODE_ENV:        (process.env.NODE_ENV ?? "development"),
   JWT_SECRET:     required("JWT_SECRET", process.env),
+
+  // Base de datos central (Quito)
+  CENTRAL_DB_HOST: required("CENTRAL_DB_HOST", process.env),
+  CENTRAL_DB_PORT: asNumber("CENTRAL_DB_PORT", process.env, 3306),
+  CENTRAL_DB_USER: required("CENTRAL_DB_USER", process.env),
+  CENTRAL_DB_PASS: (process.env.CENTRAL_DB_PASS ?? ""),
+  CENTRAL_DB_NAME: required("CENTRAL_DB_NAME", process.env),
+
+  // Base de datos Guayaquil
+  GYE_DB_HOST:     required("GYE_DB_HOST", process.env),
+  GYE_DB_PORT:     asNumber("GYE_DB_PORT", process.env, 3306),
+  GYE_DB_USER:     required("GYE_DB_USER", process.env),
+  GYE_DB_PASS:     (process.env.GYE_DB_PASS ?? ""),
+  GYE_DB_NAME:     required("GYE_DB_NAME", process.env),
+
+  // Base de datos Cuenca
+  CUENCA_DB_HOST:  required("CUENCA_DB_HOST", process.env),
+  CUENCA_DB_PORT:  asNumber("CUENCA_DB_PORT", process.env, 3306),
+  CUENCA_DB_USER:  required("CUENCA_DB_USER", process.env),
+  CUENCA_DB_PASS:  (process.env.CUENCA_DB_PASS ?? ""),
+  CUENCA_DB_NAME:  required("CUENCA_DB_NAME", process.env),
+
+  // Mantener compatibilidad con configuración anterior
+  DB_HOST:        required("CENTRAL_DB_HOST", process.env),
+  DB_PORT:        asNumber("CENTRAL_DB_PORT", process.env, 3306),
+  DB_USER:        required("CENTRAL_DB_USER", process.env),
+  DB_PASS:        (process.env.CENTRAL_DB_PASS ?? ""),
+  DB_NAME:        required("CENTRAL_DB_NAME", process.env),
 } as const;
 
 // (opcional) log breve de entorno sin secretos

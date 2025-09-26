@@ -53,6 +53,244 @@ tags:
 
 paths:
   # ===========================================
+  # ENDPOINTS DE PRUEBA
+  # ===========================================
+  /test-db:
+    get:
+      tags:
+        - auth
+      summary: Probar conexión a base de datos
+      description: |
+        Endpoint de prueba para verificar la conexión a la base de datos seleccionada.
+        
+        **Comportamiento:**
+        - Sin `X-Centro-Id`: Usa BD Central (Quito)
+        - Con `X-Centro-Id`: Usa BD Local correspondiente
+        
+        **Ejemplos:**
+        ```
+        GET /test-db                    → BD Central (Quito)
+        GET /test-db + X-Centro-Id: 2   → BD Guayaquil
+        GET /test-db + X-Centro-Id: 3   → BD Cuenca
+        ```
+      parameters:
+        - name: X-Centro-Id
+          in: header
+          required: false
+          schema:
+            type: integer
+            enum: [1, 2, 3]
+          example: 2
+          description: |
+            ID del centro médico (opcional):
+            - 1 = Quito (Central) - Por defecto
+            - 2 = Guayaquil
+            - 3 = Cuenca
+      responses:
+        '200':
+          description: Conexión exitosa
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Conexión exitosa"
+                  database:
+                    type: object
+                    properties:
+                      host:
+                        type: string
+                        example: "192.168.1.16"
+                      database:
+                        type: string
+                        example: "hospital_guayaquil"
+                      user:
+                        type: string
+                        example: "admin_guayaquil"
+                      centroId:
+                        type: integer
+                        example: 2
+                  query_result:
+                    type: object
+                    properties:
+                      now:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      database_name:
+                        type: string
+                        example: "hospital_guayaquil"
+                      user_name:
+                        type: string
+                        example: "admin_guayaquil@192.168.1.16"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+        '400':
+          description: Error en parámetros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error de conexión
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /test-consultas:
+    get:
+      tags:
+        - auth
+      summary: Probar consultas en base de datos local
+      description: |
+        Endpoint especial para probar la conexión a la base de datos local y verificar datos.
+        
+        **Comportamiento:**
+        - Requiere `X-Centro-Id` header
+        - Muestra estadísticas de datos en la BD local
+        - Útil para verificar si hay datos en Guayaquil/Cuenca
+        
+        **Ejemplos:**
+        ```
+        GET /test-consultas + X-Centro-Id: 2   → Estadísticas BD Guayaquil
+        GET /test-consultas + X-Centro-Id: 3   → Estadísticas BD Cuenca
+        ```
+      parameters:
+        - name: X-Centro-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+            enum: [2, 3]
+          example: 2
+          description: |
+            ID del centro médico local:
+            - 2 = Guayaquil
+            - 3 = Cuenca
+      responses:
+        '200':
+          description: Estadísticas de la base de datos local
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Información de la base de datos local"
+                  database:
+                    type: object
+                    properties:
+                      host:
+                        type: string
+                        example: "192.168.1.16"
+                      database:
+                        type: string
+                        example: "hospital_guayaquil"
+                      user:
+                        type: string
+                        example: "admin_guayaquil"
+                      centroId:
+                        type: integer
+                        example: 2
+                  estadisticas:
+                    type: object
+                    properties:
+                      consultas:
+                        type: integer
+                        example: 3
+                      medicos:
+                        type: integer
+                        example: 3
+                      pacientes:
+                        type: integer
+                        example: 3
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+        '400':
+          description: X-Centro-Id requerido o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error de conexión
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /test-centros:
+    get:
+      tags:
+        - auth
+      summary: Probar todos los centros médicos
+      description: |
+        Endpoint especial para probar la conexión a todos los centros médicos.
+        
+        **Devuelve información de conexión para:**
+        - BD Central (Quito)
+        - BD Guayaquil  
+        - BD Cuenca
+        
+        **Útil para verificar que todas las bases de datos distribuidas funcionan correctamente.**
+      responses:
+        '200':
+          description: Información de todos los centros
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Información de todos los centros médicos"
+                  centros:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        centroId:
+                          type: integer
+                          example: 1
+                        nombre:
+                          type: string
+                          example: "Quito"
+                        host:
+                          type: string
+                          example: "192.168.1.14"
+                        database:
+                          type: string
+                          example: "hospital_central"
+                        user:
+                          type: string
+                          example: "admin_central"
+                        status:
+                          type: string
+                          example: "conectado"
+                        timestamp:
+                          type: string
+                          format: date-time
+                          example: "2024-01-15T10:30:00Z"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+        '500':
+          description: Error de conexión
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ===========================================
   # AUTENTICACIÓN
   # ===========================================
   /auth/login:
@@ -832,7 +1070,20 @@ paths:
       tags:
         - consultas
       summary: Listar consultas
-      description: Obtiene la lista de consultas del centro médico especificado
+      description: |
+        Obtiene la lista de consultas del centro médico especificado.
+        
+        **Centros disponibles:**
+        - `1` = Quito (Central)
+        - `2` = Guayaquil  
+        - `3` = Cuenca
+        
+        **Ejemplo de uso:**
+        ```
+        Headers:
+        X-Centro-Id: 2
+        Authorization: Bearer tu_token_jwt
+        ```
       security:
         - bearerAuth: []
       parameters:
@@ -841,7 +1092,13 @@ paths:
           required: true
           schema:
             type: integer
-          example: 1
+            enum: [1, 2, 3]
+          example: 2
+          description: |
+            ID del centro médico:
+            - 1 = Quito (Central)
+            - 2 = Guayaquil
+            - 3 = Cuenca
         - name: medico
           in: query
           description: Filtrar por médico

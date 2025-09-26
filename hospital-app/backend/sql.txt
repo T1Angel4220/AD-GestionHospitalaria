@@ -1,4 +1,5 @@
 USE hospital_central;
+mysql -u admin_central -p -h localhost hospital_central
 En el servidor Quito (central)
 CREATE DATABASE hospital_central;
 
@@ -9,6 +10,8 @@ FLUSH PRIVILEGES;
 
 
 🔹 En el servidor Guayaquil (local)
+mysql -u admin_guayaquil -p -h localhost hospital_guayaquil
+
 CREATE DATABASE hospital_guayaquil;
 
 CREATE USER 'admin_guayaquil'@'%' IDENTIFIED BY 'SuperPasswordGye123!';
@@ -17,11 +20,14 @@ FLUSH PRIVILEGES;
 
 
 🔹 En el servidor Cuenca (local)
+mysql -u admin_cuenca -p -h localhost hospital_cuenca
+
 CREATE DATABASE hospital_cuenca;
 
 CREATE USER 'admin_cuenca'@'%' IDENTIFIED BY 'SuperPasswordCuenca123!';
 GRANT ALL PRIVILEGES ON hospital_cuenca.* TO 'admin_cuenca'@'%';
 FLUSH PRIVILEGES;
+USE hospital_central;
 
 -- Eliminar si existían (en orden inverso por foreign keys)
 DROP TABLE IF EXISTS consultas;
@@ -31,7 +37,6 @@ DROP TABLE IF EXISTS medicos;
 DROP TABLE IF EXISTS empleados;
 DROP TABLE IF EXISTS especialidades;
 DROP TABLE IF EXISTS centros_medicos;
-
 -- Tabla Centros Médicos
 CREATE TABLE centros_medicos (
     id INT AUTO_INCREMENT PRIMARY KEY,

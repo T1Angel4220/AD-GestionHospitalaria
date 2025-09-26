@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { query, execute } from "../config/db";
 import { validateMedico } from "../middlewares/validation";
 
 // =========================
@@ -7,7 +6,7 @@ import { validateMedico } from "../middlewares/validation";
 // =========================
 export async function list(req: Request, res: Response) {
   try {
-    const medicos = await query(`
+    const medicos = await req.dbPool.query(`
       SELECT 
         m.id,
         m.nombres,
@@ -38,7 +37,7 @@ export async function getOne(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const medicos = await query(`
+    const medicos = await req.dbPool.query(`
       SELECT 
         m.id,
         m.nombres,
@@ -73,14 +72,14 @@ export async function create(req: Request, res: Response) {
     // Las validaciones detalladas ya se hicieron en el middleware
 
     // Validar centro
-    const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
+    const centros = await req.dbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
     if (centros.length === 0) return res.status(400).json({ error: "El centro especificado no existe" });
 
     // Validar especialidad
-    const especialidades = await query("SELECT id FROM especialidades WHERE id = ?", [Number(id_especialidad)]);
+    const especialidades = await req.dbPool.query("SELECT id FROM especialidades WHERE id = ?", [Number(id_especialidad)]);
     if (especialidades.length === 0) return res.status(400).json({ error: "La especialidad especificada no existe" });
 
-    const result = await execute(`
+    const result = await req.dbPool.execute(`
       INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro) 
       VALUES (?, ?, ?, ?)
     `, [nombres, apellidos, Number(id_especialidad), Number(id_centro)]);
@@ -111,18 +110,18 @@ export async function update(req: Request, res: Response) {
     // Las validaciones detalladas ya se hicieron en el middleware
 
     // Validar existencia del médico
-    const medicos = await query("SELECT id FROM medicos WHERE id = ?", [id]);
+    const medicos = await req.dbPool.query("SELECT id FROM medicos WHERE id = ?", [id]);
     if (medicos.length === 0) return res.status(404).json({ error: "Médico no encontrado" });
 
     // Validar centro
-    const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
+    const centros = await req.dbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
     if (centros.length === 0) return res.status(400).json({ error: "El centro especificado no existe" });
 
     // Validar especialidad
-    const especialidades = await query("SELECT id FROM especialidades WHERE id = ?", [Number(id_especialidad)]);
+    const especialidades = await req.dbPool.query("SELECT id FROM especialidades WHERE id = ?", [Number(id_especialidad)]);
     if (especialidades.length === 0) return res.status(400).json({ error: "La especialidad especificada no existe" });
 
-    await execute(`
+    await req.dbPool.execute(`
       UPDATE medicos 
       SET nombres = ?, apellidos = ?, id_especialidad = ?, id_centro = ?
       WHERE id = ?
@@ -149,10 +148,10 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const medicos = await query("SELECT id FROM medicos WHERE id = ?", [id]);
+    const medicos = await req.dbPool.query("SELECT id FROM medicos WHERE id = ?", [id]);
     if (medicos.length === 0) return res.status(404).json({ error: "Médico no encontrado" });
 
-    await execute("DELETE FROM medicos WHERE id = ?", [id]);
+    await req.dbPool.execute("DELETE FROM medicos WHERE id = ?", [id]);
 
     res.json({ message: "Médico eliminado correctamente" });
   } catch (err) {

@@ -1,6 +1,5 @@
 // src/controllers/reports.controller.ts
 import { Request, Response } from "express";
-import { pool } from "../config/db";
 import jwt from 'jsonwebtoken';
 
 function getCentroId(req: Request): number | null {
@@ -119,7 +118,7 @@ export async function getResumenConsultas(req: Request, res: Response) {
     console.log('SQL Query:', sql);
     console.log('Params:', params);
     
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await req.dbPool.query(sql, params);
     console.log('Query results:', rows);
     console.log('Total médicos encontrados:', (rows as any[]).length);
     
@@ -160,7 +159,7 @@ export async function getDetalleConsultasMedico(req: Request, res: Response) {
       checkParams = [medicoId, centroId];
     }
 
-    const [check] = await pool.query(checkQuery, checkParams);
+    const [check] = await req.dbPool.query(checkQuery, checkParams);
     // @ts-ignore
     if (!check[0]) {
       return res.status(400).json({ 
@@ -206,7 +205,7 @@ export async function getDetalleConsultasMedico(req: Request, res: Response) {
       ORDER BY c.fecha DESC, c.id DESC
     `;
 
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await req.dbPool.query(sql, params);
     res.json(rows);
   } catch (err) {
     console.error("[reports] getDetalleConsultasMedico:", err);
@@ -225,39 +224,46 @@ export async function getEstadisticasGenerales(req: Request, res: Response) {
 
     const { desde, hasta } = req.query as Record<string, string | undefined>;
 
-    const params: any[] = [centroId];
-    let fechaFilter = "";
-    
-    if (desde && hasta) {
-      fechaFilter = "AND c.fecha >= ? AND c.fecha <= ?";
-      params.push(`${desde} 00:00:00`, `${hasta} 23:59:59`);
-    }
-
-    const sql = `
+    // Construir SQL dinámicamente para evitar problemas con parámetros
+    let sql = `
       SELECT
-        (SELECT COUNT(*) FROM medicos WHERE id_centro = ?) as total_medicos,
-        (SELECT COUNT(*) FROM pacientes WHERE id_centro = ?) as total_pacientes,
-        (SELECT COUNT(*) FROM empleados WHERE id_centro = ?) as total_empleados,
-        (SELECT COUNT(*) FROM consultas WHERE id_centro = ? ${fechaFilter}) as total_consultas,
-        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ? AND id_paciente IS NOT NULL ${fechaFilter}) as pacientes_con_consultas,
-        (SELECT COUNT(*) FROM consultas WHERE id_centro = ? AND estado = 'pendiente' ${fechaFilter}) as consultas_pendientes,
-        (SELECT COUNT(*) FROM consultas WHERE id_centro = ? AND estado = 'programada' ${fechaFilter}) as consultas_programadas,
-        (SELECT COUNT(*) FROM consultas WHERE id_centro = ? AND estado = 'completada' ${fechaFilter}) as consultas_completadas,
-        (SELECT COUNT(*) FROM consultas WHERE id_centro = ? AND estado = 'cancelada' ${fechaFilter}) as consultas_canceladas,
-        (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ? AND duracion_minutos > 0 ${fechaFilter}) as duracion_promedio_minutos
+        (SELECT COUNT(*) FROM medicos WHERE id_centro = ${centroId}) as total_medicos,
+        (SELECT COUNT(*) FROM pacientes WHERE id_centro = ${centroId}) as total_pacientes,
+        (SELECT COUNT(*) FROM empleados WHERE id_centro = ${centroId}) as total_empleados
     `;
-    
-    const queryParams: any[] = [centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId];
+
+    // Agregar consultas con filtros de fecha si se proporcionan
     if (desde && hasta) {
-      queryParams.push(`${desde} 00:00:00`, `${hasta} 23:59:59`);
-      queryParams.push(`${desde} 00:00:00`, `${hasta} 23:59:59`);
-      queryParams.push(`${desde} 00:00:00`, `${hasta} 23:59:59`);
-      queryParams.push(`${desde} 00:00:00`, `${hasta} 23:59:59`);
-      queryParams.push(`${desde} 00:00:00`, `${hasta} 23:59:59`);
-      queryParams.push(`${desde} 00:00:00`, `${hasta} 23:59:59`);
+      const fechaInicio = `${desde} 00:00:00`;
+      const fechaFin = `${hasta} 23:59:59`;
+      
+      sql += `,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND id_paciente IS NOT NULL AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'pendiente' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'programada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'completada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'cancelada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_canceladas,
+        (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ${centroId} AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as duracion_promedio_minutos
+      `;
+    } else {
+      sql += `,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId}) as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND id_paciente IS NOT NULL) as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'pendiente') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'programada') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'completada') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'cancelada') as consultas_canceladas,
+        (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ${centroId} AND duracion_minutos > 0) as duracion_promedio_minutos
+      `;
     }
 
-    const [rows] = await pool.query(sql, queryParams);
+    console.log('=== DEBUG REPORTES ESTADISTICAS ===');
+    console.log('Centro ID:', centroId);
+    console.log('Filtros de fecha:', { desde, hasta });
+    console.log('SQL Query:', sql);
+
+    const [rows] = await req.dbPool.query(sql);
     res.json(rows[0]);
   } catch (err) {
     console.error("[reports] getEstadisticasGenerales:", err);
@@ -311,7 +317,7 @@ export async function getPacientesFrecuentes(req: Request, res: Response) {
     
     params.push(limiteNum);
 
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await req.dbPool.query(sql, params);
     res.json(rows);
   } catch (err) {
     console.error("[reports] getPacientesFrecuentes:", err);

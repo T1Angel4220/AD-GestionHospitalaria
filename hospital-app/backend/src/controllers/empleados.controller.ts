@@ -1,12 +1,11 @@
 import { Request, Response } from "express";
-import { query, execute } from "../config/db";
 
 // =========================
 // GET /api/admin/empleados
 // =========================
 export async function list(req: Request, res: Response) {
   try {
-    const empleados = await query(`
+    const empleados = await req.dbPool.query(`
       SELECT 
         e.id,
         e.nombres,
@@ -35,7 +34,7 @@ export async function getOne(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const empleados = await query(`
+    const empleados = await req.dbPool.query(`
       SELECT 
         e.id,
         e.nombres,
@@ -70,12 +69,12 @@ export async function create(req: Request, res: Response) {
     }
 
     // Validar centro
-    const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
+    const centros = await req.dbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
     if (centros.length === 0) {
       return res.status(400).json({ error: "El centro especificado no existe" });
     }
 
-    const result = await execute(`
+    const result = await req.dbPool.execute(`
       INSERT INTO empleados (nombres, apellidos, cargo, id_centro) 
       VALUES (?, ?, ?, ?)
     `, [nombres.trim(), apellidos.trim(), cargo.trim(), Number(id_centro)]);
@@ -123,7 +122,7 @@ export async function update(req: Request, res: Response) {
     }
     if (id_centro !== undefined) {
       // Validar centro si viene en el body
-      const centros = await query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
+      const centros = await req.dbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
       if (centros.length === 0) {
         return res.status(400).json({ error: "El centro especificado no existe" });
       }
@@ -137,7 +136,7 @@ export async function update(req: Request, res: Response) {
 
     values.push(id);
 
-    await execute(`
+    await req.dbPool.execute(`
       UPDATE empleados 
       SET ${updates.join(", ")}
       WHERE id = ?
@@ -166,10 +165,10 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const empleados = await query("SELECT id FROM empleados WHERE id = ?", [id]);
+    const empleados = await req.dbPool.query("SELECT id FROM empleados WHERE id = ?", [id]);
     if (empleados.length === 0) return res.status(404).json({ error: "Empleado no encontrado" });
 
-    await execute("DELETE FROM empleados WHERE id = ?", [id]);
+    await req.dbPool.execute("DELETE FROM empleados WHERE id = ?", [id]);
 
     res.json({ message: "Empleado eliminado correctamente" });
   } catch (err) {
