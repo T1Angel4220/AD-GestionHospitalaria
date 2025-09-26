@@ -77,14 +77,20 @@ export interface AdminCentroUpdate {
 export interface AdminEspecialidad {
   id: number;
   nombre: string;
+  origen_bd?: string;
+  id_unico?: string;
+  id_frontend?: string;
 }
 
 export interface AdminEspecialidadCreate {
   nombre: string;
+  id_centro?: number;
 }
 
 export interface AdminEspecialidadUpdate {
   nombre: string;
+  id_centro?: number;
+  origen_bd?: string;
 }
 
 export interface AdminUsuario {

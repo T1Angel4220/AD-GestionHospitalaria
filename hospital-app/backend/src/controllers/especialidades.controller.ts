@@ -30,7 +30,15 @@ async function getAllEspecialidadesFromAllDatabases() {
       ORDER BY id ASC
     `);
     
-    allEspecialidades.push(...(centralEspecialidades as any[]));
+    // Agregar origen_bd e id_frontend para Central
+    const centralWithOrigin = (centralEspecialidades as any[]).map(esp => ({
+      ...esp,
+      origen_bd: 'central',
+      id_unico: `central-${esp.id}`,
+      id_frontend: `central-${esp.id}`
+    }));
+    
+    allEspecialidades.push(...centralWithOrigin);
     
     // Consultar BD Guayaquil
     try {
@@ -40,7 +48,15 @@ async function getAllEspecialidadesFromAllDatabases() {
         ORDER BY id ASC
       `);
       
-      allEspecialidades.push(...(guayaquilEspecialidades as any[]));
+      // Agregar origen_bd e id_frontend para Guayaquil
+      const guayaquilWithOrigin = (guayaquilEspecialidades as any[]).map(esp => ({
+        ...esp,
+        origen_bd: 'guayaquil',
+        id_unico: `guayaquil-${esp.id}`,
+        id_frontend: `guayaquil-${esp.id}`
+      }));
+      
+      allEspecialidades.push(...guayaquilWithOrigin);
     } catch (error) {
       console.log('⚠️ No se pudo conectar a BD Guayaquil:', error);
     }
@@ -53,7 +69,15 @@ async function getAllEspecialidadesFromAllDatabases() {
         ORDER BY id ASC
       `);
       
-      allEspecialidades.push(...(cuencaEspecialidades as any[]));
+      // Agregar origen_bd e id_frontend para Cuenca
+      const cuencaWithOrigin = (cuencaEspecialidades as any[]).map(esp => ({
+        ...esp,
+        origen_bd: 'cuenca',
+        id_unico: `cuenca-${esp.id}`,
+        id_frontend: `cuenca-${esp.id}`
+      }));
+      
+      allEspecialidades.push(...cuencaWithOrigin);
     } catch (error) {
       console.log('⚠️ No se pudo conectar a BD Cuenca:', error);
     }
@@ -63,12 +87,7 @@ async function getAllEspecialidadesFromAllDatabases() {
     throw error;
   }
   
-  // Eliminar duplicados por ID y ordenar
-  const uniqueEspecialidades = allEspecialidades.filter((especialidad, index, self) => 
-    index === self.findIndex(e => e.id === especialidad.id)
-  );
-  
-  return uniqueEspecialidades.sort((a, b) => a.id - b.id);
+  return allEspecialidades.sort((a, b) => a.id_frontend.localeCompare(b.id_frontend));
 }
 
 // =========================
@@ -144,15 +163,64 @@ export async function getOne(req: Request, res: Response) {
 // =========================
 export async function create(req: Request, res: Response) {
   try {
-    const { nombre } = req.body ?? {};
+    const { nombre, id_centro } = req.body ?? {};
 
     if (!nombre?.trim()) {
       return res.status(400).json({ error: "nombre es obligatorio" });
     }
 
-    if (req.user?.rol === 'admin') {
-      // Admin: crear especialidad en TODAS las bases de datos
-      console.log('👑 [CREATE] Admin creando especialidad en TODAS las bases de datos:', nombre.trim());
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [CREATE ESPECIALIDADES] Verificación de rol:', { email: decoded.email, rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+
+    if (isAdmin) {
+      // Admin: crear especialidad en centro específico o en TODAS las bases de datos
+      if (id_centro) {
+        // Crear en centro específico
+        console.log('👑 [CREATE] Admin creando especialidad en centro específico:', id_centro, 'Nombre:', nombre.trim());
+        
+        let targetDbPool: any;
+        if (id_centro === 1) {
+          targetDbPool = pools.central;
+        } else if (id_centro === 2) {
+          targetDbPool = pools.guayaquil;
+        } else if (id_centro === 3) {
+          targetDbPool = pools.cuenca;
+        } else {
+          return res.status(400).json({ error: "Centro inválido" });
+        }
+        
+        // Validar que el centro existe
+        const centros = await targetDbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [id_centro]);
+        if (centros.length === 0) return res.status(400).json({ error: "El centro especificado no existe" });
+        
+        const [result] = await targetDbPool.execute(`
+          INSERT INTO especialidades (nombre) 
+          VALUES (?)
+        `, [nombre.trim()]);
+
+        const created = {
+          id: (result as any).insertId,
+          nombre: nombre.trim(),
+          id_centro: id_centro,
+          created_in_database: id_centro === 1 ? 'Central' : id_centro === 2 ? 'Guayaquil' : 'Cuenca'
+        };
+
+        res.status(201).json(created);
+      } else {
+        // Crear en TODAS las bases de datos (comportamiento original)
+        console.log('👑 [CREATE] Admin creando especialidad en TODAS las bases de datos:', nombre.trim());
       
       const results: any[] = [];
       let insertId: number | null = null;
@@ -215,7 +283,8 @@ export async function create(req: Request, res: Response) {
         details: results
       };
 
-      res.status(201).json(created);
+        res.status(201).json(created);
+      }
     } else {
       // Médico: crear solo en su base de datos
       console.log('👨‍⚕️ [CREATE] Médico creando especialidad en su BD local:', nombre.trim());
@@ -252,81 +321,196 @@ export async function update(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const { nombre } = req.body ?? {};
+    const { nombre, id_centro, origen_bd } = req.body ?? {};
 
-    if (nombre === undefined) {
+    if (nombre === undefined && id_centro === undefined) {
       return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
     }
 
-    if (req.user?.rol === 'admin') {
-      // Admin: actualizar especialidad en TODAS las bases de datos
-      console.log('👑 [UPDATE] Admin actualizando especialidad en TODAS las bases de datos, ID:', id);
-      
-      const results: any[] = [];
-      let totalAffectedRows = 0;
-      
-      // Actualizar en BD Central
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
       try {
-        const [centralResult] = await pools.central.execute(`
-          UPDATE especialidades 
-          SET nombre = ?
-          WHERE id = ?
-        `, [nombre.trim(), id]);
-        results.push({ db: 'central', success: true, affectedRows: (centralResult as any).affectedRows });
-        totalAffectedRows += (centralResult as any).affectedRows;
-        console.log('✅ [UPDATE] Especialidad actualizada en BD Central, filas afectadas:', (centralResult as any).affectedRows);
-      } catch (error: any) {
-        console.error('❌ [UPDATE] Error en BD Central:', error);
-        results.push({ db: 'central', success: false, error: error.message });
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [UPDATE ESPECIALIDADES] Verificación de rol:', { email: decoded.email, rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
       }
-      
-      // Actualizar en BD Guayaquil
-      try {
-        const [guayaquilResult] = await pools.guayaquil.execute(`
-          UPDATE especialidades 
-          SET nombre = ?
-          WHERE id = ?
-        `, [nombre.trim(), id]);
-        results.push({ db: 'guayaquil', success: true, affectedRows: (guayaquilResult as any).affectedRows });
-        totalAffectedRows += (guayaquilResult as any).affectedRows;
-        console.log('✅ [UPDATE] Especialidad actualizada en BD Guayaquil, filas afectadas:', (guayaquilResult as any).affectedRows);
-      } catch (error: any) {
-        console.error('❌ [UPDATE] Error en BD Guayaquil:', error);
-        results.push({ db: 'guayaquil', success: false, error: error.message });
-      }
-      
-      // Actualizar en BD Cuenca
-      try {
-        const [cuencaResult] = await pools.cuenca.execute(`
-          UPDATE especialidades 
-          SET nombre = ?
-          WHERE id = ?
-        `, [nombre.trim(), id]);
-        results.push({ db: 'cuenca', success: true, affectedRows: (cuencaResult as any).affectedRows });
-        totalAffectedRows += (cuencaResult as any).affectedRows;
-        console.log('✅ [UPDATE] Especialidad actualizada en BD Cuenca, filas afectadas:', (cuencaResult as any).affectedRows);
-      } catch (error: any) {
-        console.error('❌ [UPDATE] Error en BD Cuenca:', error);
-        results.push({ db: 'cuenca', success: false, error: error.message });
-      }
-      
-      if (totalAffectedRows === 0) {
-        return res.status(404).json({ 
-          error: "Especialidad no encontrada en ninguna base de datos",
-          details: results
-        });
-      }
-      
-      const updated = {
-        id,
-        nombre: nombre.trim(),
-        updated_in_databases: results.filter(r => r.success).length,
-        total_databases: results.length,
-        total_affected_rows: totalAffectedRows,
-        details: results
-      };
+    }
 
-      res.json(updated);
+    if (isAdmin) {
+      // Admin: verificar si hay cambio de centro
+      if (id_centro && origen_bd) {
+        console.log('🔄 [UPDATE] Cambio de centro detectado:', { id, origen_bd, newCentroId: id_centro });
+        
+        // Buscar la especialidad en la BD original
+        let sourceDbPool: any;
+        if (origen_bd === 'central') {
+          sourceDbPool = pools.central;
+        } else if (origen_bd === 'guayaquil') {
+          sourceDbPool = pools.guayaquil;
+        } else if (origen_bd === 'cuenca') {
+          sourceDbPool = pools.cuenca;
+        } else {
+          return res.status(400).json({ error: "Origen de base de datos inválido" });
+        }
+        
+        // Obtener datos de la especialidad original
+        const [especialidadData] = await sourceDbPool.query(`
+          SELECT id, nombre
+          FROM especialidades
+          WHERE id = ?
+        `, [id]);
+        
+        if (especialidadData.length === 0) {
+          return res.status(404).json({ error: "Especialidad no encontrada en la base de datos original" });
+        }
+        
+        const especialidad = especialidadData[0];
+        const newNombre = nombre?.trim() || especialidad.nombre;
+        
+        // Seleccionar BD destino
+        let targetDbPool: any;
+        if (id_centro === 1) {
+          targetDbPool = pools.central;
+        } else if (id_centro === 2) {
+          targetDbPool = pools.guayaquil;
+        } else if (id_centro === 3) {
+          targetDbPool = pools.cuenca;
+        } else {
+          return res.status(400).json({ error: "Centro destino inválido" });
+        }
+        
+        // Validar que el centro destino existe
+        const centros = await targetDbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [id_centro]);
+        if (centros.length === 0) return res.status(400).json({ error: "El centro destino no existe" });
+        
+        // Crear especialidad en BD destino
+        console.log('🔄 [UPDATE] Creando especialidad en BD destino:', {
+          nombre: newNombre,
+          id_centro,
+          targetDb: id_centro === 1 ? 'Central' : id_centro === 2 ? 'Guayaquil' : 'Cuenca'
+        });
+        
+        let newEspecialidadId;
+        try {
+          const [newEspecialidadResult] = await targetDbPool.execute(`
+            INSERT INTO especialidades (nombre) 
+            VALUES (?)
+          `, [newNombre]);
+          
+          newEspecialidadId = (newEspecialidadResult as any).insertId;
+          console.log('✅ [UPDATE] Especialidad creada en BD destino, ID:', newEspecialidadId);
+        } catch (createError: any) {
+          console.error('❌ [UPDATE] Error creando especialidad en BD destino:', createError);
+          return res.status(500).json({ error: "Error al crear especialidad en el nuevo centro: " + createError.message });
+        }
+        
+        // Eliminar especialidad de BD original
+        try {
+          console.log('🗑️ [UPDATE] Eliminando especialidad de BD original, ID:', id, 'BD:', origen_bd);
+          const [deleteResult] = await sourceDbPool.execute(`
+            DELETE FROM especialidades WHERE id = ?
+          `, [id]);
+          
+          console.log('🗑️ [UPDATE] Especialidad eliminada de BD original, filas afectadas:', (deleteResult as any).affectedRows);
+        } catch (deleteError: any) {
+          console.error('❌ [UPDATE] Error eliminando especialidad de BD original:', deleteError);
+          // Rollback: eliminar la especialidad creada en el destino
+          try {
+            await targetDbPool.execute("DELETE FROM especialidades WHERE id = ?", [newEspecialidadId]);
+            console.log('🔄 [UPDATE] Rollback: Especialidad eliminada del destino');
+          } catch (rollbackError) {
+            console.error('❌ [UPDATE] Error en rollback:', rollbackError);
+          }
+          return res.status(500).json({ error: "Error al eliminar especialidad del centro original" });
+        }
+        
+        const updated = {
+          id: newEspecialidadId,
+          nombre: newNombre,
+          id_centro: id_centro,
+          origen_bd: id_centro === 1 ? 'central' : id_centro === 2 ? 'guayaquil' : 'cuenca',
+          id_frontend: `${id_centro === 1 ? 'central' : id_centro === 2 ? 'guayaquil' : 'cuenca'}-${newEspecialidadId}`,
+          moved_from: origen_bd,
+          moved_to: id_centro === 1 ? 'central' : id_centro === 2 ? 'guayaquil' : 'cuenca'
+        };
+
+        res.json(updated);
+      } else {
+        // Actualización normal (solo nombre) en TODAS las bases de datos
+        console.log('👑 [UPDATE] Admin actualizando especialidad en TODAS las bases de datos, ID:', id);
+        
+        const results: any[] = [];
+        let totalAffectedRows = 0;
+        
+        // Actualizar en BD Central
+        try {
+          const [centralResult] = await pools.central.execute(`
+            UPDATE especialidades 
+            SET nombre = ?
+            WHERE id = ?
+          `, [nombre.trim(), id]);
+          results.push({ db: 'central', success: true, affectedRows: (centralResult as any).affectedRows });
+          totalAffectedRows += (centralResult as any).affectedRows;
+          console.log('✅ [UPDATE] Especialidad actualizada en BD Central, filas afectadas:', (centralResult as any).affectedRows);
+        } catch (error: any) {
+          console.error('❌ [UPDATE] Error en BD Central:', error);
+          results.push({ db: 'central', success: false, error: error.message });
+        }
+        
+        // Actualizar en BD Guayaquil
+        try {
+          const [guayaquilResult] = await pools.guayaquil.execute(`
+            UPDATE especialidades 
+            SET nombre = ?
+            WHERE id = ?
+          `, [nombre.trim(), id]);
+          results.push({ db: 'guayaquil', success: true, affectedRows: (guayaquilResult as any).affectedRows });
+          totalAffectedRows += (guayaquilResult as any).affectedRows;
+          console.log('✅ [UPDATE] Especialidad actualizada en BD Guayaquil, filas afectadas:', (guayaquilResult as any).affectedRows);
+        } catch (error: any) {
+          console.error('❌ [UPDATE] Error en BD Guayaquil:', error);
+          results.push({ db: 'guayaquil', success: false, error: error.message });
+        }
+        
+        // Actualizar en BD Cuenca
+        try {
+          const [cuencaResult] = await pools.cuenca.execute(`
+            UPDATE especialidades 
+            SET nombre = ?
+            WHERE id = ?
+          `, [nombre.trim(), id]);
+          results.push({ db: 'cuenca', success: true, affectedRows: (cuencaResult as any).affectedRows });
+          totalAffectedRows += (cuencaResult as any).affectedRows;
+          console.log('✅ [UPDATE] Especialidad actualizada en BD Cuenca, filas afectadas:', (cuencaResult as any).affectedRows);
+        } catch (error: any) {
+          console.error('❌ [UPDATE] Error en BD Cuenca:', error);
+          results.push({ db: 'cuenca', success: false, error: error.message });
+        }
+        
+        if (totalAffectedRows === 0) {
+          return res.status(404).json({ 
+            error: "Especialidad no encontrada en ninguna base de datos",
+            details: results
+          });
+        }
+        
+        const updated = {
+          id,
+          nombre: nombre.trim(),
+          updated_in_databases: results.filter(r => r.success).length,
+          total_databases: results.length,
+          total_affected_rows: totalAffectedRows,
+          details: results
+        };
+
+        res.json(updated);
+      }
     } else {
       // Médico: actualizar solo en su base de datos
       console.log('👨‍⚕️ [UPDATE] Médico actualizando especialidad en su BD local, ID:', id);
@@ -368,7 +552,22 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    if (req.user?.rol === 'admin') {
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [DELETE ESPECIALIDADES] Verificación de rol:', { email: decoded.email, rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+
+    if (isAdmin) {
       // Admin: eliminar especialidad de TODAS las bases de datos
       console.log('👑 [DELETE] Admin eliminando especialidad de TODAS las bases de datos, ID:', id);
       

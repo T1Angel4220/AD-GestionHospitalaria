@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
-import { AdminApi, type AdminEspecialidad, type AdminEspecialidadCreate } from '../api/adminApi'
+import { AdminApi, type AdminEspecialidad, type AdminEspecialidadCreate, type AdminCentro } from '../api/adminApi'
 import { 
   Activity, 
   Users, 
@@ -31,6 +31,7 @@ import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, g
 export default function EspecialidadesPage() {
   const { user, logout } = useAuth()
   const [especialidades, setEspecialidades] = useState<AdminEspecialidad[]>([])
+  const [centros, setCentros] = useState<AdminCentro[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -45,7 +46,8 @@ export default function EspecialidadesPage() {
 
   // Estados para formularios
   const [especialidadForm, setEspecialidadForm] = useState<AdminEspecialidadCreate>({
-    nombre: ''
+    nombre: '',
+    id_centro: 1
   })
 
   // Determinar el elemento activo del sidebar y obtener colores
@@ -60,11 +62,15 @@ export default function EspecialidadesPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const especialidadesData = await AdminApi.getEspecialidades()
+      const [especialidadesData, centrosData] = await Promise.all([
+        AdminApi.getEspecialidades(),
+        AdminApi.getCentros()
+      ])
       setEspecialidades(especialidadesData)
+      setCentros(centrosData)
       setError(null)
     } catch (err) {
-      setError("Error al cargar las especialidades")
+      setError("Error al cargar los datos")
       console.error(err)
     } finally {
       setLoading(false)
@@ -78,7 +84,7 @@ export default function EspecialidadesPage() {
     try {
       await AdminApi.createEspecialidad(especialidadForm)
       setIsCreateModalOpen(false)
-      setEspecialidadForm({ nombre: '' })
+      setEspecialidadForm({ nombre: '', id_centro: 1 })
       loadData()
     } catch (err) {
       setError("Error al crear la especialidad")
@@ -92,9 +98,30 @@ export default function EspecialidadesPage() {
     setError(null)
 
     try {
-      await AdminApi.updateEspecialidad(selectedEspecialidad.id, especialidadForm)
+      // Determinar si hay cambio de centro
+      const centroOriginal = selectedEspecialidad.origen_bd === 'guayaquil' ? 2 : 
+                           selectedEspecialidad.origen_bd === 'cuenca' ? 3 : 1;
+      const hayCambioCentro = especialidadForm.id_centro !== centroOriginal;
+      
+      const updateData = {
+        nombre: especialidadForm.nombre,
+        ...(hayCambioCentro && {
+          id_centro: especialidadForm.id_centro,
+          origen_bd: selectedEspecialidad.origen_bd
+        })
+      };
+      
+      console.log('🔄 [EDIT] Editando especialidad:', {
+        idOriginal: selectedEspecialidad.id,
+        centroOriginal,
+        centroNuevo: especialidadForm.id_centro,
+        hayCambioCentro,
+        updateData
+      });
+      
+      await AdminApi.updateEspecialidad(selectedEspecialidad.id, updateData)
       setIsEditModalOpen(false)
-      setEspecialidadForm({ nombre: '' })
+      setEspecialidadForm({ nombre: '', id_centro: 1 })
       setSelectedEspecialidad(null)
       loadData()
     } catch (err) {
@@ -133,8 +160,18 @@ export default function EspecialidadesPage() {
 
   const openEditModal = (especialidad: AdminEspecialidad) => {
     setSelectedEspecialidad(especialidad)
+    
+    // Determinar el centro basado en origen_bd
+    let centroId = 1; // Por defecto Quito
+    if (especialidad.origen_bd === 'guayaquil') {
+      centroId = 2;
+    } else if (especialidad.origen_bd === 'cuenca') {
+      centroId = 3;
+    }
+    
     setEspecialidadForm({
-      nombre: especialidad.nombre
+      nombre: especialidad.nombre,
+      id_centro: centroId
     })
     setIsEditModalOpen(true)
   }
@@ -428,6 +465,9 @@ export default function EspecialidadesPage() {
                       Especialidad
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Centro
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       ID
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -437,7 +477,7 @@ export default function EspecialidadesPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredEspecialidades.map((especialidad) => (
-                    <tr key={especialidad.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={especialidad.id_frontend || especialidad.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className={`w-10 h-10 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-full flex items-center justify-center mr-4`}>
@@ -449,6 +489,13 @@ export default function EspecialidadesPage() {
                             </div>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                          {especialidad.origen_bd === 'central' ? 'Quito' : 
+                           especialidad.origen_bd === 'guayaquil' ? 'Guayaquil' : 
+                           especialidad.origen_bd === 'cuenca' ? 'Cuenca' : 'N/A'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
@@ -522,6 +569,23 @@ export default function EspecialidadesPage() {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Centro Médico
+                </label>
+                <select
+                  value={especialidadForm.id_centro || 1}
+                  onChange={(e) => setEspecialidadForm({...especialidadForm, id_centro: Number(e.target.value)})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  required
+                >
+                  {centros.map((centro) => (
+                    <option key={centro.id} value={centro.id}>
+                      {centro.nombre} - {centro.ciudad}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button
                   type="button"
@@ -583,6 +647,23 @@ export default function EspecialidadesPage() {
                   placeholder="Cardiología"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Centro Médico
+                </label>
+                <select
+                  value={especialidadForm.id_centro || 1}
+                  onChange={(e) => setEspecialidadForm({...especialidadForm, id_centro: Number(e.target.value)})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  required
+                >
+                  {centros.map((centro) => (
+                    <option key={centro.id} value={centro.id}>
+                      {centro.nombre} - {centro.ciudad}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button
