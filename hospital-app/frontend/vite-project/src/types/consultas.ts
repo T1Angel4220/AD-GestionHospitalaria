@@ -54,6 +54,10 @@ export interface Medico {
   id_centro: number;
   especialidad_nombre?: string;
   centro_nombre?: string;
+  // Campos para bases de datos distribuidas
+  origen_bd?: string;
+  id_unico?: string;
+  id_frontend?: string;
 }
 
 export interface Especialidad {
@@ -96,4 +100,8 @@ export interface Paciente {
   centro_ciudad?: string;
   consultas_activas?: number;
   medicos_activos?: string;
+  // Campos para bases de datos distribuidas
+  origen_bd?: string;
+  id_unico?: string;
+  id_frontend?: string;
 }

@@ -4,7 +4,7 @@ import { config } from '../config/env';
 const API_BASE_URL = config.apiUrl;
 
 export class ConsultasApi {
-  private static getAuthHeaders(): HeadersInit {
+  private static getAuthHeaders(centroId?: number): HeadersInit {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
@@ -14,27 +14,31 @@ export class ConsultasApi {
       centroId: user?.centro?.id,
       id_centro: user?.id_centro,
       rol: user?.rol,
-      token: token ? 'present' : 'missing'
+      token: token ? 'present' : 'missing',
+      centroIdParam: centroId
     });
     
-    // Si es admin, no enviar X-Centro-Id para que vea todos los datos
-    // Si es médico, enviar su centro específico
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
     
-    if (user?.rol !== 'admin') {
+    // Si es admin y se proporciona centroId, usar ese centro
+    // Si es admin sin centroId, usar centro por defecto
+    // Si es médico, usar su centro específico
+    if (user?.rol === 'admin') {
+      headers['X-Centro-Id'] = (centroId || user?.id_centro || 1).toString();
+    } else {
       headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
     }
     
     return headers;
   }
 
-  private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private static async request<T>(endpoint: string, options: RequestInit = {}, centroId?: number): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const headers = {
-      ...this.getAuthHeaders(),
+      ...this.getAuthHeaders(centroId),
       ...options.headers,
     };
     
@@ -42,7 +46,8 @@ export class ConsultasApi {
       url,
       endpoint,
       headers,
-      method: options.method || 'GET'
+      method: options.method || 'GET',
+      centroId
     });
     
     const response = await fetch(url, {
@@ -62,9 +67,18 @@ export class ConsultasApi {
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log('✅ Response data:', data);
-    return data;
+    // Verificar si la respuesta tiene contenido antes de parsear JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      console.log('✅ Response data:', data);
+      return data;
+    } else {
+      // Si no es JSON, devolver la respuesta como texto o undefined
+      const text = await response.text();
+      console.log('✅ Response text:', text || 'Empty response');
+      return (text || undefined) as T;
+    }
   }
 
   static async getConsultas(): Promise<Consulta[]> {
@@ -75,24 +89,24 @@ export class ConsultasApi {
     return this.request<Consulta>(`/consultas/${id}`);
   }
 
-  static async createConsulta(consulta: ConsultaCreate): Promise<Consulta> {
+  static async createConsulta(consulta: ConsultaCreate, centroId?: number): Promise<Consulta> {
     return this.request<Consulta>('/consultas', {
       method: 'POST',
       body: JSON.stringify(consulta),
-    });
+    }, centroId);
   }
 
-  static async updateConsulta(id: number, consulta: ConsultaUpdate): Promise<Consulta> {
+  static async updateConsulta(id: number, consulta: ConsultaUpdate, centroId?: number): Promise<Consulta> {
     return this.request<Consulta>(`/consultas/${id}`, {
       method: 'PUT',
       body: JSON.stringify(consulta),
-    });
+    }, centroId);
   }
 
-  static async deleteConsulta(id: number): Promise<void> {
+  static async deleteConsulta(id: number, centroId?: number): Promise<void> {
     return this.request<void>(`/consultas/${id}`, {
       method: 'DELETE',
-    });
+    }, centroId);
   }
 
   static async getMedicos(): Promise<Medico[]> {
@@ -129,6 +143,14 @@ export class ConsultasApi {
 
   static async getMedicosDisponibles(): Promise<Medico[]> {
     return this.request<Medico[]>('/consultas/medicos-disponibles');
+  }
+
+  static async getMedicosPorCentro(centroId: number): Promise<Medico[]> {
+    return this.request<Medico[]>(`/consultas/medicos-por-centro/${centroId}`);
+  }
+
+  static async getMedicosPorCentroEspecifico(centroId: number, origenBd: string): Promise<Medico[]> {
+    return this.request<Medico[]>(`/consultas/medicos-por-centro/${centroId}/${origenBd}`);
   }
 
   static async createUsuario(usuario: {

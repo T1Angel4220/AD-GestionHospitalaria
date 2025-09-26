@@ -137,6 +137,332 @@ async function getAllConsultasFromAllDatabases(filters: any = {}) {
   return allConsultas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 }
 
+// Función para obtener pacientes de todas las bases de datos (solo admin)
+async function getAllPacientesFromAllDatabases() {
+  const allPacientes: any[] = [];
+  
+  try {
+    // Consultar BD Central (Quito)
+    const [centralPacientes] = await pools.central.query(`
+      SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
+             COUNT(c.id) as consultas_activas,
+             GROUP_CONCAT(DISTINCT CONCAT(m.nombres, ' ', m.apellidos) SEPARATOR ', ') as medicos_activos
+      FROM pacientes p 
+      LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+      LEFT JOIN consultas c ON p.id = c.id_paciente AND c.estado IN ('pendiente', 'programada')
+      LEFT JOIN medicos m ON c.id_medico = m.id
+      GROUP BY p.id
+      ORDER BY p.nombres, p.apellidos
+    `);
+    
+    // Agregar información de centro y origen
+    (centralPacientes as any[]).forEach(paciente => {
+      paciente.centro_nombre = paciente.centro_nombre || 'Hospital Central Quito';
+      paciente.centro_ciudad = paciente.centro_ciudad || 'Quito';
+      paciente.origen_bd = 'central';
+      paciente.id_unico = `central-${paciente.id}`;
+      // Crear un ID único para evitar conflictos
+      paciente.id_frontend = `central-${paciente.id}`;
+    });
+    
+    allPacientes.push(...(centralPacientes as any[]));
+    
+    // Consultar BD Guayaquil
+    try {
+      const [guayaquilPacientes] = await pools.guayaquil.query(`
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
+               COUNT(c.id) as consultas_activas,
+               GROUP_CONCAT(DISTINCT CONCAT(m.nombres, ' ', m.apellidos) SEPARATOR ', ') as medicos_activos
+        FROM pacientes p 
+        LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        LEFT JOIN consultas c ON p.id = c.id_paciente AND c.estado IN ('pendiente', 'programada')
+        LEFT JOIN medicos m ON c.id_medico = m.id
+        GROUP BY p.id
+        ORDER BY p.nombres, p.apellidos
+      `);
+      
+      (guayaquilPacientes as any[]).forEach(paciente => {
+        paciente.centro_nombre = paciente.centro_nombre || 'Hospital Guayaquil';
+        paciente.centro_ciudad = paciente.centro_ciudad || 'Guayaquil';
+        paciente.origen_bd = 'guayaquil';
+        paciente.id_unico = `guayaquil-${paciente.id}`;
+        // Crear un ID único para evitar conflictos
+        paciente.id_frontend = `guayaquil-${paciente.id}`;
+      });
+      
+      allPacientes.push(...(guayaquilPacientes as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Guayaquil para pacientes:', error);
+    }
+    
+    // Consultar BD Cuenca
+    try {
+      const [cuencaPacientes] = await pools.cuenca.query(`
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
+               COUNT(c.id) as consultas_activas,
+               GROUP_CONCAT(DISTINCT CONCAT(m.nombres, ' ', m.apellidos) SEPARATOR ', ') as medicos_activos
+        FROM pacientes p 
+        LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        LEFT JOIN consultas c ON p.id = c.id_paciente AND c.estado IN ('pendiente', 'programada')
+        LEFT JOIN medicos m ON c.id_medico = m.id
+        GROUP BY p.id
+        ORDER BY p.nombres, p.apellidos
+      `);
+      
+      (cuencaPacientes as any[]).forEach(paciente => {
+        paciente.centro_nombre = paciente.centro_nombre || 'Hospital Cuenca';
+        paciente.centro_ciudad = paciente.centro_ciudad || 'Cuenca';
+        paciente.origen_bd = 'cuenca';
+        paciente.id_unico = `cuenca-${paciente.id}`;
+        // Crear un ID único para evitar conflictos
+        paciente.id_frontend = `cuenca-${paciente.id}`;
+      });
+      
+      allPacientes.push(...(cuencaPacientes as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Cuenca para pacientes:', error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error consultando todas las bases de datos para pacientes:', error);
+    throw error;
+  }
+  
+  // Ordenar por nombre
+  return allPacientes.sort((a, b) => a.nombres.localeCompare(b.nombres));
+}
+
+// Función para obtener médicos de todas las bases de datos (solo admin)
+async function getAllMedicosFromAllDatabases() {
+  const allMedicos: any[] = [];
+  
+  try {
+    // Consultar BD Central (Quito)
+    const [centralMedicos] = await pools.central.query(`
+      SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+      FROM medicos m 
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+      LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+      ORDER BY m.nombres, m.apellidos
+    `);
+    
+    // Agregar información de centro y origen
+    (centralMedicos as any[]).forEach(medico => {
+      medico.centro_nombre = medico.centro_nombre || 'Hospital Central Quito';
+      medico.origen_bd = 'central';
+      medico.id_unico = `central-${medico.id}`;
+      // Crear un ID único para evitar conflictos
+      medico.id_frontend = `central-${medico.id}`;
+    });
+    
+    allMedicos.push(...(centralMedicos as any[]));
+    
+    // Consultar BD Guayaquil
+    try {
+      const [guayaquilMedicos] = await pools.guayaquil.query(`
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        ORDER BY m.nombres, m.apellidos
+      `);
+      
+      (guayaquilMedicos as any[]).forEach(medico => {
+        medico.centro_nombre = medico.centro_nombre || 'Hospital Guayaquil';
+        medico.origen_bd = 'guayaquil';
+        medico.id_unico = `guayaquil-${medico.id}`;
+        // Crear un ID único para evitar conflictos
+        medico.id_frontend = `guayaquil-${medico.id}`;
+      });
+      
+      allMedicos.push(...(guayaquilMedicos as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Guayaquil para médicos:', error);
+    }
+    
+    // Consultar BD Cuenca
+    try {
+      const [cuencaMedicos] = await pools.cuenca.query(`
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        ORDER BY m.nombres, m.apellidos
+      `);
+      
+      (cuencaMedicos as any[]).forEach(medico => {
+        medico.centro_nombre = medico.centro_nombre || 'Hospital Cuenca';
+        medico.origen_bd = 'cuenca';
+        medico.id_unico = `cuenca-${medico.id}`;
+        // Crear un ID único para evitar conflictos
+        medico.id_frontend = `cuenca-${medico.id}`;
+      });
+      
+      allMedicos.push(...(cuencaMedicos as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Cuenca para médicos:', error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error consultando todas las bases de datos para médicos:', error);
+    throw error;
+  }
+  
+  // Ordenar por nombre
+  return allMedicos.sort((a, b) => a.nombres.localeCompare(b.nombres));
+}
+
+// Función para obtener médicos de un centro específico de todas las bases de datos (solo admin)
+async function getMedicosByCentroFromAllDatabases(centroId: number) {
+  const allMedicos: any[] = [];
+  
+  try {
+    // Consultar BD Central (Quito)
+    const [centralMedicos] = await pools.central.query(`
+      SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+      FROM medicos m 
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+      LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+      WHERE m.id_centro = ?
+      ORDER BY m.nombres, m.apellidos
+    `, [centroId]);
+    
+    // Agregar información de centro
+    (centralMedicos as any[]).forEach(medico => {
+      medico.centro_nombre = medico.centro_nombre || 'Hospital Central Quito';
+    });
+    
+    allMedicos.push(...(centralMedicos as any[]));
+    
+    // Consultar BD Guayaquil
+    try {
+      const [guayaquilMedicos] = await pools.guayaquil.query(`
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        WHERE m.id_centro = ?
+        ORDER BY m.nombres, m.apellidos
+      `, [centroId]);
+      
+      (guayaquilMedicos as any[]).forEach(medico => {
+        medico.centro_nombre = medico.centro_nombre || 'Hospital Guayaquil';
+      });
+      
+      allMedicos.push(...(guayaquilMedicos as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Guayaquil para médicos del centro', centroId, ':', error);
+    }
+    
+    // Consultar BD Cuenca
+    try {
+      const [cuencaMedicos] = await pools.cuenca.query(`
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        WHERE m.id_centro = ?
+        ORDER BY m.nombres, m.apellidos
+      `, [centroId]);
+      
+      (cuencaMedicos as any[]).forEach(medico => {
+        medico.centro_nombre = medico.centro_nombre || 'Hospital Cuenca';
+      });
+      
+      allMedicos.push(...(cuencaMedicos as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Cuenca para médicos del centro', centroId, ':', error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error consultando todas las bases de datos para médicos del centro', centroId, ':', error);
+    throw error;
+  }
+  
+  // Ordenar por nombre
+  return allMedicos.sort((a, b) => a.nombres.localeCompare(b.nombres));
+}
+
+// Función para obtener médicos de un centro específico de la base de datos correspondiente (solo admin)
+async function getMedicosByCentroFromSpecificDatabase(centroId: number, origenBd: string) {
+  try {
+    let medicos: any[] = [];
+    
+    console.log(`🔍 Buscando médicos del centro ${centroId} en BD ${origenBd}`);
+    
+    if (origenBd === 'central') {
+      const [result] = await pools.central.query(`
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        WHERE m.id_centro = ?
+        ORDER BY m.nombres, m.apellidos
+      `, [centroId]);
+      
+      medicos = result as any[];
+      medicos.forEach(medico => {
+        medico.centro_nombre = medico.centro_nombre || 'Hospital Central Quito';
+        medico.origen_bd = 'central';
+        medico.id_unico = `central-${medico.id}`;
+        medico.id_frontend = `central-${medico.id}`;
+      });
+      
+    } else if (origenBd === 'guayaquil') {
+      const [result] = await pools.guayaquil.query(`
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        WHERE m.id_centro = ?
+        ORDER BY m.nombres, m.apellidos
+      `, [centroId]);
+      
+      medicos = result as any[];
+      medicos.forEach(medico => {
+        medico.centro_nombre = medico.centro_nombre || 'Hospital Guayaquil';
+        medico.origen_bd = 'guayaquil';
+        medico.id_unico = `guayaquil-${medico.id}`;
+        medico.id_frontend = `guayaquil-${medico.id}`;
+      });
+      
+    } else if (origenBd === 'cuenca') {
+      const [result] = await pools.cuenca.query(`
+        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
+        FROM medicos m 
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
+        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
+        WHERE m.id_centro = ?
+        ORDER BY m.nombres, m.apellidos
+      `, [centroId]);
+      
+      medicos = result as any[];
+      medicos.forEach(medico => {
+        medico.centro_nombre = medico.centro_nombre || 'Hospital Cuenca';
+        medico.origen_bd = 'cuenca';
+        medico.id_unico = `cuenca-${medico.id}`;
+        medico.id_frontend = `cuenca-${medico.id}`;
+      });
+    }
+    
+    console.log(`✅ Médicos encontrados en ${origenBd} para centro ${centroId}:`, medicos.length);
+    console.log('📋 Lista de médicos:', medicos.map(m => ({
+      id: m.id,
+      id_frontend: m.id_frontend,
+      nombre: `${m.nombres} ${m.apellidos}`,
+      centro: m.id_centro,
+      centro_nombre: m.centro_nombre,
+      origen_bd: m.origen_bd
+    })));
+    
+    return medicos;
+    
+  } catch (error) {
+    console.error(`❌ Error obteniendo médicos del centro ${centroId} en BD ${origenBd}:`, error);
+    return [];
+  }
+}
+
 // Crear consulta
 router.post("/", requireCentroAccess, validateConsultation, async (req: Request, res: Response) => {
   try {
@@ -332,12 +658,15 @@ router.get("/medicos-disponibles", requireRole(['admin']), async (req: Request, 
   }
 });
 
-router.get("/medicos", async (req: Request, res: Response) => {
+// Obtener médicos por centro específico (para filtrado dinámico)
+router.get("/medicos-por-centro/:centroId", async (req: Request, res: Response) => {
   try {
-    const idCentro = getCentroId(req);
-    if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
+    const centroId = Number(req.params.centroId);
+    if (isNaN(centroId) || centroId <= 0) {
+      return res.status(400).json({ error: "ID de centro inválido" });
+    }
 
-    // Verificar si es admin para mostrar todos los médicos
+    // Verificar si es admin para mostrar médicos de cualquier centro
     const token = req.headers.authorization?.replace('Bearer ', '');
     let isAdmin = false;
     
@@ -350,22 +679,97 @@ router.get("/medicos", async (req: Request, res: Response) => {
       }
     }
 
-    console.log('Obteniendo médicos para centro:', idCentro, 'isAdmin:', isAdmin);
+    console.log('Obteniendo médicos para centro específico:', centroId, 'isAdmin:', isAdmin);
     
-    let sql, params;
+    // Solo admin puede consultar médicos de cualquier centro
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Solo administradores pueden consultar médicos por centro" });
+    }
+
+    // Usar la función que consulta todas las bases de datos
+    const medicos = await getMedicosByCentroFromAllDatabases(centroId);
+    
+    console.log('👑 [MÉDICOS-POR-CENTRO] Admin consultando centro', centroId, 'en TODAS las bases de datos');
+    console.log('📊 [MÉDICOS-POR-CENTRO] Médicos encontrados para centro', centroId, ':', medicos.length);
+    res.json(medicos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron obtener los médicos del centro" });
+  }
+});
+
+// Obtener médicos por centro específico de una base de datos específica (solo admin)
+router.get("/medicos-por-centro/:centroId/:origenBd", async (req: Request, res: Response) => {
+  try {
+    const centroId = Number(req.params.centroId);
+    const origenBd = req.params.origenBd;
+    
+    if (isNaN(centroId) || centroId <= 0) {
+      return res.status(400).json({ error: "ID de centro inválido" });
+    }
+
+    // Verificar si es admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+      } catch (err) {
+        // Token inválido, continuar como no admin
+      }
+    }
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Solo administradores pueden consultar médicos por centro" });
+    }
+
+    // Usar la función que consulta solo la base de datos específica
+    const medicos = await getMedicosByCentroFromSpecificDatabase(centroId, origenBd);
+    
+    console.log('👑 [MÉDICOS-POR-CENTRO-SPECIFIC] Admin consultando centro', centroId, 'en BD', origenBd);
+    console.log('📊 [MÉDICOS-POR-CENTRO-SPECIFIC] Médicos encontrados:', medicos.length);
+    res.json(medicos);
+  } catch (error) {
+    console.error("Error obteniendo médicos por centro específico:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+router.get("/medicos", async (req: Request, res: Response) => {
+  try {
+    // Verificar si es admin PRIMERO
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+      } catch (err) {
+        // Token inválido, continuar como no admin
+      }
+    }
+
+    const idCentro = getCentroId(req);
+    
+    // Solo requerir X-Centro-Id si NO es admin
+    if (!isAdmin && !idCentro) {
+      return res.status(400).json({ error: "X-Centro-Id requerido" });
+    }
+
+    console.log('Obteniendo médicos - isAdmin:', isAdmin, 'idCentro:', idCentro);
+    
+    let medicos;
     if (isAdmin) {
-      // Admin ve todos los médicos de todos los centros
-      sql = `
-        SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
-        FROM medicos m 
-        LEFT JOIN especialidades e ON m.id_especialidad = e.id 
-        LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
-        ORDER BY m.nombres, m.apellidos
-      `;
-      params = [];
+      // Admin: obtener médicos de TODAS las bases de datos
+      console.log('👑 [MÉDICOS] Admin detectado - consultando TODAS las bases de datos');
+      medicos = await getAllMedicosFromAllDatabases();
+      console.log('📊 [MÉDICOS] Total médicos encontrados:', medicos.length);
     } else {
       // Usuario normal ve solo médicos de su centro
-      sql = `
+      const sql = `
         SELECT m.*, e.nombre as especialidad_nombre, cm.nombre as centro_nombre
         FROM medicos m 
         LEFT JOIN especialidades e ON m.id_especialidad = e.id 
@@ -373,12 +777,13 @@ router.get("/medicos", async (req: Request, res: Response) => {
         WHERE m.id_centro = ? 
         ORDER BY m.nombres, m.apellidos
       `;
-      params = [idCentro];
+      
+      const [rows] = await req.dbPool.query(sql, [idCentro]);
+      medicos = rows;
+      console.log('👨‍⚕️ [MÉDICOS] Médico detectado - consultando BD local:', medicos.length);
     }
     
-    const [rows] = await req.dbPool.query(sql, params);
-    console.log('Médicos encontrados:', (rows as any[]).length);
-    res.json(rows);
+    res.json(medicos);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudieron obtener los médicos" });
@@ -410,12 +815,9 @@ router.get("/centros", async (req: Request, res: Response) => {
 });
 
 // Obtener pacientes del centro
-router.get("/pacientes", requireCentroAccess, async (req: Request, res: Response) => {
+router.get("/pacientes", async (req: Request, res: Response) => {
   try {
-    const idCentro = getCentroId(req);
-    if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
-
-    // Verificar si es admin para mostrar todos los pacientes
+    // Verificar si es admin PRIMERO
     const token = req.headers.authorization?.replace('Bearer ', '');
     let isAdmin = false;
     
@@ -428,26 +830,24 @@ router.get("/pacientes", requireCentroAccess, async (req: Request, res: Response
       }
     }
 
-    console.log('Obteniendo pacientes para centro:', idCentro, 'isAdmin:', isAdmin);
+    const idCentro = getCentroId(req);
     
-    let sql, params;
+    // Solo requerir X-Centro-Id si NO es admin
+    if (!isAdmin && !idCentro) {
+      return res.status(400).json({ error: "X-Centro-Id requerido" });
+    }
+
+    console.log('Obteniendo pacientes - isAdmin:', isAdmin, 'idCentro:', idCentro);
+    
+    let pacientes;
     if (isAdmin) {
-      // Admin ve todos los pacientes de todos los centros con info de consultas activas
-      sql = `
-        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
-               COUNT(c.id) as consultas_activas,
-               GROUP_CONCAT(DISTINCT CONCAT(m.nombres, ' ', m.apellidos) SEPARATOR ', ') as medicos_activos
-        FROM pacientes p 
-        LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
-        LEFT JOIN consultas c ON p.id = c.id_paciente AND c.estado IN ('pendiente', 'programada')
-        LEFT JOIN medicos m ON c.id_medico = m.id
-        GROUP BY p.id
-        ORDER BY p.nombres, p.apellidos
-      `;
-      params = [];
+      // Admin: obtener pacientes de TODAS las bases de datos
+      console.log('👑 [PACIENTES] Admin detectado - consultando TODAS las bases de datos');
+      pacientes = await getAllPacientesFromAllDatabases();
+      console.log('📊 [PACIENTES] Total pacientes encontrados:', pacientes.length);
     } else {
       // Usuario normal ve solo pacientes de su centro con info de consultas activas
-      sql = `
+      const sql = `
         SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
                COUNT(c.id) as consultas_activas,
                GROUP_CONCAT(DISTINCT CONCAT(m.nombres, ' ', m.apellidos) SEPARATOR ', ') as medicos_activos
@@ -459,12 +859,13 @@ router.get("/pacientes", requireCentroAccess, async (req: Request, res: Response
         GROUP BY p.id
         ORDER BY p.nombres, p.apellidos
       `;
-      params = [idCentro];
+      
+      const [rows] = await req.dbPool.query(sql, [idCentro]);
+      pacientes = rows;
+      console.log('👨‍⚕️ [PACIENTES] Médico detectado - consultando BD local:', pacientes.length);
     }
     
-    const [rows] = await req.dbPool.query(sql, params);
-    console.log('Pacientes encontrados:', (rows as any[]).length);
-    res.json(rows);
+    res.json(pacientes);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudieron obtener los pacientes" });
