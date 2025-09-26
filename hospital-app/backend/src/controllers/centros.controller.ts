@@ -273,7 +273,22 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
     }
 
-    if (req.user?.rol === 'admin') {
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [UPDATE CENTROS] Verificación de rol:', { email: decoded.email, rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+    
+    if (isAdmin) {
       // Admin: actualizar centro en TODAS las bases de datos
       console.log('👑 [UPDATE] Admin actualizando centro en TODAS las bases de datos, ID:', id);
       

@@ -7,11 +7,9 @@ import {
   Activity, 
   Users, 
   LogOut,
-  Plus,
   Menu,
   Search,
   Edit,
-  Trash2,
   X,
   Building2,
   AlertCircle,
@@ -38,9 +36,7 @@ export default function CentrosPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   
   // Estados para modales
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedCentro, setSelectedCentro] = useState<AdminCentro | null>(null)
 
   // Estados para formularios
@@ -73,20 +69,6 @@ export default function CentrosPage() {
     }
   }
 
-  const handleCreateCentro = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    try {
-      await AdminApi.createCentro(centroForm)
-      setIsCreateModalOpen(false)
-      setCentroForm({ nombre: '', ciudad: '', direccion: '' })
-      loadData()
-    } catch (err) {
-      setError("Error al crear el centro médico")
-      console.error(err)
-    }
-  }
 
   const handleEditCentro = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,20 +87,6 @@ export default function CentrosPage() {
     }
   }
 
-  const handleDeleteCentro = async () => {
-    if (!selectedCentro) return
-    setError(null)
-
-    try {
-      await AdminApi.deleteCentro(selectedCentro.id)
-      setIsDeleteModalOpen(false)
-      setSelectedCentro(null)
-      loadData()
-    } catch (err) {
-      setError("Error al eliminar el centro médico")
-      console.error(err)
-    }
-  }
 
   const handleLogout = () => {
     setShowLogoutModal(true)
@@ -143,10 +111,6 @@ export default function CentrosPage() {
     setIsEditModalOpen(true)
   }
 
-  const openDeleteModal = (centro: AdminCentro) => {
-    setSelectedCentro(centro)
-    setIsDeleteModalOpen(true)
-  }
 
   const filteredCentros = centros.filter(centro =>
     `${centro.nombre} ${centro.ciudad}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -326,9 +290,9 @@ export default function CentrosPage() {
                 <div className="ml-4">
                   <h1 className="text-3xl font-bold text-white flex items-center">
                     <Building2 className={`h-8 w-8 mr-3 ${headerColors.iconColor}`} />
-                    Gestión de Centros Médicos
+                    Centros Médicos
                   </h1>
-                  <p className="text-teal-100 mt-1">Administra los centros médicos del sistema</p>
+                  <p className="text-teal-100 mt-1">Consulta y edita información de los centros médicos</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
@@ -382,16 +346,16 @@ export default function CentrosPage() {
                   <Activity className="h-8 w-8 text-purple-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Con Dirección</p>
-                  <p className="text-2xl font-bold text-gray-900">{centros.filter(c => c.direccion).length}</p>
+                  <p className="text-sm font-medium text-gray-600">Solo Lectura</p>
+                  <p className="text-2xl font-bold text-gray-900">Editar</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Search and Add Button */}
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1 max-w-lg">
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative max-w-lg">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
@@ -403,25 +367,16 @@ export default function CentrosPage() {
                 className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
               />
             </div>
-            <div className="mt-4 sm:mt-0 sm:ml-4">
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className={`inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white ${buttonColors.primary} ${buttonColors.primaryHover} focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonColors.primaryFocus} transition-all transform hover:scale-105`}
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Crear Centro
-              </button>
-            </div>
           </div>
 
           {/* Centros List */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">
-                Lista de Centros Médicos
+                Centros Médicos del Sistema
               </h3>
               <p className="mt-1 text-sm text-gray-600">
-                Gestiona los centros médicos del sistema
+                Información de los centros médicos disponibles
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -438,7 +393,7 @@ export default function CentrosPage() {
                       Dirección
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Acciones
+                      Acción
                     </th>
                   </tr>
                 </thead>
@@ -469,20 +424,13 @@ export default function CentrosPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button 
-                            onClick={() => openEditModal(centro)}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => openDeleteModal(centro)}
-                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        <button 
+                          onClick={() => openEditModal(centro)}
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="Editar centro médico"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -493,92 +441,6 @@ export default function CentrosPage() {
         </div>
       </div>
 
-      {/* Modal para crear centro */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsCreateModalOpen(false)}></div>
-          
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
-            {/* Header del modal */}
-            <div className={`px-8 py-6 ${buttonColors.primary} rounded-t-2xl`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
-                    <Building2 className={`h-6 w-6 ${buttonColors.primaryIcon}`} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Nuevo Centro Médico</h3>
-                    <p className="text-teal-100 text-sm">Crear centro médico</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-            
-            {/* Contenido del modal */}
-            <form onSubmit={handleCreateCentro} className="px-8 py-6 space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Nombre del Centro
-                </label>
-                <input
-                  type="text"
-                  value={centroForm.nombre}
-                  onChange={(e) => setCentroForm({...centroForm, nombre: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  placeholder="Hospital Central"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Ciudad
-                </label>
-                <input
-                  type="text"
-                  value={centroForm.ciudad}
-                  onChange={(e) => setCentroForm({...centroForm, ciudad: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  placeholder="Bogotá"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Dirección (Opcional)
-                </label>
-                <input
-                  type="text"
-                  value={centroForm.direccion}
-                  onChange={(e) => setCentroForm({...centroForm, direccion: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  placeholder="Calle 123 #45-67"
-                />
-              </div>
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
-                >
-                  Crear Centro
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Modal para editar centro */}
       {isEditModalOpen && selectedCentro && (
@@ -595,7 +457,7 @@ export default function CentrosPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">Editar Centro Médico</h3>
-                    <p className="text-teal-100 text-sm">Actualizar información</p>
+                    <p className="text-teal-100 text-sm">Actualizar información del centro</p>
                   </div>
                 </div>
                 <button
@@ -667,63 +529,6 @@ export default function CentrosPage() {
         </div>
       )}
 
-      {/* Modal para eliminar centro */}
-      {isDeleteModalOpen && selectedCentro && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsDeleteModalOpen(false)}></div>
-          
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
-            {/* Header del modal */}
-            <div className="px-8 py-6 bg-gradient-to-r from-red-600 to-red-700 rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
-                    <Trash2 className="h-6 w-6 text-red-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Eliminar Centro</h3>
-                    <p className="text-red-100 text-sm">Esta acción no se puede deshacer</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsDeleteModalOpen(false)}
-                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-            
-            {/* Contenido del modal */}
-            <div className="px-8 py-6">
-              <div className="mb-6">
-                <p className="text-gray-700 mb-4">
-                  ¿Estás seguro de que deseas eliminar el centro médico <strong>{selectedCentro.nombre}</strong>?
-                </p>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm text-red-700">
-                    <strong>Advertencia:</strong> Esta acción eliminará permanentemente el centro médico y todos los datos asociados.
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setIsDeleteModalOpen(false)}
-                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleDeleteCentro}
-                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 transform hover:scale-105"
-                >
-                  Eliminar Centro
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal de confirmación de logout */}
       <LogoutModal
