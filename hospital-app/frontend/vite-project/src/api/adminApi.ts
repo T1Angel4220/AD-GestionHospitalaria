@@ -39,6 +39,9 @@ export interface AdminEmpleado {
   id_centro: number;
   centro_nombre?: string;
   centro_ciudad?: string;
+  origen_bd?: string;
+  id_unico?: string;
+  id_frontend?: string;
 }
 
 export interface AdminEmpleadoCreate {
@@ -53,6 +56,7 @@ export interface AdminEmpleadoUpdate {
   apellidos?: string;
   cargo?: string;
   id_centro?: number;
+  origen_bd?: string;
 }
 
 export interface AdminCentro {
@@ -240,9 +244,10 @@ export class AdminApi {
     });
   }
 
-  static async deleteEmpleado(id: number): Promise<{ message: string }> {
+  static async deleteEmpleado(id: number, origenBd?: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/empleados/${id}`, {
       method: 'DELETE',
+      body: JSON.stringify({ origen_bd: origenBd }),
     });
   }
 

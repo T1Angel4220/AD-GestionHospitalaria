@@ -38,10 +38,13 @@ async function getAllEmpleadosFromAllDatabases() {
       ORDER BY e.id ASC
     `);
     
-    // Agregar información de centro
+    // Agregar información de centro y campos únicos
     (centralEmpleados as any[]).forEach(empleado => {
       empleado.centro_nombre = empleado.centro_nombre || 'Hospital Central Quito';
       empleado.centro_ciudad = empleado.centro_ciudad || 'Quito';
+      empleado.origen_bd = 'central';
+      empleado.id_unico = `central-${empleado.id}`;
+      empleado.id_frontend = `central-${empleado.id}`;
     });
     
     allEmpleados.push(...(centralEmpleados as any[]));
@@ -65,6 +68,9 @@ async function getAllEmpleadosFromAllDatabases() {
       (guayaquilEmpleados as any[]).forEach(empleado => {
         empleado.centro_nombre = empleado.centro_nombre || 'Hospital Guayaquil';
         empleado.centro_ciudad = empleado.centro_ciudad || 'Guayaquil';
+        empleado.origen_bd = 'guayaquil';
+        empleado.id_unico = `guayaquil-${empleado.id}`;
+        empleado.id_frontend = `guayaquil-${empleado.id}`;
       });
       
       allEmpleados.push(...(guayaquilEmpleados as any[]));
@@ -91,6 +97,9 @@ async function getAllEmpleadosFromAllDatabases() {
       (cuencaEmpleados as any[]).forEach(empleado => {
         empleado.centro_nombre = empleado.centro_nombre || 'Hospital Cuenca';
         empleado.centro_ciudad = empleado.centro_ciudad || 'Cuenca';
+        empleado.origen_bd = 'cuenca';
+        empleado.id_unico = `cuenca-${empleado.id}`;
+        empleado.id_frontend = `cuenca-${empleado.id}`;
       });
       
       allEmpleados.push(...(cuencaEmpleados as any[]));
@@ -103,8 +112,8 @@ async function getAllEmpleadosFromAllDatabases() {
     throw error;
   }
   
-  // Ordenar por ID
-  return allEmpleados.sort((a, b) => a.id - b.id);
+  // Ordenar por ID frontend
+  return allEmpleados.sort((a, b) => a.id_frontend.localeCompare(b.id_frontend));
 }
 
 // =========================
@@ -202,12 +211,27 @@ export async function create(req: Request, res: Response) {
       return res.status(400).json({ error: "nombres, apellidos, cargo e id_centro son obligatorios" });
     }
 
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [CREATE] Token decodificado:', { rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+
     // Determinar qué BD usar para la inserción
     let dbPool = req.dbPool; // Por defecto usar la BD del middleware
     let centroId = Number(id_centro);
     
-    if (req.user?.rol === 'admin') {
-      // Admin puede especificar el centro o usar el centro por defecto
+    if (isAdmin) {
+      // Admin puede especificar el centro
       if (!centroId) {
         centroId = 1; // Quito por defecto
       }
@@ -262,7 +286,22 @@ export async function update(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const { nombres, apellidos, cargo, id_centro } = req.body ?? {};
+    const { nombres, apellidos, cargo, id_centro, origen_bd } = req.body ?? {};
+
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [UPDATE] Token decodificado:', { rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
 
     // Construir objeto dinámico con los campos presentes
     const updates: string[] = [];
@@ -297,47 +336,70 @@ export async function update(req: Request, res: Response) {
       return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
     }
 
-    if (req.user?.rol === 'admin') {
+    if (isAdmin) {
       // Admin: lógica especial para cambio de centro
-      console.log('🔍 [UPDATE] Admin buscando empleado en todas las BDs, ID:', id);
+      console.log('🔍 [UPDATE] Admin buscando empleado, ID:', id, 'origen_bd:', origen_bd);
       
-      // Buscar el empleado en todas las BDs para obtener sus datos completos
+      // Buscar el empleado en la BD específica si se proporciona origen_bd
       let empleadoData: any = null;
       let sourceDbPool: any = null;
       let currentCentro: number | null = null;
       
-      // Buscar en BD Central
-      const [centralResult] = await pools.central.query("SELECT * FROM empleados WHERE id = ?", [id]);
-      if ((centralResult as any[]).length > 0) {
-        empleadoData = (centralResult as any[])[0];
-        sourceDbPool = pools.central;
-        currentCentro = empleadoData.id_centro;
-        console.log('🔍 [UPDATE] Empleado encontrado en BD Central, centro actual:', currentCentro);
+      if (origen_bd) {
+        // Usar origen_bd para buscar en BD específica
+        if (origen_bd === 'central') {
+          sourceDbPool = pools.central;
+        } else if (origen_bd === 'guayaquil') {
+          sourceDbPool = pools.guayaquil;
+        } else if (origen_bd === 'cuenca') {
+          sourceDbPool = pools.cuenca;
+        } else {
+          return res.status(400).json({ error: "Origen de base de datos inválido" });
+        }
+        
+        const [result] = await sourceDbPool.query("SELECT * FROM empleados WHERE id = ?", [id]);
+        if ((result as any[]).length > 0) {
+          empleadoData = (result as any[])[0];
+          currentCentro = empleadoData.id_centro;
+          console.log('🔍 [UPDATE] Empleado encontrado en BD', origen_bd, 'centro actual:', currentCentro);
+        }
       } else {
-        // Buscar en BD Guayaquil
-        try {
-          const [guayaquilResult] = await pools.guayaquil.query("SELECT * FROM empleados WHERE id = ?", [id]);
-          if ((guayaquilResult as any[]).length > 0) {
-            empleadoData = (guayaquilResult as any[])[0];
-            sourceDbPool = pools.guayaquil;
-            currentCentro = empleadoData.id_centro;
-            console.log('🔍 [UPDATE] Empleado encontrado en BD Guayaquil, centro actual:', currentCentro);
-          } else {
-            // Buscar en BD Cuenca
-            try {
-              const [cuencaResult] = await pools.cuenca.query("SELECT * FROM empleados WHERE id = ?", [id]);
-              if ((cuencaResult as any[]).length > 0) {
-                empleadoData = (cuencaResult as any[])[0];
-                sourceDbPool = pools.cuenca;
-                currentCentro = empleadoData.id_centro;
-                console.log('🔍 [UPDATE] Empleado encontrado en BD Cuenca, centro actual:', currentCentro);
+        // Buscar en todas las BDs si no se proporciona origen_bd
+        console.log('🔍 [UPDATE] Buscando empleado en todas las BDs, ID:', id);
+        
+        // Buscar en BD Central
+        const [centralResult] = await pools.central.query("SELECT * FROM empleados WHERE id = ?", [id]);
+        if ((centralResult as any[]).length > 0) {
+          empleadoData = (centralResult as any[])[0];
+          sourceDbPool = pools.central;
+          currentCentro = empleadoData.id_centro;
+          console.log('🔍 [UPDATE] Empleado encontrado en BD Central, centro actual:', currentCentro);
+        } else {
+          // Buscar en BD Guayaquil
+          try {
+            const [guayaquilResult] = await pools.guayaquil.query("SELECT * FROM empleados WHERE id = ?", [id]);
+            if ((guayaquilResult as any[]).length > 0) {
+              empleadoData = (guayaquilResult as any[])[0];
+              sourceDbPool = pools.guayaquil;
+              currentCentro = empleadoData.id_centro;
+              console.log('🔍 [UPDATE] Empleado encontrado en BD Guayaquil, centro actual:', currentCentro);
+            } else {
+              // Buscar en BD Cuenca
+              try {
+                const [cuencaResult] = await pools.cuenca.query("SELECT * FROM empleados WHERE id = ?", [id]);
+                if ((cuencaResult as any[]).length > 0) {
+                  empleadoData = (cuencaResult as any[])[0];
+                  sourceDbPool = pools.cuenca;
+                  currentCentro = empleadoData.id_centro;
+                  console.log('🔍 [UPDATE] Empleado encontrado en BD Cuenca, centro actual:', currentCentro);
+                }
+              } catch (error) {
+                console.log('⚠️ No se pudo buscar en BD Cuenca:', error);
               }
-            } catch (error) {
-              console.log('⚠️ No se pudo buscar en BD Cuenca:', error);
             }
+          } catch (error) {
+            console.log('⚠️ No se pudo buscar en BD Guayaquil:', error);
           }
-        } catch (error) {
-          console.log('⚠️ No se pudo buscar en BD Guayaquil:', error);
         }
       }
       
@@ -454,51 +516,86 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
+    const { origen_bd } = req.body ?? {};
+
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [DELETE] Token decodificado:', { rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+
     // Determinar qué BD usar para la eliminación
     let dbPool = req.dbPool; // Por defecto usar la BD del middleware
     
-    if (req.user?.rol === 'admin') {
-      // Admin: necesitamos encontrar en qué BD está el empleado
-      console.log('🔍 [DELETE] Admin buscando empleado en todas las BDs, ID:', id);
-      
-      // Buscar el empleado en todas las BDs para determinar su centro
-      let empleadoFound = false;
-      
-      // Buscar en BD Central
-      const [centralResult] = await pools.central.query("SELECT id FROM empleados WHERE id = ?", [id]);
-      if ((centralResult as any[]).length > 0) {
-        dbPool = pools.central;
-        empleadoFound = true;
-        console.log('🔍 [DELETE] Empleado encontrado en BD Central');
+    if (isAdmin) {
+      // Admin: usar origen_bd si está disponible, sino buscar en todas las BDs
+      if (origen_bd) {
+        console.log('🔍 [DELETE] Admin eliminando empleado de BD específica:', origen_bd, 'ID:', id);
+        
+        if (origen_bd === 'central') {
+          dbPool = pools.central;
+        } else if (origen_bd === 'guayaquil') {
+          dbPool = pools.guayaquil;
+        } else if (origen_bd === 'cuenca') {
+          dbPool = pools.cuenca;
+        } else {
+          return res.status(400).json({ error: "Origen de base de datos inválido" });
+        }
       } else {
-        // Buscar en BD Guayaquil
-        try {
-          const [guayaquilResult] = await pools.guayaquil.query("SELECT id FROM empleados WHERE id = ?", [id]);
-          if ((guayaquilResult as any[]).length > 0) {
-            dbPool = pools.guayaquil;
-            empleadoFound = true;
-            console.log('🔍 [DELETE] Empleado encontrado en BD Guayaquil');
-          } else {
-            // Buscar en BD Cuenca
-            try {
-              const [cuencaResult] = await pools.cuenca.query("SELECT id FROM empleados WHERE id = ?", [id]);
-              if ((cuencaResult as any[]).length > 0) {
-                dbPool = pools.cuenca;
-                empleadoFound = true;
-                console.log('🔍 [DELETE] Empleado encontrado en BD Cuenca');
+        // Buscar en todas las BDs si no se proporciona origen_bd
+        console.log('🔍 [DELETE] Admin buscando empleado en todas las BDs, ID:', id);
+        
+        // Buscar el empleado en todas las BDs para determinar su centro
+        let empleadoFound = false;
+        
+        // Buscar en BD Central
+        const [centralResult] = await pools.central.query("SELECT id FROM empleados WHERE id = ?", [id]);
+        if ((centralResult as any[]).length > 0) {
+          dbPool = pools.central;
+          empleadoFound = true;
+          console.log('🔍 [DELETE] Empleado encontrado en BD Central');
+        } else {
+          // Buscar en BD Guayaquil
+          try {
+            const [guayaquilResult] = await pools.guayaquil.query("SELECT id FROM empleados WHERE id = ?", [id]);
+            if ((guayaquilResult as any[]).length > 0) {
+              dbPool = pools.guayaquil;
+              empleadoFound = true;
+              console.log('🔍 [DELETE] Empleado encontrado en BD Guayaquil');
+            } else {
+              // Buscar en BD Cuenca
+              try {
+                const [cuencaResult] = await pools.cuenca.query("SELECT id FROM empleados WHERE id = ?", [id]);
+                if ((cuencaResult as any[]).length > 0) {
+                  dbPool = pools.cuenca;
+                  empleadoFound = true;
+                  console.log('🔍 [DELETE] Empleado encontrado en BD Cuenca');
+                }
+              } catch (error) {
+                console.log('⚠️ No se pudo buscar en BD Cuenca:', error);
               }
-            } catch (error) {
-              console.log('⚠️ No se pudo buscar en BD Cuenca:', error);
             }
+          } catch (error) {
+            console.log('⚠️ No se pudo buscar en BD Guayaquil:', error);
           }
-        } catch (error) {
-          console.log('⚠️ No se pudo buscar en BD Guayaquil:', error);
+        }
+        
+        if (!empleadoFound) {
+          return res.status(404).json({ error: "Empleado no encontrado en ninguna base de datos" });
         }
       }
-      
-      if (!empleadoFound) {
-        return res.status(404).json({ error: "Empleado no encontrado en ninguna base de datos" });
-      }
+    } else {
+      // Médico: usar su BD local
+      console.log('👨‍⚕️ [DELETE] Médico eliminando empleado de su BD local, ID:', id);
     }
 
     const [result] = await dbPool.execute("DELETE FROM empleados WHERE id = ?", [id]);

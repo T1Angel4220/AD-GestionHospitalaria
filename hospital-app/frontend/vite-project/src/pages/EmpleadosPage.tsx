@@ -100,7 +100,31 @@ export default function EmpleadosPage() {
     setError(null)
 
     try {
-      await AdminApi.updateEmpleado(selectedEmpleado.id, empleadoForm)
+      // Determinar centro original basado en origen_bd (fuente de verdad)
+      const centroOriginal = selectedEmpleado.origen_bd === 'guayaquil' ? 2 : 
+                           selectedEmpleado.origen_bd === 'cuenca' ? 3 : 1;
+      const hayCambioCentro = empleadoForm.id_centro !== centroOriginal;
+      
+      const updateData = {
+        nombres: empleadoForm.nombres,
+        apellidos: empleadoForm.apellidos,
+        cargo: empleadoForm.cargo,
+        ...(hayCambioCentro && {
+          id_centro: empleadoForm.id_centro,
+          origen_bd: selectedEmpleado.origen_bd
+        })
+      };
+      
+      console.log('🔄 [EDIT] Editando empleado:', {
+        idOriginal: selectedEmpleado.id,
+        origen_bd: selectedEmpleado.origen_bd,
+        centroOriginal,
+        centroNuevo: empleadoForm.id_centro,
+        hayCambioCentro,
+        updateData
+      });
+      
+      await AdminApi.updateEmpleado(selectedEmpleado.id, updateData)
       setIsEditModalOpen(false)
       setEmpleadoForm({ nombres: '', apellidos: '', cargo: '', id_centro: 1 })
       setSelectedEmpleado(null)
@@ -116,7 +140,12 @@ export default function EmpleadosPage() {
     setError(null)
 
     try {
-      await AdminApi.deleteEmpleado(selectedEmpleado.id)
+      console.log('🗑️ [DELETE] Eliminando empleado:', {
+        id: selectedEmpleado.id,
+        origen_bd: selectedEmpleado.origen_bd
+      });
+      
+      await AdminApi.deleteEmpleado(selectedEmpleado.id, selectedEmpleado.origen_bd)
       setIsDeleteModalOpen(false)
       setSelectedEmpleado(null)
       loadData()
@@ -141,11 +170,29 @@ export default function EmpleadosPage() {
 
   const openEditModal = (empleado: AdminEmpleado) => {
     setSelectedEmpleado(empleado)
+    
+    // Determinar el centro basado en origen_bd (fuente de verdad)
+    let centroId = 1; // Por defecto Quito
+    if (empleado.origen_bd === 'guayaquil') {
+      centroId = 2;
+    } else if (empleado.origen_bd === 'cuenca') {
+      centroId = 3;
+    } else if (empleado.origen_bd === 'central') {
+      centroId = 1;
+    }
+    
+    console.log('🔍 [EDIT] Abriendo modal empleado:', {
+      id: empleado.id,
+      origen_bd: empleado.origen_bd,
+      id_centro_original: empleado.id_centro,
+      centroId_calculado: centroId
+    });
+    
     setEmpleadoForm({
       nombres: empleado.nombres,
       apellidos: empleado.apellidos,
       cargo: empleado.cargo,
-      id_centro: empleado.id_centro
+      id_centro: centroId
     })
     setIsEditModalOpen(true)
   }
@@ -453,7 +500,7 @@ export default function EmpleadosPage() {
                       Cargo
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Centro Médico
+                      Centro
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Acciones
@@ -462,7 +509,7 @@ export default function EmpleadosPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredEmpleados.map((empleado) => (
-                    <tr key={empleado.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={empleado.id_frontend || empleado.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className={`w-10 h-10 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-full flex items-center justify-center mr-4`}>
@@ -483,7 +530,10 @@ export default function EmpleadosPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {empleado.centro_nombre || `Centro ${empleado.id_centro}`}
+                          {empleado.origen_bd === 'central' ? 'Quito' : 
+                           empleado.origen_bd === 'guayaquil' ? 'Guayaquil' : 
+                           empleado.origen_bd === 'cuenca' ? 'Cuenca' : 
+                           empleado.centro_nombre || `Centro ${empleado.id_centro}`}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
