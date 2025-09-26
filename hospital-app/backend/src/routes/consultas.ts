@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { authenticateToken, requireCentroAccess, requireRole } from "../middlewares/auth";
 import { validateConsultation, validateMedico, validateUsuario, validateEmpleado, validateCentro, validateEspecialidad } from "../middlewares/validation";
+import { pools } from "../config/distributedDb";
 import jwt from "jsonwebtoken";
 
 const router = Router();
@@ -16,6 +17,124 @@ function getCentroId(req: Request): number | null {
   if (!headerValue) return null;
   const numeric = Number(headerValue);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+}
+
+// Función para obtener consultas de todas las bases de datos (solo admin)
+async function getAllConsultasFromAllDatabases(filters: any = {}) {
+  const allConsultas: any[] = [];
+  
+  try {
+    // Construir condiciones de filtro
+    const conditions: string[] = [];
+    const params: any[] = [];
+    
+    if (filters.medico) {
+      conditions.push("c.id_medico = ?");
+      params.push(Number(filters.medico));
+    }
+    if (filters.desde) {
+      conditions.push("c.fecha >= ?");
+      params.push(filters.desde);
+    }
+    if (filters.hasta) {
+      conditions.push("c.fecha <= ?");
+      params.push(filters.hasta);
+    }
+    if (filters.q) {
+      conditions.push("(c.paciente_nombre LIKE ? OR c.paciente_apellido LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ?)");
+      params.push(`%${filters.q}%`, `%${filters.q}%`, `%${filters.q}%`, `%${filters.q}%`);
+    }
+    
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    
+    // Consultar BD Central (Quito)
+    const [centralConsultas] = await pools.central.query(`
+      SELECT 
+        c.*,
+        m.nombres as medico_nombres,
+        m.apellidos as medico_apellidos,
+        e.nombre as especialidad_nombre,
+        cm.nombre as centro_nombre,
+        cm.ciudad as centro_ciudad
+      FROM consultas c
+      LEFT JOIN medicos m ON c.id_medico = m.id
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id
+      LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
+      ${where}
+      ORDER BY c.fecha DESC
+    `, params);
+    
+    // Agregar información de centro
+    (centralConsultas as any[]).forEach(consulta => {
+      consulta.centro_nombre = consulta.centro_nombre || 'Hospital Central Quito';
+      consulta.centro_ciudad = consulta.centro_ciudad || 'Quito';
+    });
+    
+    allConsultas.push(...(centralConsultas as any[]));
+    
+    // Consultar BD Guayaquil
+    try {
+      const [guayaquilConsultas] = await pools.guayaquil.query(`
+        SELECT 
+          c.*,
+          m.nombres as medico_nombres,
+          m.apellidos as medico_apellidos,
+          e.nombre as especialidad_nombre,
+          cm.nombre as centro_nombre,
+          cm.ciudad as centro_ciudad
+        FROM consultas c
+        LEFT JOIN medicos m ON c.id_medico = m.id
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id
+        LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
+        ${where}
+        ORDER BY c.fecha DESC
+      `, params);
+      
+      (guayaquilConsultas as any[]).forEach(consulta => {
+        consulta.centro_nombre = consulta.centro_nombre || 'Hospital Guayaquil';
+        consulta.centro_ciudad = consulta.centro_ciudad || 'Guayaquil';
+      });
+      
+      allConsultas.push(...(guayaquilConsultas as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Guayaquil:', error);
+    }
+    
+    // Consultar BD Cuenca
+    try {
+      const [cuencaConsultas] = await pools.cuenca.query(`
+        SELECT 
+          c.*,
+          m.nombres as medico_nombres,
+          m.apellidos as medico_apellidos,
+          e.nombre as especialidad_nombre,
+          cm.nombre as centro_nombre,
+          cm.ciudad as centro_ciudad
+        FROM consultas c
+        LEFT JOIN medicos m ON c.id_medico = m.id
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id
+        LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
+        ${where}
+        ORDER BY c.fecha DESC
+      `, params);
+      
+      (cuencaConsultas as any[]).forEach(consulta => {
+        consulta.centro_nombre = consulta.centro_nombre || 'Hospital Cuenca';
+        consulta.centro_ciudad = consulta.centro_ciudad || 'Cuenca';
+      });
+      
+      allConsultas.push(...(cuencaConsultas as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Cuenca:', error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error consultando todas las bases de datos:', error);
+    throw error;
+  }
+  
+  // Ordenar por fecha (más recientes primero)
+  return allConsultas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 }
 
 // Crear consulta
@@ -103,11 +222,8 @@ router.post("/", requireCentroAccess, validateConsultation, async (req: Request,
 });
 
 // Listar consultas del centro con datos relacionados
-router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   try {
-    const idCentro = getCentroId(req);
-    if (!idCentro) return res.status(400).json({ error: "X-Centro-Id requerido" });
-
     // Verificar si es admin para mostrar todas las consultas
     const token = req.headers.authorization?.replace('Bearer ', '');
     let isAdmin = false;
@@ -116,58 +232,79 @@ router.get("/", requireCentroAccess, async (req: Request, res: Response) => {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
         isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [CONSULTAS] Usuario:', decoded.email, 'Rol:', decoded.rol, 'Es Admin:', isAdmin);
       } catch (err) {
-        // Token inválido, continuar como no admin
+        console.error('❌ Error decodificando token:', err);
       }
     }
 
+    const idCentro = getCentroId(req);
+    
+    // Si no es admin, requerir X-Centro-Id
+    if (!isAdmin && !idCentro) {
+      return res.status(400).json({ error: "X-Centro-Id requerido" });
+    }
+
     const { medico, desde, hasta, q } = req.query as Record<string, string>;
+    const filters = { medico, desde, hasta, q };
 
-    const conditions: string[] = isAdmin ? [] : ["c.id_centro = ?"]; 
-    const params: any[] = isAdmin ? [] : [idCentro];
+    let consultas;
+    
+    if (isAdmin) {
+      // Admin: obtener consultas de TODAS las bases de datos
+      console.log('👑 [CONSULTAS] Admin detectado - consultando TODAS las bases de datos');
+      consultas = await getAllConsultasFromAllDatabases(filters);
+      console.log('📊 [CONSULTAS] Total consultas encontradas:', consultas.length);
+    } else {
+      // Médico: obtener consultas solo de su base de datos
+      console.log('👨‍⚕️ [CONSULTAS] Médico detectado - consultando BD local');
+      
+      const conditions: string[] = ["c.id_centro = ?"]; 
+      const params: any[] = [idCentro];
 
-    if (medico) {
-      conditions.push("c.id_medico = ?");
-      params.push(Number(medico));
-    }
-    if (desde) {
-      conditions.push("c.fecha >= ?");
-      params.push(desde);
-    }
-    if (hasta) {
-      conditions.push("c.fecha <= ?");
-      params.push(hasta);
-    }
-    if (q) {
-      conditions.push("(c.paciente_nombre LIKE ? OR c.paciente_apellido LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ?)");
-      params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
-    }
+      if (medico) {
+        conditions.push("c.id_medico = ?");
+        params.push(Number(medico));
+      }
+      if (desde) {
+        conditions.push("c.fecha >= ?");
+        params.push(desde);
+      }
+      if (hasta) {
+        conditions.push("c.fecha <= ?");
+        params.push(hasta);
+      }
+      if (q) {
+        conditions.push("(c.paciente_nombre LIKE ? OR c.paciente_apellido LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ?)");
+        params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+      }
 
-    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-    const sql = `
-      SELECT 
-        c.*,
-        m.nombres as medico_nombres,
-        m.apellidos as medico_apellidos,
-        e.nombre as especialidad_nombre,
-        cm.nombre as centro_nombre,
-        cm.ciudad as centro_ciudad
-      FROM consultas c
-      LEFT JOIN medicos m ON c.id_medico = m.id
-      LEFT JOIN especialidades e ON m.id_especialidad = e.id
-      LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
-      ${where} 
-      ORDER BY c.fecha DESC, c.id DESC
-    `;
+      const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+      const sql = `
+        SELECT 
+          c.*,
+          m.nombres as medico_nombres,
+          m.apellidos as medico_apellidos,
+          e.nombre as especialidad_nombre,
+          cm.nombre as centro_nombre,
+          cm.ciudad as centro_ciudad
+        FROM consultas c
+        LEFT JOIN medicos m ON c.id_medico = m.id
+        LEFT JOIN especialidades e ON m.id_especialidad = e.id
+        LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
+        ${where} 
+        ORDER BY c.fecha DESC, c.id DESC
+      `;
+      
+      console.log('Obteniendo consultas - Centro:', idCentro, 'isAdmin:', isAdmin);
+      console.log('SQL Query:', sql);
+      console.log('Params:', params);
+      
+      const [rows] = await req.dbPool.query(sql, params);
+      consultas = rows;
+    }
     
-    console.log('Obteniendo consultas - Centro:', idCentro, 'isAdmin:', isAdmin);
-    console.log('SQL Query:', sql);
-    console.log('Params:', params);
-    
-    const [rows] = await req.dbPool.query(sql, params);
-    console.log('Query result:', rows);
-    
-    res.json(rows);
+    res.json(consultas);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudieron obtener las consultas" });

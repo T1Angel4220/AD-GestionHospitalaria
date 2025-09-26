@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { LogoutModal } from '../components/LogoutModal'
+import { CentroIndicator } from '../components/CentroIndicator'
 import { getRoleText } from '../utils/roleUtils'
 
 export default function MedicalConsultationsPage() {
@@ -97,7 +98,7 @@ export default function MedicalConsultationsPage() {
     loadConsultas()
     loadRelatedData()
     loadMedicoActual()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Efecto para manejar cambios de estado y duración
   useEffect(() => {
@@ -152,12 +153,13 @@ export default function MedicalConsultationsPage() {
     if (user) {
       loadMedicoActual()
     }
-  }, [user])
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadConsultas = async () => {
     try {
       setLoading(true)
       const data = await ConsultasApi.getConsultas()
+      console.log('📋 Datos de consultas cargados:', data)
       
       // Si es médico, filtrar solo sus consultas
       if (user?.rol === 'medico' && user.id_medico) {
@@ -166,9 +168,9 @@ export default function MedicalConsultationsPage() {
       } else {
       setConsultas(data)
       }
-    } catch (err) {
+    } catch (error) {
       setError("Error al cargar las consultas")
-      console.error(err)
+      console.error('Error cargando consultas:', error)
     } finally {
       setLoading(false)
     }
@@ -389,9 +391,14 @@ export default function MedicalConsultationsPage() {
   }
 
   const filteredConsultas = consultas.filter((consulta) => {
+    // Verificar que la consulta tenga los datos necesarios
+    if (!consulta || typeof consulta !== 'object') {
+      return false
+    }
+
     const matchesSearch =
-      consulta.paciente_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.paciente_apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      consulta.paciente_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      consulta.paciente_apellido?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       consulta.motivo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       consulta.diagnostico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       consulta.medico_nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -627,6 +634,7 @@ export default function MedicalConsultationsPage() {
                 </div>
                 </div>
               <div className="flex items-center space-x-4">
+                <CentroIndicator className="text-white" />
                 <AdminBanner 
                   backgroundColor="bg-green-600"
                   iconBackgroundColor="bg-green-700"
@@ -748,8 +756,8 @@ export default function MedicalConsultationsPage() {
               </p>
             </div>
             <div>
-            {filteredConsultas.map((consulta) => (
-              <div key={consulta.id} className="p-6 hover:bg-gray-50 transition-colors border border-gray-200 rounded-xl mb-4 shadow-sm bg-white">
+            {filteredConsultas.map((consulta, index) => (
+              <div key={`${consulta.id_centro}-${consulta.id}-${index}`} className="p-6 hover:bg-gray-50 transition-colors border border-gray-200 rounded-xl mb-4 shadow-sm bg-white">
                 {/* Header mejorado */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
@@ -1142,7 +1150,7 @@ export default function MedicalConsultationsPage() {
                     <select
                       id="estado"
                       value={formData.estado || 'pendiente'}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value as any }))}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value as 'pendiente' | 'programada' | 'completada' | 'cancelada' }))}
                       disabled={isReadOnly}
                       className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     >

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { CentroProvider } from './contexts/CentroContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import ConsultasPage from './pages/ConsultasPage'
@@ -16,9 +17,10 @@ import EmpleadosPage from './pages/EmpleadosPage'
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen">
-          <Routes>
+      <CentroProvider>
+        <Router>
+          <div className="min-h-screen">
+            <Routes>
             {/* Rutas públicas */}
             <Route path="/login" element={<LoginPage />} />
             
@@ -110,9 +112,10 @@ function App() {
             
             {/* Ruta por defecto */}
             <Route path="/" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </div>
-      </Router>
+            </Routes>
+          </div>
+        </Router>
+      </CentroProvider>
     </AuthProvider>
   )
 }

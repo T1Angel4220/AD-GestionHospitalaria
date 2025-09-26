@@ -12,14 +12,23 @@ export class ConsultasApi {
     console.log('🔍 Debug getAuthHeaders:', {
       user,
       centroId: user?.centro?.id,
+      id_centro: user?.id_centro,
+      rol: user?.rol,
       token: token ? 'present' : 'missing'
     });
     
-    return {
+    // Si es admin, no enviar X-Centro-Id para que vea todos los datos
+    // Si es médico, enviar su centro específico
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      'X-Centro-Id': user?.centro?.id?.toString() || '1',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
+    
+    if (user?.rol !== 'admin') {
+      headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
+    }
+    
+    return headers;
   }
 
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -114,8 +123,8 @@ export class ConsultasApi {
     });
   }
 
-  static async getUsuarios(): Promise<any[]> {
-    return this.request<any[]>('/consultas/usuarios');
+  static async getUsuarios(): Promise<unknown[]> {
+    return this.request<unknown[]>('/consultas/usuarios');
   }
 
   static async getMedicosDisponibles(): Promise<Medico[]> {
@@ -128,8 +137,8 @@ export class ConsultasApi {
     rol: 'admin' | 'medico';
     id_centro: number;
     id_medico?: number;
-  }): Promise<any> {
-    return this.request<any>('/consultas/usuarios', {
+  }): Promise<unknown> {
+    return this.request<unknown>('/consultas/usuarios', {
       method: 'POST',
       body: JSON.stringify(usuario),
     });

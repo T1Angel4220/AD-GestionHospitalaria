@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { AdminBanner } from '../components/AdminBanner'
 import { LogoutModal } from '../components/LogoutModal'
+import { CentroIndicator } from '../components/CentroIndicator'
 import { getRoleText } from '../utils/roleUtils'
 
 export default function PacientesPage() {
@@ -107,8 +108,10 @@ export default function PacientesPage() {
     try {
       setLoading(true)
       const data = await PacientesApi.getPacientes()
+      console.log('📋 Datos de pacientes cargados:', data)
       setPacientes(data)
-    } catch (err) {
+    } catch (error) {
+      console.error('Error cargando pacientes:', error)
       setError("Error al cargar los pacientes")
     } finally {
       setLoading(false)
@@ -119,8 +122,9 @@ export default function PacientesPage() {
     try {
       const centrosData = await PacientesApi.getCentros()
       setCentros(centrosData)
-    } catch (err) {
+    } catch (error) {
       // Error silencioso al cargar datos relacionados
+      console.error('Error cargando datos relacionados:', error)
     }
   }
 
@@ -179,7 +183,8 @@ export default function PacientesPage() {
         await loadPacientes()
         resetForm()
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error guardando paciente:', error)
       setError("Error al guardar el paciente")
     }
   }
@@ -311,7 +316,8 @@ export default function PacientesPage() {
       await loadPacientes()
       setIsDeleteModalOpen(false)
       setPacienteToDelete(null)
-    } catch (err) {
+    } catch (error) {
+      console.error('Error eliminando paciente:', error)
       setError("Error al eliminar el paciente")
     }
   }
@@ -330,7 +336,8 @@ export default function PacientesPage() {
       setShowEditConfirmModal(false)
       setPendingUpdateData(null)
       resetForm()
-    } catch (err) {
+    } catch (error) {
+      console.error('Error actualizando paciente:', error)
       setError("Error al actualizar el paciente")
     }
   }
@@ -390,9 +397,14 @@ export default function PacientesPage() {
   }
 
   const filteredPacientes = pacientes.filter((paciente) => {
+    // Verificar que el paciente tenga los datos necesarios
+    if (!paciente || typeof paciente !== 'object') {
+      return false
+    }
+
     const matchesSearch =
-      paciente.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      paciente.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      paciente.nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      paciente.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       paciente.cedula?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       paciente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       paciente.telefono?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -413,9 +425,11 @@ export default function PacientesPage() {
       otro: 0,
     }
     pacientes.forEach((p) => {
-      if (p.genero === 'M') stats.masculino++
-      else if (p.genero === 'F') stats.femenino++
-      else if (p.genero === 'O') stats.otro++
+      if (p && typeof p === 'object' && p.genero) {
+        if (p.genero === 'M') stats.masculino++
+        else if (p.genero === 'F') stats.femenino++
+        else if (p.genero === 'O') stats.otro++
+      }
     })
     return stats
   }
@@ -629,6 +643,7 @@ export default function PacientesPage() {
                 </div>
                 </div>
               <div className="flex items-center space-x-4">
+                <CentroIndicator className="text-white" />
                 <AdminBanner 
                   backgroundColor="bg-red-600"
                   iconBackgroundColor="bg-red-700"
@@ -751,8 +766,8 @@ export default function PacientesPage() {
             {/* Grid de Pacientes Mejorado */}
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                {filteredPacientes.map((paciente) => (
-                  <div key={paciente.id} className="group relative bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-2xl hover:shadow-red-100/50 transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
+                {filteredPacientes.filter(p => p && typeof p === 'object').map((paciente, index) => (
+                  <div key={`${paciente.id_centro}-${paciente.id}-${index}`} className="group relative bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-2xl hover:shadow-red-100/50 transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
                     {/* Header con gradiente mejorado */}
                     <div className="relative h-24 bg-gradient-to-br from-red-500 via-red-600 to-red-700 overflow-hidden">
                       {/* Patrón de fondo */}

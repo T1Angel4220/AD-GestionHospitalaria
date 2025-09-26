@@ -5,7 +5,8 @@ import {
   create, 
   update, 
   remove, 
-  search 
+  search,
+  cleanupDuplicatesEndpoint
 } from "../controllers/pacientes.controller";
 import { authenticateToken, requireCentroAccess, requireRole } from "../middlewares/auth";
 import { validatePaciente } from "../middlewares/validation";
@@ -116,5 +117,11 @@ router.put("/:id", requireRole(['admin', 'medico']), validatePaciente, update);
 // Eliminar un paciente (solo admin)
 // =========================
 router.delete("/:id", requireRole(['admin']), remove);
+
+// =========================
+// POST /api/pacientes/cleanup-duplicates
+// Limpiar duplicados (solo admin)
+// =========================
+router.post("/cleanup-duplicates", requireRole(['admin']), cleanupDuplicatesEndpoint);
 
 export default router;

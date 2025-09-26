@@ -22,9 +22,12 @@ declare global {
  * 
  * Lógica:
  * - Endpoints de administración (/admin/*) → Siempre usan BD central
- * - Endpoints de consultas (/consultas) → Usan BD local según X-Centro-Id
- * - Endpoints de reportes (/reports) → Usan BD local según X-Centro-Id
  * - Endpoints de auth → Siempre usan BD central
+ * - Endpoints de consultas (/consultas) → BD local según X-Centro-Id, o BD central si no hay header
+ * - Endpoints de reportes (/reports) → BD local según X-Centro-Id, o BD central si no hay header
+ * - Endpoints de pacientes (/pacientes) → BD local según X-Centro-Id, o BD central si no hay header
+ * 
+ * Nota: Si no hay X-Centro-Id, se usa BD central (para admin que ve todos los datos)
  */
 export function databaseSelector(req: Request, res: Response, next: NextFunction) {
   try {
@@ -44,14 +47,22 @@ export function databaseSelector(req: Request, res: Response, next: NextFunction
       
       console.log(`🏥 [DB] Usando BD CENTRAL para ${path}`);
       
-    } else if (path.startsWith('/api/consultas') || path.startsWith('/api/reports')) {
-      // Endpoints de consultas y reportes → BD local según X-Centro-Id
+    } else if (path.startsWith('/api/consultas') || path.startsWith('/api/reports') || path.startsWith('/api/pacientes')) {
+      // Endpoints de consultas, reportes y pacientes → BD local según X-Centro-Id
+      // Si no hay X-Centro-Id, usar BD central (para admin)
       
       if (!centroIdHeader) {
-        return res.status(400).json({
-          error: 'X-Centro-Id header requerido para este endpoint',
-          details: 'Este endpoint requiere el header X-Centro-Id para determinar la base de datos local'
-        });
+        // Sin X-Centro-Id → BD central (para admin que ve todos los datos)
+        req.dbPool = getCentralPool();
+        req.dbInfo = {
+          host: process.env.CENTRAL_DB_HOST || 'unknown',
+          database: process.env.CENTRAL_DB_NAME || 'unknown',
+          user: process.env.CENTRAL_DB_USER || 'unknown',
+          centroId: 1 // Quito (Central)
+        };
+        console.log(`🏥 [DB] Usando BD CENTRAL (sin X-Centro-Id) para ${path}`);
+        next();
+        return;
       }
       
       const centroId = parseInt(centroIdHeader as string);

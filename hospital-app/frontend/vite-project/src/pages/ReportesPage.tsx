@@ -6,7 +6,7 @@ import { ConsultasTable } from '../components/reports/ConsultasTable';
 import { PacientesFrecuentesTable } from '../components/reports/PacientesFrecuentesTable';
 import type { ReporteFiltros, ConsultaResumen, ConsultaDetalle, EstadisticasGenerales, PacienteFrecuente } from '../api/reports';
 import { apiService } from '../api/reports';
-import { config } from '../config/env';
+import { useCentro } from '../contexts/CentroContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -35,10 +35,11 @@ import { getActiveSidebarItem, getHeaderColors } from '../utils/sidebarUtils';
 
 export const ReportesPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const { centroId } = useCentro();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [filtros, setFiltros] = useState<ReporteFiltros>({
-    centroId: config.defaultCentroId,
+    centroId: centroId,
     desde: undefined,
     hasta: undefined,
     q: undefined
@@ -105,7 +106,8 @@ export const ReportesPage: React.FC = () => {
       if (!consultasResponse.error) {
         setSuccess(`Reporte generado exitosamente. ${consultasResponse.data?.length || 0} médico${(consultasResponse.data?.length || 0) !== 1 ? 's' : ''} encontrado${(consultasResponse.data?.length || 0) !== 1 ? 's' : ''}.`);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error generando reporte:', error)
       setError('Error inesperado al generar el reporte');
       setData([]);
       setEstadisticas(null);
@@ -178,7 +180,7 @@ export const ReportesPage: React.FC = () => {
       const lightGray = [243, 244, 246]; // gray-100
 
       // Función para agregar texto con estilo
-      const addText = (text: string, x: number, y: number, options: any = {}) => {
+      const addText = (text: string, x: number, y: number, options: { fontStyle?: string; fontSize?: number; color?: number[] | number } = {}) => {
         doc.setFont('helvetica', options.fontStyle || 'normal');
         doc.setFontSize(options.fontSize || 12);
         if (options.color && Array.isArray(options.color) && options.color.length === 3) {
@@ -329,7 +331,7 @@ export const ReportesPage: React.FC = () => {
       });
 
       // Obtener la posición final después de la tabla
-      const finalY = (doc as any).lastAutoTable.finalY || yPosition + 50;
+      const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY || yPosition + 50;
       let currentY = finalY + 20;
 
       // Agregar detalles de consultas por médico
@@ -412,7 +414,7 @@ export const ReportesPage: React.FC = () => {
         });
 
         // Obtener la posición final después de esta tabla
-        const detalleFinalY = (doc as any).lastAutoTable.finalY || currentY + 50;
+        const detalleFinalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY || currentY + 50;
         currentY = detalleFinalY + 15;
 
         // Línea separadora decorativa

@@ -13,14 +13,24 @@ export class PacientesApi {
       user,
       centroId: user?.centro?.id,
       id_centro: user?.id_centro,
-      token: token ? 'present' : 'missing'
+      rol: user?.rol,
+      token: token ? 'present' : 'missing',
+      isAdmin: user?.rol === 'admin',
+      willSendCentroId: user?.rol !== 'admin'
     });
     
-    return {
+    // Si es admin, no enviar X-Centro-Id para que vea todos los datos
+    // Si es médico, enviar su centro específico
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      'X-Centro-Id': user?.centro?.id?.toString() || '1',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
+    
+    if (user?.rol !== 'admin') {
+      headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
+    }
+    
+    return headers;
   }
 
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
