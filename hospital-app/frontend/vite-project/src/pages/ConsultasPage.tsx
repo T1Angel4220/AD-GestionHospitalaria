@@ -295,6 +295,34 @@ export default function MedicalConsultationsPage() {
     }
   }
 
+  const resetForm = () => {
+    setEditingConsulta(null)
+    setFormData({
+      paciente_nombre: "",
+      paciente_apellido: "",
+      id_paciente: undefined,
+      id_frontend: undefined,
+      id_medico: undefined,
+      id_centro: undefined,
+      fecha: "",
+      motivo: "",
+      diagnostico: "",
+      tratamiento: "",
+      estado: "pendiente",
+      duracion_minutos: 0,
+    })
+    setSelectedEspecialidad("")
+    setSelectedCentro("")
+    
+    // Resetear filtrado de médicos (mostrar todos si es admin)
+    if (user?.rol === 'admin' && medicos.length > 0) {
+      setMedicosFiltrados(medicos)
+      console.log('🔄 Formulario reseteado, mostrando todos los médicos:', medicos.length)
+    }
+    
+    setIsDialogOpen(false)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -365,9 +393,25 @@ export default function MedicalConsultationsPage() {
         })
         
         await ConsultasApi.createConsulta(newData, centroIdDelMedico)
+        
+        // Actualizar el estado local inmediatamente sin recargar desde el servidor
+        const nuevaConsulta: Consulta = {
+          ...newData,
+          id: Date.now(), // ID temporal hasta que el servidor responda
+          id_centro: centroIdDelMedico || 1,
+          estado: newData.estado || 'pendiente',
+          created_at: new Date().toISOString(),
+          medico_nombres: medicoSeleccionado?.nombres,
+          medico_apellidos: medicoSeleccionado?.apellidos,
+          especialidad_nombre: medicoSeleccionado?.especialidad_nombre,
+          centro_nombre: medicoSeleccionado?.centro_nombre,
+          centro_ciudad: medicoSeleccionado?.origen_bd === 'central' ? 'Quito' : 
+                        medicoSeleccionado?.origen_bd === 'guayaquil' ? 'Guayaquil' : 'Cuenca'
+        }
+        setConsultas(prev => [nuevaConsulta, ...prev])
+        
         setShowSuccessModal(true)
-      await loadConsultas()
-      resetForm()
+        resetForm()
       }
     } catch (err) {
       setError("Error al guardar la consulta")
@@ -494,7 +538,10 @@ export default function MedicalConsultationsPage() {
       })
       
       await ConsultasApi.deleteConsulta(consultaToDelete.id, centroIdDeLaConsulta)
-      await loadConsultas()
+      
+      // Actualizar el estado local inmediatamente sin recargar desde el servidor
+      setConsultas(prev => prev.filter(c => c.id !== consultaToDelete.id))
+      
       setIsDeleteModalOpen(false)
       setConsultaToDelete(null)
     } catch (err) {
@@ -532,7 +579,23 @@ export default function MedicalConsultationsPage() {
       })
       
       await ConsultasApi.updateConsulta(editingConsulta.id, pendingUpdateData, centroIdDelMedico)
-      await loadConsultas()
+      
+      // Actualizar el estado local inmediatamente sin recargar desde el servidor
+      setConsultas(prev => prev.map(c => 
+        c.id === editingConsulta.id 
+          ? { 
+              ...c, 
+              ...pendingUpdateData,
+              medico_nombres: medicoSeleccionado?.nombres,
+              medico_apellidos: medicoSeleccionado?.apellidos,
+              especialidad_nombre: medicoSeleccionado?.especialidad_nombre,
+              centro_nombre: medicoSeleccionado?.centro_nombre,
+              centro_ciudad: medicoSeleccionado?.origen_bd === 'central' ? 'Quito' : 
+                            medicoSeleccionado?.origen_bd === 'guayaquil' ? 'Guayaquil' : 'Cuenca'
+            }
+          : c
+      ))
+      
       setShowEditConfirmModal(false)
       setPendingUpdateData(null)
       resetForm()
@@ -545,34 +608,6 @@ export default function MedicalConsultationsPage() {
   const handleEditCancel = () => {
     setShowEditConfirmModal(false)
     setPendingUpdateData(null)
-  }
-
-  const resetForm = () => {
-    setEditingConsulta(null)
-    setFormData({
-      paciente_nombre: "",
-      paciente_apellido: "",
-      id_paciente: undefined,
-      id_frontend: undefined,
-      id_medico: undefined,
-      id_centro: undefined,
-      fecha: "",
-      motivo: "",
-      diagnostico: "",
-      tratamiento: "",
-      estado: "pendiente",
-      duracion_minutos: 0,
-    })
-    setSelectedEspecialidad("")
-    setSelectedCentro("")
-    
-    // Resetear filtrado de médicos (mostrar todos si es admin)
-    if (user?.rol === 'admin' && medicos.length > 0) {
-      setMedicosFiltrados(medicos)
-      console.log('🔄 Formulario reseteado, mostrando todos los médicos:', medicos.length)
-    }
-    
-    setIsDialogOpen(false)
   }
 
   const handleNewConsulta = () => {
