@@ -38,8 +38,14 @@ servers:
 tags:
   - name: auth
     description: Autenticación y gestión de usuarios
-  - name: admin
-    description: Administración de entidades globales
+  - name: centros
+    description: Gestión de centros médicos
+  - name: medicos
+    description: Gestión de médicos y especialidades
+  - name: especialidades
+    description: Gestión de especialidades médicas
+  - name: empleados
+    description: Gestión de empleados del hospital
   - name: consultas
     description: Gestión de consultas médicas
   - name: reportes
@@ -188,7 +194,7 @@ paths:
   /admin/centros:
     get:
       tags:
-        - admin
+        - centros
       summary: Listar centros médicos
       description: Obtiene la lista de todos los centros médicos
       security:
@@ -211,7 +217,7 @@ paths:
 
     post:
       tags:
-        - admin
+        - centros
       summary: Crear centro médico
       description: Crea un nuevo centro médico
       security:
@@ -249,7 +255,7 @@ paths:
   /admin/centros/{id}:
     get:
       tags:
-        - admin
+        - centros
       summary: Obtener centro médico por ID
       description: Obtiene un centro médico específico
       security:
@@ -277,7 +283,7 @@ paths:
 
     put:
       tags:
-        - admin
+        - centros
       summary: Actualizar centro médico
       description: Actualiza un centro médico existente
       security:
@@ -315,7 +321,7 @@ paths:
 
     delete:
       tags:
-        - admin
+        - centros
       summary: Eliminar centro médico
       description: Elimina un centro médico
       security:
@@ -343,7 +349,7 @@ paths:
   /admin/medicos:
     get:
       tags:
-        - admin
+        - medicos
       summary: Listar médicos
       description: Obtiene la lista de todos los médicos con información de especialidad y centro
       security:
@@ -366,7 +372,7 @@ paths:
 
     post:
       tags:
-        - admin
+        - medicos
       summary: Crear médico
       description: Crea un nuevo médico
       security:
@@ -404,7 +410,7 @@ paths:
   /admin/medicos/{id}:
     get:
       tags:
-        - admin
+        - medicos
       summary: Obtener médico por ID
       security:
         - bearerAuth: []
@@ -431,7 +437,7 @@ paths:
 
     put:
       tags:
-        - admin
+        - medicos
       summary: Actualizar médico
       security:
         - bearerAuth: []
@@ -468,7 +474,7 @@ paths:
 
     delete:
       tags:
-        - admin
+        - medicos
       summary: Eliminar médico
       security:
         - bearerAuth: []
@@ -492,6 +498,327 @@ paths:
                     example: "Médico eliminado correctamente"
         '404':
           description: Médico no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ===========================================
+  # ADMINISTRACIÓN - ESPECIALIDADES
+  # ===========================================
+  /admin/especialidades:
+    get:
+      tags:
+        - especialidades
+      summary: Listar especialidades
+      description: Obtiene la lista de todas las especialidades médicas
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de especialidades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Especialidad'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - especialidades
+      summary: Crear especialidad
+      description: Crea una nueva especialidad médica
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EspecialidadCreate'
+      responses:
+        '201':
+          description: Especialidad creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  nombre:
+                    type: string
+                    example: "Cardiología"
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/especialidades/{id}:
+    get:
+      tags:
+        - especialidades
+      summary: Obtener especialidad por ID
+      description: Obtiene una especialidad específica
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Especialidad encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Especialidad'
+        '404':
+          description: Especialidad no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - especialidades
+      summary: Actualizar especialidad
+      description: Actualiza una especialidad existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EspecialidadUpdate'
+      responses:
+        '200':
+          description: Especialidad actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  nombre:
+                    type: string
+                    example: "Cardiología"
+        '404':
+          description: Especialidad no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - especialidades
+      summary: Eliminar especialidad
+      description: Elimina una especialidad
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '204':
+          description: Especialidad eliminada exitosamente
+        '404':
+          description: Especialidad no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ===========================================
+  # ADMINISTRACIÓN - EMPLEADOS
+  # ===========================================
+  /admin/empleados:
+    get:
+      tags:
+        - empleados
+      summary: Listar empleados
+      description: Obtiene la lista de todos los empleados con información del centro
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de empleados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Empleado'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - empleados
+      summary: Crear empleado
+      description: Crea un nuevo empleado
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpleadoCreate'
+      responses:
+        '201':
+          description: Empleado creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  nombres:
+                    type: string
+                    example: "María"
+                  apellidos:
+                    type: string
+                    example: "González"
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/empleados/{id}:
+    get:
+      tags:
+        - empleados
+      summary: Obtener empleado por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Empleado encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empleado'
+        '404':
+          description: Empleado no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - empleados
+      summary: Actualizar empleado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpleadoUpdate'
+      responses:
+        '200':
+          description: Empleado actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  nombres:
+                    type: string
+                    example: "María"
+                  apellidos:
+                    type: string
+                    example: "González"
+
+    delete:
+      tags:
+        - empleados
+      summary: Eliminar empleado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Empleado eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Empleado eliminado correctamente"
+        '404':
+          description: Empleado no encontrado
           content:
             application/json:
               schema:
@@ -1016,6 +1343,100 @@ components:
         id_especialidad:
           type: integer
           example: 1
+        id_centro:
+          type: integer
+          example: 1
+
+    # ===========================================
+    # ESQUEMAS DE ESPECIALIDADES
+    # ===========================================
+    Especialidad:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Cardiología"
+
+    EspecialidadCreate:
+      type: object
+      required:
+        - nombre
+      properties:
+        nombre:
+          type: string
+          example: "Cardiología"
+
+    EspecialidadUpdate:
+      type: object
+      properties:
+        nombre:
+          type: string
+          example: "Cardiología"
+
+    # ===========================================
+    # ESQUEMAS DE EMPLEADOS
+    # ===========================================
+    Empleado:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombres:
+          type: string
+          example: "María"
+        apellidos:
+          type: string
+          example: "González"
+        cargo:
+          type: string
+          example: "Enfermera"
+        id_centro:
+          type: integer
+          example: 1
+        centro_nombre:
+          type: string
+          example: "Hospital Central"
+        centro_ciudad:
+          type: string
+          example: "Bogotá"
+
+    EmpleadoCreate:
+      type: object
+      required:
+        - nombres
+        - apellidos
+        - cargo
+        - id_centro
+      properties:
+        nombres:
+          type: string
+          example: "María"
+        apellidos:
+          type: string
+          example: "González"
+        cargo:
+          type: string
+          example: "Enfermera"
+        id_centro:
+          type: integer
+          example: 1
+
+    EmpleadoUpdate:
+      type: object
+      properties:
+        nombres:
+          type: string
+          example: "María"
+        apellidos:
+          type: string
+          example: "González"
+        cargo:
+          type: string
+          example: "Enfermera"
         id_centro:
           type: integer
           example: 1
