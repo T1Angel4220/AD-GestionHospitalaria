@@ -1,6 +1,7 @@
 // src/controllers/reports.controller.ts
 import { Request, Response } from "express";
 import jwt from 'jsonwebtoken';
+import { pools } from "../config/distributedDb";
 
 function getCentroId(req: Request): number | null {
   const headerValue = req.header("X-Centro-Id") || req.header("x-centro-id");
@@ -21,6 +22,326 @@ function isAdmin(req: Request): boolean {
   }
 }
 
+// =========================
+// Función para obtener resumen de consultas de todas las bases de datos (solo admin)
+// =========================
+async function getAllResumenConsultasFromAllDatabases(filters: any = {}) {
+  const allReports: any[] = [];
+  
+  try {
+    const params: any[] = [];
+    const onFilters: string[] = [];
+
+    // Filtros de fecha aplican sobre la tabla de consultas
+    if (filters.desde) { onFilters.push(`c.fecha >= ?`); params.push(`${filters.desde} 00:00:00`); }
+    if (filters.hasta) { onFilters.push(`c.fecha <= ?`); params.push(`${filters.hasta} 23:59:59`); }
+
+    // Filtro de texto (paciente/motivo/diagnostico)
+    if (filters.q && filters.q.trim() !== "") {
+      onFilters.push(`(c.paciente_nombre LIKE ? OR c.paciente_apellido LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ?)`);
+      const like = `%${filters.q}%`;
+      params.push(like, like, like, like);
+    }
+
+    const whereClause = onFilters.length > 0 ? `WHERE ${onFilters.join(" AND ")}` : '';
+    
+    // Consultar BD Central (Quito)
+    const [centralReports] = await pools.central.query(`
+      SELECT
+        m.id,
+        m.id AS medico_id,
+        m.nombres,
+        m.apellidos,
+        e.nombre AS especialidad,
+        cm.nombre AS centro_medico,
+        cm.ciudad AS centro_ciudad,
+        COUNT(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.id END) AS total_consultas,
+        COUNT(DISTINCT CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} AND c.id_paciente IS NOT NULL THEN c.id_paciente ELSE CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN CONCAT(c.paciente_nombre, '|', c.paciente_apellido) END END) AS pacientes_unicos,
+        MIN(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS primera_consulta,
+        MAX(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS ultima_consulta
+      FROM medicos m
+      INNER JOIN especialidades e ON e.id = m.id_especialidad
+      INNER JOIN centros_medicos cm ON cm.id = m.id_centro
+      LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = 1
+      WHERE EXISTS (
+        SELECT 1 FROM consultas c2 
+        WHERE c2.id_medico = m.id AND c2.id_centro = 1
+        ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''}
+      )
+      GROUP BY m.id, m.nombres, m.apellidos, e.nombre, cm.nombre, cm.ciudad
+      ORDER BY total_consultas DESC, m.apellidos ASC, m.nombres ASC
+    `, params);
+    
+    // Agregar información de centro
+    (centralReports as any[]).forEach(report => {
+      report.centro_medico = report.centro_medico || 'Hospital Central Quito';
+      report.centro_ciudad = report.centro_ciudad || 'Quito';
+    });
+    
+    allReports.push(...(centralReports as any[]));
+    
+    // Consultar BD Guayaquil
+    try {
+      const [guayaquilReports] = await pools.guayaquil.query(`
+        SELECT
+          m.id,
+          m.id AS medico_id,
+          m.nombres,
+          m.apellidos,
+          e.nombre AS especialidad,
+          cm.nombre AS centro_medico,
+          cm.ciudad AS centro_ciudad,
+          COUNT(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.id END) AS total_consultas,
+          COUNT(DISTINCT CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} AND c.id_paciente IS NOT NULL THEN c.id_paciente ELSE CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN CONCAT(c.paciente_nombre, '|', c.paciente_apellido) END END) AS pacientes_unicos,
+          MIN(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS primera_consulta,
+          MAX(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS ultima_consulta
+        FROM medicos m
+        INNER JOIN especialidades e ON e.id = m.id_especialidad
+        INNER JOIN centros_medicos cm ON cm.id = m.id_centro
+        LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = 2
+        WHERE EXISTS (
+          SELECT 1 FROM consultas c2 
+          WHERE c2.id_medico = m.id AND c2.id_centro = 2
+          ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''}
+        )
+        GROUP BY m.id, m.nombres, m.apellidos, e.nombre, cm.nombre, cm.ciudad
+        ORDER BY total_consultas DESC, m.apellidos ASC, m.nombres ASC
+      `, params);
+      
+      (guayaquilReports as any[]).forEach(report => {
+        report.centro_medico = report.centro_medico || 'Hospital Guayaquil';
+        report.centro_ciudad = report.centro_ciudad || 'Guayaquil';
+      });
+      
+      allReports.push(...(guayaquilReports as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Guayaquil:', error);
+    }
+    
+    // Consultar BD Cuenca
+    try {
+      const [cuencaReports] = await pools.cuenca.query(`
+        SELECT
+          m.id,
+          m.id AS medico_id,
+          m.nombres,
+          m.apellidos,
+          e.nombre AS especialidad,
+          cm.nombre AS centro_medico,
+          cm.ciudad AS centro_ciudad,
+          COUNT(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.id END) AS total_consultas,
+          COUNT(DISTINCT CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} AND c.id_paciente IS NOT NULL THEN c.id_paciente ELSE CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN CONCAT(c.paciente_nombre, '|', c.paciente_apellido) END END) AS pacientes_unicos,
+          MIN(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS primera_consulta,
+          MAX(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS ultima_consulta
+        FROM medicos m
+        INNER JOIN especialidades e ON e.id = m.id_especialidad
+        INNER JOIN centros_medicos cm ON cm.id = m.id_centro
+        LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = 3
+        WHERE EXISTS (
+          SELECT 1 FROM consultas c2 
+          WHERE c2.id_medico = m.id AND c2.id_centro = 3
+          ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''}
+        )
+        GROUP BY m.id, m.nombres, m.apellidos, e.nombre, cm.nombre, cm.ciudad
+        ORDER BY total_consultas DESC, m.apellidos ASC, m.nombres ASC
+      `, params);
+      
+      (cuencaReports as any[]).forEach(report => {
+        report.centro_medico = report.centro_medico || 'Hospital Cuenca';
+        report.centro_ciudad = report.centro_ciudad || 'Cuenca';
+      });
+      
+      allReports.push(...(cuencaReports as any[]));
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Cuenca:', error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error consultando todas las bases de datos:', error);
+    throw error;
+  }
+  
+  // Ordenar por total de consultas (descendente) y luego por apellidos
+  return allReports.sort((a, b) => {
+    if (b.total_consultas !== a.total_consultas) {
+      return b.total_consultas - a.total_consultas;
+    }
+    return a.apellidos.localeCompare(b.apellidos);
+  });
+}
+
+// =========================
+// Función para obtener estadísticas de todas las bases de datos (solo admin)
+// =========================
+async function getAllEstadisticasFromAllDatabases(filters: any = {}) {
+  try {
+    let totalMedicos = 0;
+    let totalPacientes = 0;
+    let totalEmpleados = 0;
+    let totalConsultas = 0;
+    let pacientesConConsultas = 0;
+    let consultasPendientes = 0;
+    let consultasProgramadas = 0;
+    let consultasCompletadas = 0;
+    let consultasCanceladas = 0;
+    let duracionPromedioMinutos = 0;
+    let totalDuracion = 0;
+    let consultasConDuracion = 0;
+
+    // Construir filtros de fecha
+    const fechaInicio = filters.desde ? `${filters.desde} 00:00:00` : null;
+    const fechaFin = filters.hasta ? `${filters.hasta} 23:59:59` : null;
+    
+    // Consultar BD Central (Quito)
+    const [centralStats] = await pools.central.query(`
+      SELECT
+        (SELECT COUNT(*) FROM medicos WHERE id_centro = 1) as total_medicos,
+        (SELECT COUNT(*) FROM pacientes WHERE id_centro = 1) as total_pacientes,
+        (SELECT COUNT(*) FROM empleados WHERE id_centro = 1) as total_empleados,
+        ${fechaInicio && fechaFin ? `
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = 1 AND id_paciente IS NOT NULL AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'pendiente' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'programada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'completada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'cancelada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_canceladas,
+        (SELECT SUM(duracion_minutos) FROM consultas WHERE id_centro = 1 AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_duracion,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_con_duracion
+        ` : `
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1) as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = 1 AND id_paciente IS NOT NULL) as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'pendiente') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'programada') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'completada') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND estado = 'cancelada') as consultas_canceladas,
+        (SELECT SUM(duracion_minutos) FROM consultas WHERE id_centro = 1 AND duracion_minutos > 0) as total_duracion,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = 1 AND duracion_minutos > 0) as consultas_con_duracion
+        `}
+    `);
+    
+    const stats = centralStats[0] as any;
+    totalMedicos += stats.total_medicos || 0;
+    totalPacientes += stats.total_pacientes || 0;
+    totalEmpleados += stats.total_empleados || 0;
+    totalConsultas += stats.total_consultas || 0;
+    pacientesConConsultas += stats.pacientes_con_consultas || 0;
+    consultasPendientes += stats.consultas_pendientes || 0;
+    consultasProgramadas += stats.consultas_programadas || 0;
+    consultasCompletadas += stats.consultas_completadas || 0;
+    consultasCanceladas += stats.consultas_canceladas || 0;
+    totalDuracion += stats.total_duracion || 0;
+    consultasConDuracion += stats.consultas_con_duracion || 0;
+    
+    // Consultar BD Guayaquil
+    try {
+      const [guayaquilStats] = await pools.guayaquil.query(`
+        SELECT
+          (SELECT COUNT(*) FROM medicos WHERE id_centro = 2) as total_medicos,
+          (SELECT COUNT(*) FROM pacientes WHERE id_centro = 2) as total_pacientes,
+          (SELECT COUNT(*) FROM empleados WHERE id_centro = 2) as total_empleados,
+          ${fechaInicio && fechaFin ? `
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_consultas,
+          (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = 2 AND id_paciente IS NOT NULL AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as pacientes_con_consultas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'pendiente' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_pendientes,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'programada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_programadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'completada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_completadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'cancelada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_canceladas,
+          (SELECT SUM(duracion_minutos) FROM consultas WHERE id_centro = 2 AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_duracion,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_con_duracion
+          ` : `
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2) as total_consultas,
+          (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = 2 AND id_paciente IS NOT NULL) as pacientes_con_consultas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'pendiente') as consultas_pendientes,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'programada') as consultas_programadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'completada') as consultas_completadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND estado = 'cancelada') as consultas_canceladas,
+          (SELECT SUM(duracion_minutos) FROM consultas WHERE id_centro = 2 AND duracion_minutos > 0) as total_duracion,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 2 AND duracion_minutos > 0) as consultas_con_duracion
+          `}
+      `);
+      
+      const stats = guayaquilStats[0] as any;
+      totalMedicos += stats.total_medicos || 0;
+      totalPacientes += stats.total_pacientes || 0;
+      totalEmpleados += stats.total_empleados || 0;
+      totalConsultas += stats.total_consultas || 0;
+      pacientesConConsultas += stats.pacientes_con_consultas || 0;
+      consultasPendientes += stats.consultas_pendientes || 0;
+      consultasProgramadas += stats.consultas_programadas || 0;
+      consultasCompletadas += stats.consultas_completadas || 0;
+      consultasCanceladas += stats.consultas_canceladas || 0;
+      totalDuracion += stats.total_duracion || 0;
+      consultasConDuracion += stats.consultas_con_duracion || 0;
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Guayaquil:', error);
+    }
+    
+    // Consultar BD Cuenca
+    try {
+      const [cuencaStats] = await pools.cuenca.query(`
+        SELECT
+          (SELECT COUNT(*) FROM medicos WHERE id_centro = 3) as total_medicos,
+          (SELECT COUNT(*) FROM pacientes WHERE id_centro = 3) as total_pacientes,
+          (SELECT COUNT(*) FROM empleados WHERE id_centro = 3) as total_empleados,
+          ${fechaInicio && fechaFin ? `
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_consultas,
+          (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = 3 AND id_paciente IS NOT NULL AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as pacientes_con_consultas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'pendiente' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_pendientes,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'programada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_programadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'completada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_completadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'cancelada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_canceladas,
+          (SELECT SUM(duracion_minutos) FROM consultas WHERE id_centro = 3 AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_duracion,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_con_duracion
+          ` : `
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3) as total_consultas,
+          (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = 3 AND id_paciente IS NOT NULL) as pacientes_con_consultas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'pendiente') as consultas_pendientes,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'programada') as consultas_programadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'completada') as consultas_completadas,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND estado = 'cancelada') as consultas_canceladas,
+          (SELECT SUM(duracion_minutos) FROM consultas WHERE id_centro = 3 AND duracion_minutos > 0) as total_duracion,
+          (SELECT COUNT(*) FROM consultas WHERE id_centro = 3 AND duracion_minutos > 0) as consultas_con_duracion
+          `}
+      `);
+      
+      const stats = cuencaStats[0] as any;
+      totalMedicos += stats.total_medicos || 0;
+      totalPacientes += stats.total_pacientes || 0;
+      totalEmpleados += stats.total_empleados || 0;
+      totalConsultas += stats.total_consultas || 0;
+      pacientesConConsultas += stats.pacientes_con_consultas || 0;
+      consultasPendientes += stats.consultas_pendientes || 0;
+      consultasProgramadas += stats.consultas_programadas || 0;
+      consultasCompletadas += stats.consultas_completadas || 0;
+      consultasCanceladas += stats.consultas_canceladas || 0;
+      totalDuracion += stats.total_duracion || 0;
+      consultasConDuracion += stats.consultas_con_duracion || 0;
+    } catch (error) {
+      console.log('⚠️ No se pudo conectar a BD Cuenca:', error);
+    }
+    
+    // Calcular duración promedio
+    duracionPromedioMinutos = consultasConDuracion > 0 ? totalDuracion / consultasConDuracion : 0;
+    
+    return {
+      total_medicos: totalMedicos,
+      total_pacientes: totalPacientes,
+      total_empleados: totalEmpleados,
+      total_consultas: totalConsultas,
+      pacientes_con_consultas: pacientesConConsultas,
+      consultas_pendientes: consultasPendientes,
+      consultas_programadas: consultasProgramadas,
+      consultas_completadas: consultasCompletadas,
+      consultas_canceladas: consultasCanceladas,
+      duracion_promedio_minutos: Math.round(duracionPromedioMinutos * 100) / 100
+    };
+    
+  } catch (error) {
+    console.error('❌ Error consultando estadísticas de todas las bases de datos:', error);
+    throw error;
+  }
+}
+
 /**
  * Resumen de consultas por médico del centro:
  * - medico_id, nombres, apellidos, especialidad
@@ -34,10 +355,22 @@ function isAdmin(req: Request): boolean {
 export async function getResumenConsultas(req: Request, res: Response) {
   try {
     const centroId = getCentroId(req);
-    if (!centroId) return res.status(400).json({ error: "X-Centro-Id requerido" });
+    const adminUser = isAdmin(req);
+    
+    // Si no es admin, requerir X-Centro-Id
+    if (!adminUser && !centroId) {
+      return res.status(400).json({ error: "X-Centro-Id requerido" });
+    }
 
     const { desde, hasta, q } = req.query as Record<string, string | undefined>;
-    const adminUser = isAdmin(req);
+
+    // Si es admin y no hay centroId, obtener reportes de todas las bases de datos
+    if (adminUser && !centroId) {
+      console.log('👑 [REPORTS] Admin detectado - consultando TODAS las bases de datos');
+      const allReports = await getAllResumenConsultasFromAllDatabases({ desde, hasta, q });
+      console.log('📊 [REPORTS] Total reportes encontrados:', allReports.length);
+      return res.json(allReports);
+    }
 
     const params: any[] = [];
     const onFilters: string[] = [];
@@ -220,9 +553,22 @@ export async function getDetalleConsultasMedico(req: Request, res: Response) {
 export async function getEstadisticasGenerales(req: Request, res: Response) {
   try {
     const centroId = getCentroId(req);
-    if (!centroId) return res.status(400).json({ error: "X-Centro-Id requerido" });
+    const adminUser = isAdmin(req);
+    
+    // Si no es admin, requerir X-Centro-Id
+    if (!adminUser && !centroId) {
+      return res.status(400).json({ error: "X-Centro-Id requerido" });
+    }
 
     const { desde, hasta } = req.query as Record<string, string | undefined>;
+
+    // Si es admin y no hay centroId, obtener estadísticas de todas las bases de datos
+    if (adminUser && !centroId) {
+      console.log('👑 [REPORTS] Admin detectado - consultando estadísticas de TODAS las bases de datos');
+      const allStats = await getAllEstadisticasFromAllDatabases({ desde, hasta });
+      console.log('📊 [REPORTS] Estadísticas consolidadas:', allStats);
+      return res.json(allStats);
+    }
 
     // Construir SQL dinámicamente para evitar problemas con parámetros
     let sql = `
