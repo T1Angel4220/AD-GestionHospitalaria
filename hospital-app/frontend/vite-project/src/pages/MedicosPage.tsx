@@ -59,6 +59,11 @@ export default function MedicosPage() {
     id_centro: 1
   })
 
+  // Debug: Log cuando cambie el formulario
+  useEffect(() => {
+    console.log('🔍 [FORM] Estado del formulario actualizado:', medicoForm)
+  }, [medicoForm])
+
 
 
   useEffect(() => {
@@ -90,7 +95,11 @@ export default function MedicosPage() {
     setError(null)
 
     try {
-      await AdminApi.createMedico(medicoForm)
+      console.log('🔍 [CREATE] Datos del formulario:', medicoForm)
+      console.log('🔍 [CREATE] Centro seleccionado:', medicoForm.id_centro)
+      
+      // Usar el centro seleccionado en el formulario
+      await AdminApi.createMedico(medicoForm, medicoForm.id_centro)
       setIsCreateModalOpen(false)
       setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
       loadData()
@@ -119,11 +128,24 @@ export default function MedicosPage() {
     setError(null)
 
     try {
-      await AdminApi.updateMedico(selectedMedico.id, medicoForm)
+      console.log('🔍 [EDIT] Editando médico:', {
+        idOriginal: selectedMedico.id,
+        centroOriginal: selectedMedico.id_centro,
+        centroNuevo: medicoForm.id_centro,
+        hayCambioCentro: selectedMedico.id_centro !== medicoForm.id_centro
+      });
+
+      // Usar el centro seleccionado en el formulario (puede ser diferente al original)
+      const updatedMedico = await AdminApi.updateMedico(selectedMedico.id, medicoForm, medicoForm.id_centro)
+      
+      console.log('✅ [EDIT] Médico actualizado:', updatedMedico);
+      
       setIsEditModalOpen(false)
       setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
       setSelectedMedico(null)
-      loadData()
+      
+      // Recargar datos para mostrar los cambios
+      await loadData()
     } catch (err) {
       setError("Error al actualizar el médico")
       console.error(err)
@@ -135,7 +157,14 @@ export default function MedicosPage() {
     setError(null)
 
     try {
-      await AdminApi.deleteMedico(selectedMedico.id)
+      console.log('🗑️ [DELETE] Eliminando médico:', {
+        id: selectedMedico.id,
+        id_frontend: selectedMedico.id_frontend,
+        origen_bd: selectedMedico.origen_bd,
+        centro: selectedMedico.centro_nombre
+      });
+
+      await AdminApi.deleteMedico(selectedMedico.id, selectedMedico.origen_bd)
       setIsDeleteModalOpen(false)
       setSelectedMedico(null)
       loadData()
@@ -471,7 +500,7 @@ export default function MedicosPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredMedicos.map((medico) => (
-                    <tr key={medico.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={medico.id_frontend || medico.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className={`w-10 h-10 ${buttonColors.primaryIcon.replace('text-', 'bg-').replace('-600', '-100')} rounded-full flex items-center justify-center mr-4`}>

@@ -1,5 +1,4 @@
 import { useAuth } from '../contexts/AuthContext';
-import { AuthApi } from '../api/authApi';
 
 export const usePermissions = () => {
   const { user, isAuthenticated } = useAuth();
@@ -49,7 +48,7 @@ export const usePermissions = () => {
   };
 
   // Verificar si puede editar datos de un médico específico
-  const canEditMedico = (medicoId: number): boolean => {
+  const canEditMedico = (): boolean => {
     if (!isAuthenticated || !user) return false;
     
     // Solo los admins pueden editar médicos

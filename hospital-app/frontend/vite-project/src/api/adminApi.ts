@@ -12,6 +12,9 @@ export interface AdminMedico {
   especialidad_nombre?: string;
   centro_nombre?: string;
   centro_ciudad?: string;
+  origen_bd?: string;
+  id_unico?: string;
+  id_frontend?: string;
 }
 
 export interface AdminMedicoCreate {
@@ -113,23 +116,42 @@ export interface AdminUsuarioUpdate {
 }
 
 export class AdminApi {
-  private static getAuthHeaders(): HeadersInit {
+  private static getAuthHeaders(centroId?: number): HeadersInit {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
     
-    return {
+    console.log('🔍 Debug AdminApi getAuthHeaders:', {
+      user,
+      centroId: user?.centro?.id,
+      id_centro: user?.id_centro,
+      rol: user?.rol,
+      token: token ? 'present' : 'missing',
+      centroIdParam: centroId
+    });
+    
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      'X-Centro-Id': user?.id_centro?.toString() || '1',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
+    
+    // Si es admin y se proporciona centroId, usar ese centro
+    // Si es admin sin centroId, usar centro por defecto
+    // Si es médico, usar su centro específico
+    if (user?.rol === 'admin') {
+      headers['X-Centro-Id'] = (centroId || user?.id_centro || 1).toString();
+    } else {
+      headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
+    }
+    
+    return headers;
   }
 
-  private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private static async request<T>(endpoint: string, options: RequestInit = {}, centroId?: number): Promise<T> {
     const url = `${API_BASE_URL}/admin${endpoint}`;
     const response = await fetch(url, {
       headers: {
-        ...this.getAuthHeaders(),
+        ...this.getAuthHeaders(centroId),
         ...options.headers,
       },
       ...options,
@@ -166,23 +188,24 @@ export class AdminApi {
     return this.request<AdminMedico>(`/medicos/${id}`);
   }
 
-  static async createMedico(medico: AdminMedicoCreate): Promise<AdminMedico> {
+  static async createMedico(medico: AdminMedicoCreate, centroId?: number): Promise<AdminMedico> {
     return this.request<AdminMedico>('/medicos', {
       method: 'POST',
       body: JSON.stringify(medico),
-    });
+    }, centroId);
   }
 
-  static async updateMedico(id: number, medico: AdminMedicoUpdate): Promise<AdminMedico> {
+  static async updateMedico(id: number, medico: AdminMedicoUpdate, centroId?: number): Promise<AdminMedico> {
     return this.request<AdminMedico>(`/medicos/${id}`, {
       method: 'PUT',
       body: JSON.stringify(medico),
-    });
+    }, centroId);
   }
 
-  static async deleteMedico(id: number): Promise<{ message: string }> {
+  static async deleteMedico(id: number, origenBd?: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/medicos/${id}`, {
       method: 'DELETE',
+      body: JSON.stringify({ origen_bd: origenBd }),
     });
   }
 

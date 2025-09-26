@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { validateMedico } from "../middlewares/validation";
 import { pools } from "../config/distributedDb";
 
-// Extender el tipo Request para incluir user
+// Extender el tipo Request para incluir user y dbPool
 declare global {
   namespace Express {
     interface Request {
@@ -13,6 +13,7 @@ declare global {
         id_centro: number;
         id_medico?: number;
       };
+      dbPool?: any; // Pool de conexión a la base de datos
     }
   }
 }
@@ -41,10 +42,13 @@ async function getAllMedicosFromAllDatabases() {
       ORDER BY m.id ASC
     `);
     
-    // Agregar información de centro
+    // Agregar información de centro y IDs únicos
     (centralMedicos as any[]).forEach(medico => {
       medico.centro_nombre = medico.centro_nombre || 'Hospital Central Quito';
       medico.centro_ciudad = medico.centro_ciudad || 'Quito';
+      medico.origen_bd = 'central';
+      medico.id_unico = `central-${medico.id}`;
+      medico.id_frontend = `central-${medico.id}`;
     });
     
     allMedicos.push(...(centralMedicos as any[]));
@@ -70,6 +74,9 @@ async function getAllMedicosFromAllDatabases() {
       (guayaquilMedicos as any[]).forEach(medico => {
         medico.centro_nombre = medico.centro_nombre || 'Hospital Guayaquil';
         medico.centro_ciudad = medico.centro_ciudad || 'Guayaquil';
+        medico.origen_bd = 'guayaquil';
+        medico.id_unico = `guayaquil-${medico.id}`;
+        medico.id_frontend = `guayaquil-${medico.id}`;
       });
       
       allMedicos.push(...(guayaquilMedicos as any[]));
@@ -98,6 +105,9 @@ async function getAllMedicosFromAllDatabases() {
       (cuencaMedicos as any[]).forEach(medico => {
         medico.centro_nombre = medico.centro_nombre || 'Hospital Cuenca';
         medico.centro_ciudad = medico.centro_ciudad || 'Cuenca';
+        medico.origen_bd = 'cuenca';
+        medico.id_unico = `cuenca-${medico.id}`;
+        medico.id_frontend = `cuenca-${medico.id}`;
       });
       
       allMedicos.push(...(cuencaMedicos as any[]));
@@ -209,19 +219,46 @@ export async function create(req: Request, res: Response) {
   try {
     const { nombres, apellidos, id_especialidad, id_centro } = req.body ?? {};
 
+    console.log('🔍 [CREATE] Datos recibidos:', {
+      nombres,
+      apellidos,
+      id_especialidad,
+      id_centro,
+      xCentroId: req.headers['x-centro-id'],
+      userRol: req.user?.rol
+    });
+
     // Las validaciones detalladas ya se hicieron en el middleware
 
     // Determinar qué BD usar para la inserción
     let dbPool = req.dbPool; // Por defecto usar la BD del middleware
     let centroId = Number(id_centro);
     
-    if (req.user?.rol === 'admin') {
-      // Admin puede especificar el centro o usar el centro por defecto
-      if (!centroId) {
-        centroId = 1; // Quito por defecto
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [CREATE] Verificación de rol:', { email: decoded.email, rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+    
+    if (isAdmin) {
+      // Admin: SIEMPRE usar el centro del cuerpo de la petición, NO del header
+      if (!centroId || centroId === 0) {
+        centroId = 1; // Quito por defecto solo si no se especifica
+        console.log('⚠️ [CREATE] Admin sin centro especificado en body, usando Quito por defecto');
+      } else {
+        console.log('✅ [CREATE] Admin usando centro del body:', centroId, 'IGNORANDO X-Centro-Id del header');
       }
       
-      // Seleccionar la BD correcta según el centro
+      // Seleccionar la BD correcta según el centro del BODY
       if (centroId === 1) {
         dbPool = pools.central;
       } else if (centroId === 2) {
@@ -230,7 +267,7 @@ export async function create(req: Request, res: Response) {
         dbPool = pools.cuenca;
       }
       
-      console.log('👑 [CREATE] Admin creando médico en centro:', centroId);
+      console.log('👑 [CREATE] Admin creando médico en centro:', centroId, 'BD seleccionada:', centroId === 1 ? 'Central' : centroId === 2 ? 'Guayaquil' : 'Cuenca');
     } else {
       // Médico: usar su centro
       centroId = req.user?.id_centro || 1;
@@ -279,7 +316,22 @@ export async function update(req: Request, res: Response) {
     // Determinar qué BD usar para la actualización
     let dbPool = req.dbPool; // Por defecto usar la BD del middleware
     
-    if (req.user?.rol === 'admin') {
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [UPDATE] Verificación de rol:', { email: decoded.email, rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+    
+    if (isAdmin) {
       // Admin: buscar el médico en todas las BDs para determinar su ubicación
       console.log('🔍 [UPDATE] Admin buscando médico en todas las BDs, ID:', id);
       
@@ -329,6 +381,13 @@ export async function update(req: Request, res: Response) {
       
       // Si hay cambio de centro, mover el médico
       const newCentroId = Number(id_centro);
+      console.log('🔍 [UPDATE] Comparando centros:', { 
+        currentCentro, 
+        newCentroId, 
+        id_centro, 
+        hayCambio: newCentroId && newCentroId !== currentCentro 
+      });
+      
       if (newCentroId && newCentroId !== currentCentro) {
         console.log('🔄 [UPDATE] Cambio de centro detectado:', currentCentro, '→', newCentroId);
         
@@ -354,32 +413,92 @@ export async function update(req: Request, res: Response) {
         if (especialidades.length === 0) return res.status(400).json({ error: "La especialidad especificada no existe" });
         
         // Crear médico en nueva BD
-        const newMedicoResult = await targetDbPool.execute(`
-          INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro) 
-          VALUES (?, ?, ?, ?)
-        `, [medicoData.nombres, medicoData.apellidos, medicoData.id_especialidad, newCentroId]);
+        console.log('🔄 [UPDATE] Creando médico en BD destino:', {
+          nombres: medicoData.nombres,
+          apellidos: medicoData.apellidos,
+          id_especialidad: medicoData.id_especialidad,
+          newCentroId,
+          targetDb: newCentroId === 1 ? 'Central' : newCentroId === 2 ? 'Guayaquil' : 'Cuenca'
+        });
         
-        const newMedicoId = newMedicoResult.insertId;
+        let newMedicoId;
+        try {
+          const [newMedicoResult] = await targetDbPool.execute(`
+            INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro) 
+            VALUES (?, ?, ?, ?)
+          `, [medicoData.nombres, medicoData.apellidos, medicoData.id_especialidad, newCentroId]);
+          
+          console.log('🔄 [UPDATE] Resultado de inserción:', {
+            insertId: newMedicoResult.insertId,
+            affectedRows: newMedicoResult.affectedRows,
+            result: newMedicoResult
+          });
+          
+          newMedicoId = newMedicoResult.insertId;
+          
+          if (!newMedicoId) {
+            console.error('❌ [UPDATE] ERROR: No se pudo obtener el ID del médico creado');
+            return res.status(500).json({ error: "Error al crear médico en el nuevo centro: no se obtuvo ID" });
+          }
+        } catch (createError: any) {
+          console.error('❌ [UPDATE] Error creando médico en BD destino:', createError);
+          return res.status(500).json({ error: "Error al crear médico en el nuevo centro: " + createError.message });
+        }
         
         // Eliminar médico de BD original
         if (sourceDbPool) {
           try {
+            console.log('🗑️ [UPDATE] Eliminando médico de BD original, ID:', id, 'BD:', sourceDbPool === pools.central ? 'Central' : sourceDbPool === pools.guayaquil ? 'Guayaquil' : 'Cuenca');
+            
+            // Verificar que el médico existe antes de eliminar
+            const [checkResult] = await sourceDbPool.query("SELECT id FROM medicos WHERE id = ?", [id]);
+            console.log('🔍 [UPDATE] Verificación pre-eliminación:', { 
+              medicoExiste: (checkResult as any[]).length > 0,
+              id: id,
+              bd: sourceDbPool === pools.central ? 'Central' : sourceDbPool === pools.guayaquil ? 'Guayaquil' : 'Cuenca'
+            });
+            
             const deleteResult = await sourceDbPool.execute("DELETE FROM medicos WHERE id = ?", [id]);
             console.log('🗑️ [UPDATE] Médico eliminado de BD original, filas afectadas:', deleteResult.affectedRows);
             
             if (deleteResult.affectedRows === 0) {
               console.error('❌ [UPDATE] ERROR: No se pudo eliminar el médico de la BD original');
               // Si no se pudo eliminar, también eliminar el que se creó en la nueva BD
+              console.log('🗑️ [UPDATE] Eliminando médico de BD destino como rollback, ID:', newMedicoId);
               await targetDbPool.execute("DELETE FROM medicos WHERE id = ?", [newMedicoId]);
               return res.status(500).json({ error: "Error al mover médico: no se pudo eliminar del centro original" });
             }
+            
+            // Verificar que se eliminó correctamente
+            const [verifyResult] = await sourceDbPool.query("SELECT id FROM medicos WHERE id = ?", [id]);
+            console.log('✅ [UPDATE] Verificación post-eliminación:', { 
+              medicoEliminado: (verifyResult as any[]).length === 0,
+              id: id
+            });
+            
           } catch (deleteError: any) {
             console.error('❌ [UPDATE] Error eliminando médico de BD original:', deleteError);
             // Si hay error al eliminar, también eliminar el que se creó en la nueva BD
+            console.log('🗑️ [UPDATE] Eliminando médico de BD destino como rollback, ID:', newMedicoId);
             await targetDbPool.execute("DELETE FROM medicos WHERE id = ?", [newMedicoId]);
             return res.status(500).json({ error: "Error al mover médico: " + deleteError.message });
           }
+        } else {
+          console.error('❌ [UPDATE] ERROR: sourceDbPool es null, no se puede eliminar el médico original');
+          // Si no hay sourceDbPool, eliminar el que se creó en la nueva BD
+          console.log('🗑️ [UPDATE] Eliminando médico de BD destino como rollback, ID:', newMedicoId);
+          await targetDbPool.execute("DELETE FROM medicos WHERE id = ?", [newMedicoId]);
+          return res.status(500).json({ error: "Error al mover médico: no se pudo determinar la base de datos original" });
         }
+        
+        console.log('✅ [UPDATE] Médico movido exitosamente:', {
+          idOriginal: id,
+          idNuevo: newMedicoId,
+          centroAnterior: currentCentro,
+          centroNuevo: newCentroId,
+          nombres: medicoData.nombres,
+          apellidos: medicoData.apellidos
+        });
         
         return res.json({
           id: newMedicoId,
@@ -454,48 +573,47 @@ export async function remove(req: Request, res: Response) {
     // Determinar qué BD usar para la eliminación
     let dbPool = req.dbPool; // Por defecto usar la BD del middleware
     
-    if (req.user?.rol === 'admin') {
-      // Admin: necesitamos encontrar en qué BD está el médico
-      console.log('🔍 [DELETE] Admin buscando médico en todas las BDs, ID:', id);
+    // Verificar si es admin usando el token directamente
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔍 [DELETE] Verificación de rol:', { email: decoded.email, rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ Error decodificando token:', error);
+      }
+    }
+    
+    if (isAdmin) {
+      // Admin: usar el origen_bd del cuerpo de la petición para saber exactamente dónde buscar
+      const { origen_bd } = req.body ?? {};
       
-      // Buscar el médico en todas las BDs para determinar su centro
-      let medicoFound = false;
+      console.log('🔍 [DELETE] Admin eliminando médico:', { id, origen_bd });
       
-      // Buscar en BD Central
-      const [centralResult] = await pools.central.query("SELECT id FROM medicos WHERE id = ?", [id]);
-      if ((centralResult as any[]).length > 0) {
+      if (origen_bd === 'central') {
         dbPool = pools.central;
-        medicoFound = true;
-        console.log('🔍 [DELETE] Médico encontrado en BD Central');
+        console.log('🗑️ [DELETE] Usando BD Central para eliminar médico ID:', id);
+      } else if (origen_bd === 'guayaquil') {
+        dbPool = pools.guayaquil;
+        console.log('🗑️ [DELETE] Usando BD Guayaquil para eliminar médico ID:', id);
+      } else if (origen_bd === 'cuenca') {
+        dbPool = pools.cuenca;
+        console.log('🗑️ [DELETE] Usando BD Cuenca para eliminar médico ID:', id);
       } else {
-        // Buscar en BD Guayaquil
-        try {
-          const [guayaquilResult] = await pools.guayaquil.query("SELECT id FROM medicos WHERE id = ?", [id]);
-          if ((guayaquilResult as any[]).length > 0) {
-            dbPool = pools.guayaquil;
-            medicoFound = true;
-            console.log('🔍 [DELETE] Médico encontrado en BD Guayaquil');
-          } else {
-            // Buscar en BD Cuenca
-            try {
-              const [cuencaResult] = await pools.cuenca.query("SELECT id FROM medicos WHERE id = ?", [id]);
-              if ((cuencaResult as any[]).length > 0) {
-                dbPool = pools.cuenca;
-                medicoFound = true;
-                console.log('🔍 [DELETE] Médico encontrado en BD Cuenca');
-              }
-            } catch (error) {
-              console.log('⚠️ No se pudo buscar en BD Cuenca:', error);
-            }
-          }
-        } catch (error) {
-          console.log('⚠️ No se pudo buscar en BD Guayaquil:', error);
-        }
+        return res.status(400).json({ error: "Origen de base de datos no especificado o inválido" });
       }
       
-      if (!medicoFound) {
-        return res.status(404).json({ error: "Médico no encontrado en ninguna base de datos" });
+      // Verificar que el médico existe en la BD especificada
+      const [checkResult] = await dbPool.query("SELECT id FROM medicos WHERE id = ?", [id]);
+      if ((checkResult as any[]).length === 0) {
+        return res.status(404).json({ error: `Médico no encontrado en la base de datos ${origen_bd}` });
       }
+      
+      console.log('✅ [DELETE] Médico encontrado en BD', origen_bd, 'ID:', id);
     }
 
     const result = await dbPool.execute("DELETE FROM medicos WHERE id = ?", [id]);
