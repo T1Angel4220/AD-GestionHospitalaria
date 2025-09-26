@@ -240,8 +240,8 @@ export default function MedicalConsultationsPage() {
         }
         await ConsultasApi.createConsulta(newData)
         setShowSuccessModal(true)
-        await loadConsultas()
-        resetForm()
+      await loadConsultas()
+      resetForm()
       }
     } catch (err) {
       setError("Error al guardar la consulta")
@@ -633,7 +633,7 @@ export default function MedicalConsultationsPage() {
                   icon={FileText}
                   roleText={getRoleText(user)}
                 />
-              </div>
+          </div>
             </div>
           </div>
         </div>
@@ -1009,8 +1009,8 @@ export default function MedicalConsultationsPage() {
                                 <span className="text-blue-600 font-bold text-sm">
                                   {pacienteSeleccionado.consultas_activas}
                                 </span>
-                              </div>
-                              <div>
+                  </div>
+                  <div>
                                 <p className="text-sm font-medium text-blue-800">
                                   {pacienteSeleccionado.consultas_activas} consulta{pacienteSeleccionado.consultas_activas > 1 ? 's' : ''} activa{pacienteSeleccionado.consultas_activas > 1 ? 's' : ''}
                                 </p>
