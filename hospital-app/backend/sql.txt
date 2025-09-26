@@ -1,4 +1,27 @@
 USE hospital_central;
+En el servidor Quito (central)
+CREATE DATABASE hospital_central;
+
+CREATE USER 'admin_central'@'%' IDENTIFIED BY 'SuperPasswordCentral123!';
+GRANT ALL PRIVILEGES ON hospital_central.* TO 'admin_central'@'%';
+FLUSH PRIVILEGES;
+
+
+
+🔹 En el servidor Guayaquil (local)
+CREATE DATABASE hospital_guayaquil;
+
+CREATE USER 'admin_guayaquil'@'%' IDENTIFIED BY 'SuperPasswordGye123!';
+GRANT ALL PRIVILEGES ON hospital_guayaquil.* TO 'admin_guayaquil'@'%';
+FLUSH PRIVILEGES;
+
+
+🔹 En el servidor Cuenca (local)
+CREATE DATABASE hospital_cuenca;
+
+CREATE USER 'admin_cuenca'@'%' IDENTIFIED BY 'SuperPasswordCuenca123!';
+GRANT ALL PRIVILEGES ON hospital_cuenca.* TO 'admin_cuenca'@'%';
+FLUSH PRIVILEGES;
 
 -- Eliminar si existían (en orden inverso por foreign keys)
 DROP TABLE IF EXISTS consultas;

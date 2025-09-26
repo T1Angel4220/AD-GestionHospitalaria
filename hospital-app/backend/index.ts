@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { pool } from "./src/config/db";
 import dotenv from "dotenv";
+import { setupSwagger } from "./src/config/swagger";
 import consultasRouter from "./src/routes/consultas";
 import authRouter from "./src/routes/auth";
 import reportsRouter from "./src/routes/reports";
@@ -25,6 +26,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Configurar Swagger
+setupSwagger(app);
 
 // Rutas de autenticación
 app.use("/api/auth", authRouter);
