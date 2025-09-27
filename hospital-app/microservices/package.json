@@ -1,0 +1,53 @@
+{
+  "name": "hospital-microservices",
+  "version": "1.0.0",
+  "description": "Sistema hospitalario con arquitectura de microservicios",
+  "main": "start-all.js",
+  "scripts": {
+    "start": "node start-all.js",
+    "start:all": "node start-all.js",
+    "start:auth": "cd auth-service && npm start",
+    "start:admin": "cd admin-service && npm start",
+    "start:medico": "cd medico-service && npm start",
+    "start:gateway": "cd api-gateway && npm start",
+    "install:all": "npm install && cd auth-service && npm install && cd ../admin-service && npm install && cd ../medico-service && npm install && cd ../api-gateway && npm install",
+    "build:all": "cd auth-service && npm run build && cd ../admin-service && npm run build && cd ../medico-service && npm run build && cd ../api-gateway && npm run build",
+    "migrate:frontend": "node migrate-frontend.js",
+    "test": "echo \"Tests no implementados aún\" && exit 0"
+  },
+  "keywords": [
+    "microservices",
+    "hospital",
+    "nodejs",
+    "express",
+    "docker"
+  ],
+  "author": "Sistema Hospitalario",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "http-proxy-middleware": "^2.0.6",
+    "jsonwebtoken": "^9.0.2",
+    "compression": "^1.7.4",
+    "winston": "^3.11.0",
+    "bcrypt": "^5.1.1",
+    "mysql2": "^3.6.5",
+    "dotenv": "^16.3.1",
+    "joi": "^17.11.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^20.10.0",
+    "nodemon": "^3.0.2",
+    "typescript": "^5.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
