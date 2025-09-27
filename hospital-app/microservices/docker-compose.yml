@@ -132,10 +132,10 @@ services:
       - MYSQL_ROOT_PASSWORD=SuperPasswordCentral123!
       - MYSQL_DATABASE=hospital_central
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_central_data:/var/lib/mysql
-      - ./sql/central.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./sql/central.sql:/docker-entrypoint-initdb.d/01-central.sql
     networks:
       - hospital-network
 
@@ -147,10 +147,10 @@ services:
       - MYSQL_ROOT_PASSWORD=SuperPasswordGye123!
       - MYSQL_DATABASE=hospital_guayaquil
     ports:
-      - "3307:3306"
+      - "3308:3306"
     volumes:
       - mysql_guayaquil_data:/var/lib/mysql
-      - ./sql/guayaquil.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./sql/guayaquil.sql:/docker-entrypoint-initdb.d/01-guayaquil.sql
     networks:
       - hospital-network
 
@@ -162,10 +162,10 @@ services:
       - MYSQL_ROOT_PASSWORD=SuperPasswordCuenca123!
       - MYSQL_DATABASE=hospital_cuenca
     ports:
-      - "3308:3306"
+      - "3309:3306"
     volumes:
       - mysql_cuenca_data:/var/lib/mysql
-      - ./sql/cuenca.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./sql/cuenca.sql:/docker-entrypoint-initdb.d/01-cuenca.sql
     networks:
       - hospital-network
 
