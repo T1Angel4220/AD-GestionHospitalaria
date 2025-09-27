@@ -1,34 +1,119 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import LoginPage from './pages/LoginPage'
+import ConsultasPage from './pages/ConsultasPage'
+import MedicosPage from './pages/MedicosPage'
+import UsuariosPage from './pages/UsuariosPage'
+import PerfilPage from './pages/PerfilPage'
+import CalendarPage from './pages/CalendarPage'
+import PacientesPage from './pages/PacientesPage'
+import { ReportesPage } from './pages/ReportesPage'
+import CentrosPage from './pages/CentrosPage'
+import EspecialidadesPage from './pages/EspecialidadesPage'
+import EmpleadosPage from './pages/EmpleadosPage'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen">
+          <Routes>
+            {/* Rutas públicas */}
+            <Route path="/login" element={<LoginPage />} />
+            
+            {/* Rutas protegidas */}
+            <Route 
+              path="/consultas" 
+              element={
+                <ProtectedRoute>
+                  <ConsultasPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/calendario" 
+              element={
+                <ProtectedRoute>
+                  <CalendarPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/pacientes" 
+              element={
+                <ProtectedRoute>
+                  <PacientesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin" 
+              element={<Navigate to="/reportes" replace />} 
+            />
+            <Route 
+              path="/reportes" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ReportesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/medicos" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <MedicosPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/centros" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <CentrosPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/especialidades" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <EspecialidadesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/empleados" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <EmpleadosPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/usuarios" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <UsuariosPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/perfil" 
+              element={
+                <ProtectedRoute>
+                  <PerfilPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Ruta por defecto */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   )
 }
 

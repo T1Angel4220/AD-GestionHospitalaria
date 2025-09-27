@@ -1,0 +1,373 @@
+import { X, Users, Trash2 } from 'lucide-react'
+import type { AdminUsuario, AdminUsuarioCreate, AdminCentro, AdminMedico } from '../api/adminApi'
+
+interface UsuarioModalsProps {
+  isCreateModalOpen: boolean
+  setIsCreateModalOpen: (open: boolean) => void
+  isEditModalOpen: boolean
+  setIsEditModalOpen: (open: boolean) => void
+  isDeleteModalOpen: boolean
+  setIsDeleteModalOpen: (open: boolean) => void
+  selectedUsuario: AdminUsuario | null
+  usuarioForm: AdminUsuarioCreate
+  setUsuarioForm: (form: AdminUsuarioCreate) => void
+  centros: AdminCentro[]
+  medicos: AdminMedico[]
+  handleCreateUsuario: (e: React.FormEvent) => void
+  handleEditUsuario: (e: React.FormEvent) => void
+  handleDeleteUsuario: () => void
+  buttonColors: {
+    primary: string
+    primaryHover: string
+    primaryFocus: string
+    primaryIcon: string
+  }
+}
+
+export function UsuarioModals({
+  isCreateModalOpen,
+  setIsCreateModalOpen,
+  isEditModalOpen,
+  setIsEditModalOpen,
+  isDeleteModalOpen,
+  setIsDeleteModalOpen,
+  selectedUsuario,
+  usuarioForm,
+  setUsuarioForm,
+  centros,
+  medicos,
+  handleCreateUsuario,
+  handleEditUsuario,
+  handleDeleteUsuario,
+  buttonColors
+}: UsuarioModalsProps) {
+  return (
+    <>
+      {/* Modal para crear usuario */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsCreateModalOpen(false)}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
+            {/* Header del modal */}
+            <div className={`px-8 py-6 ${buttonColors.primary} rounded-t-2xl`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <Users className={`h-6 w-6 ${buttonColors.primaryIcon}`} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Nuevo Usuario</h3>
+                    <p className="text-purple-100 text-sm">Crear usuario del sistema</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleCreateUsuario} className="p-8">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={usuarioForm.email}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, email: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    placeholder="usuario@hospital.com"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    value={usuarioForm.password}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, password: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rol
+                  </label>
+                  <select
+                    value={usuarioForm.rol}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, rol: e.target.value as 'admin' | 'medico'})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    required
+                  >
+                    <option value="medico">Médico</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Centro Médico
+                  </label>
+                  <select
+                    value={usuarioForm.id_centro}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, id_centro: Number(e.target.value)})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    required
+                  >
+                    {centros.map((centro) => (
+                      <option key={centro.id} value={centro.id}>
+                        {centro.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {usuarioForm.rol === 'medico' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Médico Asociado (Opcional)
+                    </label>
+                    <select
+                      value={usuarioForm.id_medico || ''}
+                      onChange={(e) => setUsuarioForm({...usuarioForm, id_medico: e.target.value ? Number(e.target.value) : undefined})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    >
+                      <option value="">Seleccionar médico</option>
+                      {medicos.map((medico) => (
+                        <option key={medico.id} value={medico.id}>
+                          {medico.nombres} {medico.apellidos}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Botones */}
+              <div className="flex justify-end space-x-4 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
+                >
+                  Crear Usuario
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar usuario */}
+      {isEditModalOpen && selectedUsuario && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsEditModalOpen(false)}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300 scale-100">
+            {/* Header del modal */}
+            <div className={`px-8 py-6 ${buttonColors.primary} rounded-t-2xl`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <Users className={`h-6 w-6 ${buttonColors.primaryIcon}`} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Editar Usuario</h3>
+                    <p className="text-purple-100 text-sm">Actualizar información</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleEditUsuario} className="p-8">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={usuarioForm.email}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, email: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    placeholder="usuario@hospital.com"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nueva Contraseña (Opcional)
+                  </label>
+                  <input
+                    type="password"
+                    value={usuarioForm.password}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, password: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    placeholder="Dejar vacío para mantener la actual"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rol
+                  </label>
+                  <select
+                    value={usuarioForm.rol}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, rol: e.target.value as 'admin' | 'medico'})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    required
+                  >
+                    <option value="medico">Médico</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Centro Médico
+                  </label>
+                  <select
+                    value={usuarioForm.id_centro}
+                    onChange={(e) => setUsuarioForm({...usuarioForm, id_centro: Number(e.target.value)})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    required
+                  >
+                    {centros.map((centro) => (
+                      <option key={centro.id} value={centro.id}>
+                        {centro.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {usuarioForm.rol === 'medico' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Médico Asociado (Opcional)
+                    </label>
+                    <select
+                      value={usuarioForm.id_medico || ''}
+                      onChange={(e) => setUsuarioForm({...usuarioForm, id_medico: e.target.value ? Number(e.target.value) : undefined})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    >
+                      <option value="">Seleccionar médico</option>
+                      {medicos.map((medico) => (
+                        <option key={medico.id} value={medico.id}>
+                          {medico.nombres} {medico.apellidos}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Botones */}
+              <div className="flex justify-end space-x-4 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
+                >
+                  Actualizar Usuario
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para eliminar usuario */}
+      {isDeleteModalOpen && selectedUsuario && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0" style={{backgroundColor: 'oklch(0.97 0 0 / 0.63)'}} onClick={() => setIsDeleteModalOpen(false)}></div>
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+            {/* Header del modal */}
+            <div className="px-8 py-6 bg-gradient-to-r from-red-600 to-red-700 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mr-3">
+                    <Trash2 className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Eliminar Usuario</h3>
+                    <p className="text-red-100 text-sm">Esta acción no se puede deshacer</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido */}
+            <div className="p-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="h-8 w-8 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  ¿Estás seguro de eliminar este usuario?
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Se eliminará permanentemente el usuario <strong>{selectedUsuario.email}</strong> y toda su información asociada.
+                </p>
+              </div>
+
+              {/* Botones */}
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteUsuario}
+                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  Eliminar Usuario
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
