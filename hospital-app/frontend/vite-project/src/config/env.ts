@@ -8,3 +8,7 @@ export const config = {
 };
 
 export default config;
+
+export const ADMIN_ENDPOINT = '/admin';
+export const MEDICO_ENDPOINT = '/medico';
+export const AUTH_ENDPOINT = '/auth';

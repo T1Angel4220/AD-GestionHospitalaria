@@ -1,4 +1,4 @@
-import type { EstadisticasGenerales, ConsultasPorMedico, ConsultasPorEspecialidad, ConsultasPorCentro } from '../types/reports';
+import type { EstadisticasGenerales, ConsultasPorMedico, ConsultasPorEspecialidad, ConsultasPorCentro } from '../types/reportes';
 import { config } from '../config/env';
 
 const API_BASE_URL = config.apiUrl;
@@ -73,7 +73,7 @@ export class ReportsApi {
     if (hasta) params.append('hasta', hasta);
     
     const queryString = params.toString();
-    const endpoint = queryString ? `/reports/estadisticas?${queryString}` : '/reports/estadisticas';
+    const endpoint = queryString ? `/reportes/estadisticas?${queryString}` : '/reportes/estadisticas';
     
     return this.request<EstadisticasGenerales>(endpoint);
   }
@@ -84,7 +84,7 @@ export class ReportsApi {
     if (hasta) params.append('hasta', hasta);
     
     const queryString = params.toString();
-    const endpoint = queryString ? `/reports/consultas-medico?${queryString}` : '/reports/consultas-medico';
+    const endpoint = queryString ? `/reportes/consultas-medico?${queryString}` : '/reportes/consultas-medico';
     
     return this.request<ConsultasPorMedico[]>(endpoint);
   }
@@ -95,7 +95,7 @@ export class ReportsApi {
     if (hasta) params.append('hasta', hasta);
     
     const queryString = params.toString();
-    const endpoint = queryString ? `/reports/consultas-especialidad?${queryString}` : '/reports/consultas-especialidad';
+    const endpoint = queryString ? `/reportes/consultas-especialidad?${queryString}` : '/reportes/consultas-especialidad';
     
     return this.request<ConsultasPorEspecialidad[]>(endpoint);
   }
@@ -106,7 +106,7 @@ export class ReportsApi {
     if (hasta) params.append('hasta', hasta);
     
     const queryString = params.toString();
-    const endpoint = queryString ? `/reports/consultas-centro?${queryString}` : '/reports/consultas-centro';
+    const endpoint = queryString ? `/reportes/consultas-centro?${queryString}` : '/reportes/consultas-centro';
     
     return this.request<ConsultasPorCentro[]>(endpoint);
   }
