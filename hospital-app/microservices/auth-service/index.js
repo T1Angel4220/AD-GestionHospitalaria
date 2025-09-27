@@ -25,21 +25,41 @@ const logger = winston.createLogger({
 });
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Configuración de base de datos
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'hospital_central',
-  port: process.env.DB_PORT || 3306
+// Configuración de bases de datos
+const dbConfigs = {
+  central: {
+    host: process.env.DB_HOST || 'mysql-central',
+    user: process.env.DB_USER || 'admin_central',
+    password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
+    database: process.env.DB_NAME || 'hospital_central',
+    port: process.env.DB_PORT || 3306
+  },
+  guayaquil: {
+    host: process.env.DB_GUAYAQUIL_HOST || 'mysql-guayaquil',
+    user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
+    password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
+    database: process.env.DB_GUAYAQUIL_NAME || 'hospital_guayaquil',
+    port: process.env.DB_GUAYAQUIL_PORT || 3306
+  },
+  cuenca: {
+    host: process.env.DB_CUENCA_HOST || 'mysql-cuenca',
+    user: process.env.DB_CUENCA_USER || 'admin_cuenca',
+    password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
+    database: process.env.DB_CUENCA_NAME || 'hospital_cuenca',
+    port: process.env.DB_CUENCA_PORT || 3306
+  }
 };
 
 // Pool de conexiones
-const pool = mysql.createPool(dbConfig);
+const pool = mysql.createPool(dbConfigs.central);
 
 // Middleware de validación
 const validateLogin = [
@@ -82,9 +102,9 @@ app.post('/login', validateLogin, async (req, res) => {
 
     // Buscar usuario en todas las bases de datos
     const databases = [
-      { name: 'central', id: 1 },
-      { name: 'guayaquil', id: 2 },
-      { name: 'cuenca', id: 3 }
+      { name: 'central', id: 1, config: dbConfigs.central },
+      { name: 'guayaquil', id: 2, config: dbConfigs.guayaquil },
+      { name: 'cuenca', id: 3, config: dbConfigs.cuenca }
     ];
 
     let user = null;
@@ -92,10 +112,7 @@ app.post('/login', validateLogin, async (req, res) => {
 
     for (const db of databases) {
       try {
-        const dbPool = mysql.createPool({
-          ...dbConfig,
-          database: `hospital_${db.name}`
-        });
+        const dbPool = mysql.createPool(db.config);
 
         const [rows] = await dbPool.query(
           'SELECT * FROM usuarios WHERE email = ?',
@@ -164,10 +181,7 @@ app.post('/register', validateRegister, async (req, res) => {
     const databases = ['central', 'guayaquil', 'cuenca'];
     for (const dbName of databases) {
       try {
-        const dbPool = mysql.createPool({
-          ...dbConfig,
-          database: `hospital_${dbName}`
-        });
+        const dbPool = mysql.createPool(dbConfigs[dbName]);
 
         const [existingUsers] = await dbPool.query(
           'SELECT id FROM usuarios WHERE email = ?',
@@ -191,10 +205,7 @@ app.post('/register', validateRegister, async (req, res) => {
 
     // Determinar en qué BD crear el usuario
     const targetDatabase = databases[id_centro - 1];
-    const targetPool = mysql.createPool({
-      ...dbConfig,
-      database: `hospital_${targetDatabase}`
-    });
+    const targetPool = mysql.createPool(dbConfigs[targetDatabase]);
 
     // Crear usuario
     const [result] = await targetPool.query(
@@ -305,9 +316,9 @@ app.use((err, req, res, next) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`🔐 Auth Service iniciado en puerto ${PORT}`);
-  logger.info(`🗄️ Base de datos: ${dbConfig.database}`);
+  logger.info(`🗄️ Base de datos: ${dbConfigs.central.database}`);
 });
 
 module.exports = app;

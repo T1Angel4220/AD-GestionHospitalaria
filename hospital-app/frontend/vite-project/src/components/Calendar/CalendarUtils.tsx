@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { Consulta } from '../../types/consultas';
+import type { Consulta } from '../../types/consultas';
 
 export interface CalendarEvent {
   id: number;

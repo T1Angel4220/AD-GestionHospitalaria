@@ -46,3 +46,5 @@ export interface ConsultasPorCentro {
   consultas_canceladas: number
   duracion_promedio_minutos: number
 }
+
+// Los tipos ReporteFiltros y ConsultaResumen están definidos en api/reports.ts

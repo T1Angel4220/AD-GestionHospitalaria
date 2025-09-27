@@ -4,7 +4,7 @@ import { ReportFilters } from './ReportFilters';
 import { StatsCards } from './StatsCards';
 import { ChartsSection } from './ChartsSection';
 import { ConsultasTable } from './ConsultasTable';
-import type { ReporteFiltros, ConsultaResumen } from '../../types/reports';
+import type { ReporteFiltros, ConsultaResumen, EstadisticasGenerales } from '../../api/reports';
 import { apiService } from '../../api/reports';
 import { config } from '../../config/env';
 import { AlertCircle, CheckCircle } from 'lucide-react';
@@ -18,6 +18,7 @@ export const ReportsDashboard: React.FC = () => {
   });
 
   const [data, setData] = useState<ConsultaResumen[]>([]);
+  const [estadisticas, setEstadisticas] = useState<EstadisticasGenerales | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export const ReportsDashboard: React.FC = () => {
   // Cargar datos iniciales
   useEffect(() => {
     generarReporte();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const generarReporte = async () => {
@@ -33,18 +35,30 @@ export const ReportsDashboard: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await apiService.getResumenConsultas(filtros);
+      // Cargar datos en paralelo
+      const [consultasResponse, estadisticasResponse] = await Promise.all([
+        apiService.getResumenConsultas(filtros),
+        apiService.getEstadisticasGenerales(filtros)
+      ]);
       
-      if (response.error) {
-        setError(response.error);
+      if (consultasResponse.error) {
+        setError(consultasResponse.error);
         setData([]);
-      } else if (response.data) {
-        setData(response.data);
-        setSuccess(`Reporte generado exitosamente. ${response.data.length} médico${response.data.length !== 1 ? 's' : ''} encontrado${response.data.length !== 1 ? 's' : ''}.`);
+      } else if (consultasResponse.data) {
+        setData(consultasResponse.data);
+        setSuccess(`Reporte generado exitosamente. ${consultasResponse.data.length} médico${consultasResponse.data.length !== 1 ? 's' : ''} encontrado${consultasResponse.data.length !== 1 ? 's' : ''}.`);
       }
-    } catch (err) {
+
+      if (estadisticasResponse.error) {
+        console.error('Error cargando estadísticas:', estadisticasResponse.error);
+        setEstadisticas(null);
+      } else if (estadisticasResponse.data) {
+        setEstadisticas(estadisticasResponse.data);
+      }
+    } catch {
       setError('Error inesperado al generar el reporte');
       setData([]);
+      setEstadisticas(null);
     } finally {
       setLoading(false);
     }
@@ -82,7 +96,7 @@ export const ReportsDashboard: React.FC = () => {
       document.body.removeChild(link);
 
       setSuccess('Reporte exportado exitosamente');
-    } catch (err) {
+    } catch {
       setError('Error al exportar el reporte');
     }
   };
@@ -166,7 +180,7 @@ export const ReportsDashboard: React.FC = () => {
         />
 
         {/* Stats Cards */}
-        <StatsCards data={data} loading={loading} />
+        <StatsCards data={estadisticas} loading={loading} />
 
         {/* Charts */}
         <ChartsSection data={data} loading={loading} />

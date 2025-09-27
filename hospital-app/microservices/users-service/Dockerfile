@@ -15,7 +15,7 @@ COPY . .
 RUN mkdir -p logs
 
 # Exponer puerto
-EXPOSE 3004
+EXPOSE 3005
 
-# Comando para iniciar la aplicación
-CMD ["npm", "start"]
+# Comando de inicio
+CMD ["node", "index.js"]

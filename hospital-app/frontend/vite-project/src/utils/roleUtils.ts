@@ -1,4 +1,4 @@
-import { User } from '../types/auth';
+import type { User } from '../types/auth';
 
 export const getRoleText = (user: User | null): string => {
   if (!user) return 'Usuario';

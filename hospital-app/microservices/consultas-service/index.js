@@ -31,25 +31,25 @@ app.use(express.json());
 // Configuración de bases de datos
 const dbConfigs = {
   central: {
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || 'mysql-central',
     user: process.env.DB_USER || 'admin_central',
     password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
     database: 'hospital_central',
-    port: process.env.DB_PORT || 3307
+    port: process.env.DB_PORT || 3306
   },
   guayaquil: {
-    host: process.env.DB_GUAYAQUIL_HOST || 'localhost',
+    host: process.env.DB_GUAYAQUIL_HOST || 'mysql-guayaquil',
     user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
     password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
     database: 'hospital_guayaquil',
-    port: process.env.DB_GUAYAQUIL_PORT || 3308
+    port: process.env.DB_GUAYAQUIL_PORT || 3306
   },
   cuenca: {
-    host: process.env.DB_CUENCA_HOST || 'localhost',
+    host: process.env.DB_CUENCA_HOST || 'mysql-cuenca',
     user: process.env.DB_CUENCA_USER || 'admin_cuenca',
     password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
     database: 'hospital_cuenca',
-    port: process.env.DB_CUENCA_PORT || 3309
+    port: process.env.DB_CUENCA_PORT || 3306
   }
 };
 
@@ -423,7 +423,7 @@ app.use((err, req, res, next) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`📋 Consultas Service iniciado en puerto ${PORT}`);
   logger.info(`🗄️ Bases de datos: ${Object.keys(pools).join(', ')}`);
 });

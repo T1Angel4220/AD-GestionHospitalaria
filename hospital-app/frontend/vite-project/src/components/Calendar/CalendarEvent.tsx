@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarEvent as CalendarEventType } from './CalendarUtils';
+import type { CalendarEvent as CalendarEventType } from './CalendarUtils';
 import { getStatusText, formatEventTime } from './CalendarUtils';
 import { Clock, User, Stethoscope, AlertCircle } from 'lucide-react';
 

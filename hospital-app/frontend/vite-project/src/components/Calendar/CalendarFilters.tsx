@@ -1,6 +1,6 @@
 import React from 'react';
-import { Calendar, Filter, Search, User, Stethoscope, Building2 } from 'lucide-react';
-import { Medico } from '../../types/consultas';
+import { Filter, Search, User, Stethoscope, Building2 } from 'lucide-react';
+import type { Medico } from '../../types/consultas';
 
 interface CalendarFiltersProps {
   searchTerm: string;

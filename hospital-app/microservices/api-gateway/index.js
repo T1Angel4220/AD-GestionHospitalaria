@@ -25,18 +25,18 @@ const logger = winston.createLogger({
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
 app.use(express.json());
 
 // Configuración de microservicios
 const services = {
-  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3002',
-  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3003',
-  consultas: process.env.CONSULTAS_SERVICE_URL || 'http://localhost:3004',
-  users: process.env.USERS_SERVICE_URL || 'http://localhost:3005',
-  reports: process.env.REPORTS_SERVICE_URL || 'http://localhost:3006'
+  auth: process.env.AUTH_SERVICE_URL || 'http://auth-service:3002',
+  admin: process.env.ADMIN_SERVICE_URL || 'http://admin-service:3003',
+  consultas: process.env.CONSULTAS_SERVICE_URL || 'http://consultas-service:3004',
+  users: process.env.USERS_SERVICE_URL || 'http://users-service:3005',
+  reports: process.env.REPORTS_SERVICE_URL || 'http://reports-service:3006'
 };
 
 // Middleware de autenticación
@@ -87,19 +87,69 @@ app.get('/info', (req, res) => {
 });
 
 // ===== RUTAS DE AUTENTICACIÓN =====
+// Ruta directa para login sin proxy
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const response = await fetch(`${services.auth}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body),
+      timeout: 10000
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    logger.error('Error en login:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Proxy para otras rutas de auth
 app.use('/api/auth', createProxyMiddleware({
   target: services.auth,
   changeOrigin: true,
   pathRewrite: {
     '^/api/auth': ''
   },
-  onError: (err, req, res) => {
-    logger.error('Error en Auth Service:', err);
-    res.status(503).json({ error: 'Auth Service no disponible' });
-  }
+  timeout: 10000,
+  proxyTimeout: 10000
 }));
 
 // ===== RUTAS DE ADMINISTRACIÓN =====
+// Ruta específica para usuarios que debe ir al users-service
+app.use('/api/admin/usuarios', authenticateToken, requireAdmin, createProxyMiddleware({
+  target: services.users,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/admin/usuarios': '/usuarios'
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Users Service (usuarios):', err);
+    res.status(503).json({ error: 'Users Service no disponible' });
+  }
+}));
+
+// Ruta específica para médicos que debe ir al users-service
+app.use('/api/admin/medicos', authenticateToken, requireAdmin, createProxyMiddleware({
+  target: services.users,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/admin/medicos': '/medicos'
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Users Service (medicos):', err);
+    res.status(503).json({ error: 'Users Service no disponible' });
+  }
+}));
+
+// Otras rutas de admin van al admin-service
 app.use('/api/admin', authenticateToken, requireAdmin, createProxyMiddleware({
   target: services.admin,
   changeOrigin: true,
@@ -208,7 +258,7 @@ app.use('*', (req, res) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`🌐 API Gateway iniciado en puerto ${PORT}`);
   logger.info(`🔗 Servicios configurados: ${Object.keys(services).join(', ')}`);
   logger.info(`📡 Frontend URL: ${process.env.FRONTEND_URL}`);

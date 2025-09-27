@@ -42,7 +42,7 @@ export interface ReporteFiltros {
   desde?: string;
   hasta?: string;
   q?: string;
-  centroId: number;
+  centroId?: number;
 }
 
 export interface EstadisticasGenerales {
@@ -86,7 +86,7 @@ class ApiService {
       };
 
       if (centroId) {
-        (headers as any)["X-Centro-Id"] = centroId.toString();
+        (headers as Record<string, string>)["X-Centro-Id"] = centroId.toString();
       }
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -120,7 +120,7 @@ class ApiService {
     const queryString = params.toString();
     const endpoint = `/reports/consultas${queryString ? `?${queryString}` : ''}`;
 
-    return this.request<ConsultaResumen[]>(endpoint, { method: 'GET' }, filtros.centroId);
+    return this.request<ConsultaResumen[]>(endpoint, { method: 'GET' }, filtros.centroId || 1);
   }
 
   async getDetalleConsultasMedico(
@@ -150,7 +150,7 @@ class ApiService {
     const queryString = params.toString();
     const endpoint = `/reports/estadisticas${queryString ? `?${queryString}` : ''}`;
 
-    return this.request<EstadisticasGenerales>(endpoint, { method: 'GET' }, filtros.centroId);
+    return this.request<EstadisticasGenerales>(endpoint, { method: 'GET' }, filtros.centroId || 1);
   }
 
   // Pacientes más frecuentes
@@ -167,7 +167,7 @@ class ApiService {
     const queryString = params.toString();
     const endpoint = `/reports/pacientes-frecuentes${queryString ? `?${queryString}` : ''}`;
 
-    return this.request<PacienteFrecuente[]>(endpoint, { method: 'GET' }, filtros.centroId);
+    return this.request<PacienteFrecuente[]>(endpoint, { method: 'GET' }, filtros.centroId || 1);
   }
 
   // Health check

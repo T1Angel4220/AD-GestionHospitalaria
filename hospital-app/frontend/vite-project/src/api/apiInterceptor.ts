@@ -22,7 +22,7 @@ export class ApiInterceptor {
     const originalFetch = window.fetch;
 
     window.fetch = async (...args) => {
-      const [url, options] = args;
+      const [, options] = args;
       
       // Agregar token a las cabeceras si existe
       const token = AuthApi.getToken();

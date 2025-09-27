@@ -67,7 +67,7 @@ export class AuthApi {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join(''));
       return JSON.parse(jsonPayload);
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -103,12 +103,14 @@ export class AuthApi {
     return {
       id: decoded.id,
       email: decoded.email,
-      rol: decoded.rol,
+      rol: decoded.rol as 'admin' | 'medico',
       id_centro: decoded.id_centro,
       id_medico: decoded.id_medico,
-      nombres: '', // Estos campos no están en el token
-      apellidos: '',
-      activo: true
+      centro: {
+        id: decoded.id_centro,
+        nombre: '',
+        ciudad: ''
+      }
     };
   }
 
