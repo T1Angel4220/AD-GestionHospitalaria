@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { pools } from "../config/distributedDb";
 import bcrypt from "bcrypt";
 import { validateUsuario } from "../middlewares/validation";
+import jwt from "jsonwebtoken";
 
 // Extender el tipo Request para incluir user
 declare global {
@@ -43,6 +44,13 @@ async function getAllUsuariosFromAllDatabases() {
       ORDER BY u.id ASC
     `);
     
+    // Agregar información de distribución
+    (centralUsuarios as any[]).forEach(usuario => {
+      usuario.origen_bd = 'central';
+      usuario.id_unico = `central-${usuario.id}`;
+      usuario.id_frontend = `central-${usuario.id}`;
+    });
+    
     allUsuarios.push(...(centralUsuarios as any[]));
     
     // Consultar BD Guayaquil
@@ -63,6 +71,13 @@ async function getAllUsuariosFromAllDatabases() {
         LEFT JOIN medicos m ON u.id_medico = m.id
         ORDER BY u.id ASC
       `);
+      
+      // Agregar información de distribución
+      (guayaquilUsuarios as any[]).forEach(usuario => {
+        usuario.origen_bd = 'guayaquil';
+        usuario.id_unico = `guayaquil-${usuario.id}`;
+        usuario.id_frontend = `guayaquil-${usuario.id}`;
+      });
       
       allUsuarios.push(...(guayaquilUsuarios as any[]));
     } catch (error) {
@@ -88,6 +103,13 @@ async function getAllUsuariosFromAllDatabases() {
         ORDER BY u.id ASC
       `);
       
+      // Agregar información de distribución
+      (cuencaUsuarios as any[]).forEach(usuario => {
+        usuario.origen_bd = 'cuenca';
+        usuario.id_unico = `cuenca-${usuario.id}`;
+        usuario.id_frontend = `cuenca-${usuario.id}`;
+      });
+      
       allUsuarios.push(...(cuencaUsuarios as any[]));
     } catch (error) {
       console.log('⚠️ No se pudo conectar a BD Cuenca:', error);
@@ -98,12 +120,39 @@ async function getAllUsuariosFromAllDatabases() {
     throw error;
   }
   
-  // Eliminar duplicados por ID y ordenar
-  const uniqueUsuarios = allUsuarios.filter((usuario, index, self) => 
-    index === self.findIndex(u => u.id === usuario.id)
-  );
+  // Ordenar por ID frontend
+  return allUsuarios.sort((a, b) => a.id_frontend.localeCompare(b.id_frontend));
+}
+
+// =========================
+// Función para obtener médicos de un centro específico
+// =========================
+async function getMedicosByCentro(centroId: number) {
+  let dbPool: any;
   
-  return uniqueUsuarios.sort((a, b) => a.id - b.id);
+  if (centroId === 1) {
+    dbPool = pools.central;
+  } else if (centroId === 2) {
+    dbPool = pools.guayaquil;
+  } else if (centroId === 3) {
+    dbPool = pools.cuenca;
+  } else {
+    throw new Error("Centro inválido");
+  }
+  
+  const [medicos] = await dbPool.query(`
+    SELECT 
+      id,
+      nombres,
+      apellidos,
+      id_especialidad,
+      id_centro
+    FROM medicos
+    WHERE id_centro = ?
+    ORDER BY nombres ASC
+  `, [centroId]);
+  
+  return medicos;
 }
 
 // =========================
@@ -205,98 +254,84 @@ export async function create(req: Request, res: Response) {
 
     // Las validaciones detalladas ya se hicieron en el middleware
 
-    if (req.user?.rol === 'admin') {
-      // Admin: crear usuario en TODAS las bases de datos
-      console.log('👑 [CREATE] Admin creando usuario en TODAS las bases de datos:', email);
+    // Decodificar JWT para determinar si es admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔐 [CREATE] Token decodificado:', { rol: decoded.rol, isAdmin, id_centro });
+      } catch (error) {
+        console.error('❌ [CREATE] Error decodificando token:', error);
+      }
+    }
+
+    if (isAdmin) {
+      // Admin: crear usuario en la base de datos específica del centro
+      console.log('👑 [CREATE] Admin creando usuario en centro específico:', id_centro, 'para:', email);
       
-      const results: any[] = [];
-      let insertId: number | null = null;
+      // Determinar qué base de datos usar basado en el id_centro
+      let targetPool;
+      let dbName;
+      
+      if (id_centro === 1) {
+        targetPool = pools.central;
+        dbName = 'central';
+      } else if (id_centro === 2) {
+        targetPool = pools.guayaquil;
+        dbName = 'guayaquil';
+      } else if (id_centro === 3) {
+        targetPool = pools.cuenca;
+        dbName = 'cuenca';
+      } else {
+        return res.status(400).json({ error: "Centro médico no válido" });
+      }
+      
+      console.log('🗄️ [CREATE] Usando base de datos:', dbName);
       
       // Hash de la contraseña
       const passwordHash = await bcrypt.hash(password, 10);
       
-      // Crear en BD Central
       try {
         // Validar centro
-        const [centros] = await pools.central.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
+        const [centros] = await targetPool.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
         if ((centros as any[]).length === 0) {
           return res.status(400).json({ error: "El centro especificado no existe" });
         }
 
-        // Si es médico, validar que el médico existe
+        // Si es médico, validar que el médico existe en la misma base de datos
         if (rol === 'medico' && id_medico) {
-          const [medicos] = await pools.central.query("SELECT id FROM medicos WHERE id = ?", [Number(id_medico)]);
+          const [medicos] = await targetPool.query("SELECT id FROM medicos WHERE id = ?", [Number(id_medico)]);
           if ((medicos as any[]).length === 0) {
-            return res.status(400).json({ error: "El médico especificado no existe" });
+            return res.status(400).json({ error: "El médico especificado no existe en este centro" });
           }
         }
 
-        // Verificar si el email ya existe
-        const [existingUsers] = await pools.central.query("SELECT id FROM usuarios WHERE email = ?", [email]);
+        // Verificar si el email ya existe en esta base de datos
+        const [existingUsers] = await targetPool.query("SELECT id FROM usuarios WHERE email = ?", [email]);
         if ((existingUsers as any[]).length > 0) {
           return res.status(409).json({ error: "El email ya está registrado" });
         }
 
-        const [centralResult] = await pools.central.execute(`
+        const [result] = await targetPool.execute(`
           INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) 
           VALUES (?, ?, ?, ?, ?)
         `, [email, passwordHash, rol, Number(id_centro), id_medico ? Number(id_medico) : null]);
-        results.push({ db: 'central', success: true, insertId: (centralResult as any).insertId });
-        insertId = (centralResult as any).insertId; // Usar el ID de la BD central como referencia
-        console.log('✅ [CREATE] Usuario creado en BD Central, ID:', (centralResult as any).insertId);
-      } catch (error: any) {
-        console.error('❌ [CREATE] Error en BD Central:', error);
-        results.push({ db: 'central', success: false, error: error.message });
-      }
-      
-      // Crear en BD Guayaquil
-      try {
-        const [guayaquilResult] = await pools.guayaquil.execute(`
-          INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) 
-          VALUES (?, ?, ?, ?, ?)
-        `, [email, passwordHash, rol, Number(id_centro), id_medico ? Number(id_medico) : null]);
-        results.push({ db: 'guayaquil', success: true, insertId: (guayaquilResult as any).insertId });
-        console.log('✅ [CREATE] Usuario creado en BD Guayaquil, ID:', (guayaquilResult as any).insertId);
-      } catch (error: any) {
-        console.error('❌ [CREATE] Error en BD Guayaquil:', error);
-        results.push({ db: 'guayaquil', success: false, error: error.message });
-      }
-      
-      // Crear en BD Cuenca
-      try {
-        const [cuencaResult] = await pools.cuenca.execute(`
-          INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) 
-          VALUES (?, ?, ?, ?, ?)
-        `, [email, passwordHash, rol, Number(id_centro), id_medico ? Number(id_medico) : null]);
-        results.push({ db: 'cuenca', success: true, insertId: (cuencaResult as any).insertId });
-        console.log('✅ [CREATE] Usuario creado en BD Cuenca, ID:', (cuencaResult as any).insertId);
-      } catch (error: any) {
-        console.error('❌ [CREATE] Error en BD Cuenca:', error);
-        results.push({ db: 'cuenca', success: false, error: error.message });
-      }
-      
-      const successCount = results.filter(r => r.success).length;
-      const totalCount = results.length;
-      
-      if (successCount === 0) {
-        return res.status(500).json({ 
-          error: "No se pudo crear el usuario en ninguna base de datos",
-          details: results
+        
+        console.log('✅ [CREATE] Usuario creado en', dbName, 'ID:', (result as any).insertId);
+        
+        res.status(201).json({
+          message: "Usuario creado exitosamente",
+          id: (result as any).insertId,
+          origen_bd: dbName,
+          id_frontend: `${dbName}-${(result as any).insertId}`
         });
+      } catch (error: any) {
+        console.error('❌ [CREATE] Error en', dbName, ':', error);
+        res.status(500).json({ error: `Error al crear usuario en ${dbName}: ${error.message}` });
       }
-      
-      const created = {
-        id: insertId,
-        email: email,
-        rol,
-        id_centro: Number(id_centro),
-        id_medico: id_medico ? Number(id_medico) : null,
-        created_in_databases: successCount,
-        total_databases: totalCount,
-        details: results
-      };
-
-      res.status(201).json(created);
     } else {
       // Médico: crear solo en su base de datos
       console.log('👨‍⚕️ [CREATE] Médico creando usuario en su BD local:', email);
@@ -351,102 +386,201 @@ export async function create(req: Request, res: Response) {
 export async function update(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
+    console.log('🔄 [BACKEND-UPDATE] Recibida petición de actualización:', {
+      id,
+      body: req.body,
+      headers: req.headers
+    });
+    
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
     const { email, password, rol, id_centro, id_medico } = req.body ?? {};
 
-    // Construir objeto dinámico con los campos presentes
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (email !== undefined) {
-      // Verificar si el email ya existe (excluyendo el usuario actual)
-      const [existingUsers] = await req.dbPool.query("SELECT id FROM usuarios WHERE email = ? AND id != ?", [email.trim(), id]);
-      if (existingUsers.length > 0) {
-        return res.status(409).json({ error: "El email ya está registrado" });
+    // Decodificar JWT para determinar si es admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔐 [UPDATE] Token decodificado:', { rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ [UPDATE] Error decodificando token:', error);
       }
-      updates.push("email = ?");
-      values.push(email.trim());
     }
 
-    if (password !== undefined) {
-      const passwordHash = await bcrypt.hash(password.trim(), 10);
-      updates.push("password_hash = ?");
-      values.push(passwordHash);
-    }
-
-    if (rol !== undefined) {
-      if (!['admin', 'medico'].includes(rol)) {
-        return res.status(400).json({ error: "rol debe ser 'admin' o 'medico'" });
+    if (isAdmin) {
+      // Admin: buscar usuario en todas las bases de datos y actualizar en la correcta
+      console.log('👑 [UPDATE] Admin actualizando usuario ID:', id);
+      
+      let usuarioEncontrado: any = null;
+      let targetPool: any = null;
+      let dbName = '';
+      
+      // Buscar en BD Central
+      try {
+        const [centralUsuarios] = await pools.central.query("SELECT id, email, rol, id_centro, id_medico FROM usuarios WHERE id = ?", [id]);
+        if ((centralUsuarios as any[]).length > 0) {
+          const usuario = (centralUsuarios as any[])[0];
+          // Verificar que el usuario realmente pertenece a este centro
+          if (usuario.id_centro === 1) {
+            usuarioEncontrado = usuario;
+            targetPool = pools.central;
+            dbName = 'central';
+            console.log('✅ [UPDATE] Usuario encontrado en BD Central (centro correcto)');
+          } else {
+            console.log('⚠️ [UPDATE] Usuario encontrado en BD Central pero pertenece a otro centro:', usuario.id_centro);
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ [UPDATE] Error buscando en BD Central:', error);
       }
-      updates.push("rol = ?");
-      values.push(rol);
-    }
-
-    if (id_centro !== undefined) {
-      // Validar centro
-      const [centros] = await req.dbPool.query("SELECT id FROM centros_medicos WHERE id = ?", [Number(id_centro)]);
-      if ((centros as any[]).length === 0) {
-        return res.status(400).json({ error: "El centro especificado no existe" });
-      }
-      updates.push("id_centro = ?");
-      values.push(Number(id_centro));
-    }
-
-    if (id_medico !== undefined) {
-      if (id_medico) {
-        // Validar médico
-        const [medicos] = await req.dbPool.query("SELECT id FROM medicos WHERE id = ?", [Number(id_medico)]);
-        if ((medicos as any[]).length === 0) {
-          return res.status(400).json({ error: "El médico especificado no existe" });
+      
+      // Si no se encontró en Central, buscar en Guayaquil
+      if (!usuarioEncontrado) {
+        try {
+          const [guayaquilUsuarios] = await pools.guayaquil.query("SELECT id, email, rol, id_centro, id_medico FROM usuarios WHERE id = ?", [id]);
+          if ((guayaquilUsuarios as any[]).length > 0) {
+            const usuario = (guayaquilUsuarios as any[])[0];
+            // Verificar que el usuario realmente pertenece a este centro
+            if (usuario.id_centro === 2) {
+              usuarioEncontrado = usuario;
+              targetPool = pools.guayaquil;
+              dbName = 'guayaquil';
+              console.log('✅ [UPDATE] Usuario encontrado en BD Guayaquil (centro correcto)');
+            } else {
+              console.log('⚠️ [UPDATE] Usuario encontrado en BD Guayaquil pero pertenece a otro centro:', usuario.id_centro);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ [UPDATE] Error buscando en BD Guayaquil:', error);
         }
       }
-      updates.push("id_medico = ?");
-      values.push(id_medico ? Number(id_medico) : null);
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
-    }
-
-    values.push(id);
-
-    const [result] = await req.dbPool.execute(`
-      UPDATE usuarios 
-      SET ${updates.join(", ")}
-      WHERE id = ?
-    `, values);
-
-    if ((result as any).affectedRows === 0) {
-      return res.status(404).json({ error: "Usuario no encontrado" });
-    }
-
-    // SINCRONIZACIÓN AUTOMÁTICA: Si se actualizó el centro de un usuario médico, 
-    // también actualizar el centro del médico en la tabla medicos
-    if (id_centro !== undefined && id_medico !== undefined && id_medico) {
-      try {
-        await req.dbPool.execute(`
-          UPDATE medicos 
-          SET id_centro = ?
-          WHERE id = ?
-        `, [Number(id_centro), Number(id_medico)]);
-        
-        console.log(`[SYNC] Centro del médico ${id_medico} actualizado a centro ${id_centro}`);
-      } catch (syncError) {
-        console.error("[ERROR] Error sincronizando centro del médico:", syncError);
-        // No fallar la operación principal por un error de sincronización
+      
+      // Si no se encontró en Guayaquil, buscar en Cuenca
+      if (!usuarioEncontrado) {
+        try {
+          const [cuencaUsuarios] = await pools.cuenca.query("SELECT id, email, rol, id_centro, id_medico FROM usuarios WHERE id = ?", [id]);
+          if ((cuencaUsuarios as any[]).length > 0) {
+            const usuario = (cuencaUsuarios as any[])[0];
+            // Verificar que el usuario realmente pertenece a este centro
+            if (usuario.id_centro === 3) {
+              usuarioEncontrado = usuario;
+              targetPool = pools.cuenca;
+              dbName = 'cuenca';
+              console.log('✅ [UPDATE] Usuario encontrado en BD Cuenca (centro correcto)');
+            } else {
+              console.log('⚠️ [UPDATE] Usuario encontrado en BD Cuenca pero pertenece a otro centro:', usuario.id_centro);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ [UPDATE] Error buscando en BD Cuenca:', error);
+        }
       }
+      
+      if (!usuarioEncontrado || !targetPool) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      
+      // Construir objeto dinámico con los campos presentes
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      if (email !== undefined) {
+        // Verificar si el email ya existe (excluyendo el usuario actual)
+        const [existingUsers] = await targetPool.query("SELECT id FROM usuarios WHERE email = ? AND id != ?", [email.trim(), id]);
+        if ((existingUsers as any[]).length > 0) {
+          return res.status(409).json({ error: "El email ya está registrado" });
+        }
+        updates.push("email = ?");
+        values.push(email.trim());
+      }
+
+      if (password !== undefined && password.trim() !== '') {
+        const passwordHash = await bcrypt.hash(password.trim(), 10);
+        updates.push("password_hash = ?");
+        values.push(passwordHash);
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
+      }
+
+      values.push(id);
+
+      const [result] = await targetPool.execute(`
+        UPDATE usuarios 
+        SET ${updates.join(", ")}
+        WHERE id = ?
+      `, values);
+
+      if ((result as any).affectedRows === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      console.log('✅ [UPDATE] Usuario actualizado en', dbName, 'ID:', id);
+      
+      const updated = {
+        id,
+        email: email?.trim(),
+        rol: usuarioEncontrado.rol,
+        id_centro: usuarioEncontrado.id_centro,
+        id_medico: usuarioEncontrado.id_medico,
+        origen_bd: dbName,
+        id_frontend: `${dbName}-${id}`
+      };
+
+      res.json(updated);
+    } else {
+      // Médico: actualizar solo en su base de datos
+      console.log('👨‍⚕️ [UPDATE] Médico actualizando usuario de su BD local, ID:', id);
+      
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      if (email !== undefined) {
+        // Verificar si el email ya existe (excluyendo el usuario actual)
+        const [existingUsers] = await req.dbPool.query("SELECT id FROM usuarios WHERE email = ? AND id != ?", [email.trim(), id]);
+        if ((existingUsers as any[]).length > 0) {
+          return res.status(409).json({ error: "El email ya está registrado" });
+        }
+        updates.push("email = ?");
+        values.push(email.trim());
+      }
+
+      if (password !== undefined && password.trim() !== '') {
+        const passwordHash = await bcrypt.hash(password.trim(), 10);
+        updates.push("password_hash = ?");
+        values.push(passwordHash);
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
+      }
+
+      values.push(id);
+
+      const [result] = await req.dbPool.execute(`
+        UPDATE usuarios 
+        SET ${updates.join(", ")}
+        WHERE id = ?
+      `, values);
+
+      if ((result as any).affectedRows === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      const updated = {
+        id,
+        email: email?.trim(),
+        rol: rol,
+        id_centro: id_centro ? Number(id_centro) : undefined,
+        id_medico: id_medico !== undefined ? (id_medico ? Number(id_medico) : null) : undefined
+      };
+
+      res.json(updated);
     }
-
-    const updated = {
-      id,
-      email: email?.trim(),
-      rol,
-      id_centro: id_centro ? Number(id_centro) : undefined,
-      id_medico: id_medico !== undefined ? (id_medico ? Number(id_medico) : null) : undefined
-    };
-
-    res.json(updated);
   } catch (err) {
     console.error("[ERROR] actualizando usuario:", err);
     res.status(500).json({ error: "Error interno al actualizar usuario" });
@@ -461,16 +595,140 @@ export async function remove(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "ID inválido" });
 
-    const [result] = await req.dbPool.execute("DELETE FROM usuarios WHERE id = ?", [id]);
-
-    if ((result as any).affectedRows === 0) {
-      return res.status(404).json({ error: "Usuario no encontrado" });
+    // Decodificar JWT para determinar si es admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+        isAdmin = decoded.rol === 'admin';
+        console.log('🔐 [DELETE] Token decodificado:', { rol: decoded.rol, isAdmin });
+      } catch (error) {
+        console.error('❌ [DELETE] Error decodificando token:', error);
+      }
     }
 
-    res.json({ message: "Usuario eliminado correctamente" });
+    if (isAdmin) {
+      // Admin: buscar usuario en todas las bases de datos y eliminar de la correcta
+      console.log('👑 [DELETE] Admin eliminando usuario ID:', id);
+      
+      let usuarioEncontrado: any = null;
+      let targetPool: any = null;
+      let dbName = '';
+      
+      // Buscar en BD Central
+      try {
+        const [centralUsuarios] = await pools.central.query("SELECT id, email, id_centro FROM usuarios WHERE id = ?", [id]);
+        if ((centralUsuarios as any[]).length > 0) {
+          const usuario = (centralUsuarios as any[])[0];
+          // Verificar que el usuario realmente pertenece a este centro
+          if (usuario.id_centro === 1) {
+            usuarioEncontrado = usuario;
+            targetPool = pools.central;
+            dbName = 'central';
+            console.log('✅ [DELETE] Usuario encontrado en BD Central (centro correcto)');
+          } else {
+            console.log('⚠️ [DELETE] Usuario encontrado en BD Central pero pertenece a otro centro:', usuario.id_centro);
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ [DELETE] Error buscando en BD Central:', error);
+      }
+      
+      // Si no se encontró en Central, buscar en Guayaquil
+      if (!usuarioEncontrado) {
+        try {
+          const [guayaquilUsuarios] = await pools.guayaquil.query("SELECT id, email, id_centro FROM usuarios WHERE id = ?", [id]);
+          if ((guayaquilUsuarios as any[]).length > 0) {
+            const usuario = (guayaquilUsuarios as any[])[0];
+            // Verificar que el usuario realmente pertenece a este centro
+            if (usuario.id_centro === 2) {
+              usuarioEncontrado = usuario;
+              targetPool = pools.guayaquil;
+              dbName = 'guayaquil';
+              console.log('✅ [DELETE] Usuario encontrado en BD Guayaquil (centro correcto)');
+            } else {
+              console.log('⚠️ [DELETE] Usuario encontrado en BD Guayaquil pero pertenece a otro centro:', usuario.id_centro);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ [DELETE] Error buscando en BD Guayaquil:', error);
+        }
+      }
+      
+      // Si no se encontró en Guayaquil, buscar en Cuenca
+      if (!usuarioEncontrado) {
+        try {
+          const [cuencaUsuarios] = await pools.cuenca.query("SELECT id, email, id_centro FROM usuarios WHERE id = ?", [id]);
+          if ((cuencaUsuarios as any[]).length > 0) {
+            const usuario = (cuencaUsuarios as any[])[0];
+            // Verificar que el usuario realmente pertenece a este centro
+            if (usuario.id_centro === 3) {
+              usuarioEncontrado = usuario;
+              targetPool = pools.cuenca;
+              dbName = 'cuenca';
+              console.log('✅ [DELETE] Usuario encontrado en BD Cuenca (centro correcto)');
+            } else {
+              console.log('⚠️ [DELETE] Usuario encontrado en BD Cuenca pero pertenece a otro centro:', usuario.id_centro);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ [DELETE] Error buscando en BD Cuenca:', error);
+        }
+      }
+      
+      if (!usuarioEncontrado || !targetPool) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      
+      // Eliminar de la base de datos correcta
+      try {
+        const [result] = await targetPool.execute("DELETE FROM usuarios WHERE id = ?", [id]);
+        
+        if ((result as any).affectedRows === 0) {
+          return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+        
+        console.log('✅ [DELETE] Usuario eliminado de', dbName, 'ID:', id);
+        res.json({ message: "Usuario eliminado correctamente" });
+      } catch (error) {
+        console.error('❌ [DELETE] Error eliminando de', dbName, ':', error);
+        res.status(500).json({ error: `Error al eliminar usuario de ${dbName}` });
+      }
+    } else {
+      // Médico: eliminar solo de su base de datos
+      console.log('👨‍⚕️ [DELETE] Médico eliminando usuario de su BD local, ID:', id);
+      
+      const [result] = await req.dbPool.execute("DELETE FROM usuarios WHERE id = ?", [id]);
+
+      if ((result as any).affectedRows === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      res.json({ message: "Usuario eliminado correctamente" });
+    }
   } catch (err) {
     console.error("[ERROR] eliminando usuario:", err);
     res.status(500).json({ error: "Error interno al eliminar usuario" });
+  }
+}
+
+// =========================
+// GET /api/admin/usuarios/medicos-por-centro/:centroId
+// =========================
+export async function getMedicosByCentroEndpoint(req: Request, res: Response) {
+  try {
+    const centroId = Number(req.params.centroId);
+    if (isNaN(centroId)) {
+      return res.status(400).json({ error: "ID de centro inválido" });
+    }
+
+    const medicos = await getMedicosByCentro(centroId);
+    res.json(medicos);
+  } catch (err) {
+    console.error("[ERROR] obteniendo médicos por centro:", err);
+    res.status(500).json({ error: "Error interno al obtener médicos" });
   }
 }
 

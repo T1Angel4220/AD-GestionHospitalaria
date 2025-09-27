@@ -16,6 +16,8 @@ interface UsuarioModalsProps {
   handleCreateUsuario: (e: React.FormEvent) => void
   handleEditUsuario: (e: React.FormEvent) => void
   handleDeleteUsuario: () => void
+  onCentroChange?: (centroId: number) => void
+  isEditMode?: boolean
   buttonColors: {
     primary: string
     primaryHover: string
@@ -39,6 +41,8 @@ export function UsuarioModals({
   handleCreateUsuario,
   handleEditUsuario,
   handleDeleteUsuario,
+  onCentroChange,
+  isEditMode = false,
   buttonColors
 }: UsuarioModalsProps) {
   return (
@@ -122,9 +126,17 @@ export function UsuarioModals({
                   </label>
                   <select
                     value={usuarioForm.id_centro}
-                    onChange={(e) => setUsuarioForm({...usuarioForm, id_centro: Number(e.target.value)})}
+                    onChange={(e) => {
+                      const centroId = Number(e.target.value);
+                      setUsuarioForm({...usuarioForm, id_centro: centroId, id_medico: undefined});
+                      // Filtrar médicos del centro seleccionado
+                      if (onCentroChange) {
+                        onCentroChange(centroId);
+                      }
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                     required
+                    disabled={isEditMode}
                   >
                     {centros.map((centro) => (
                       <option key={centro.id} value={centro.id}>
@@ -132,6 +144,11 @@ export function UsuarioModals({
                       </option>
                     ))}
                   </select>
+                  {isEditMode && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      No se puede cambiar el centro médico al editar
+                    </p>
+                  )}
                 </div>
 
                 {usuarioForm.rol === 'medico' && (
@@ -144,32 +161,34 @@ export function UsuarioModals({
                       onChange={(e) => setUsuarioForm({...usuarioForm, id_medico: e.target.value ? Number(e.target.value) : undefined})}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                     >
-                      <option value="">Seleccionar médico</option>
+                      <option value="">Seleccionar médico...</option>
                       {medicos.map((medico) => (
                         <option key={medico.id} value={medico.id}>
                           {medico.nombres} {medico.apellidos}
                         </option>
                       ))}
                     </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Solo se muestran médicos del centro seleccionado que no tienen cuenta
+                    </p>
                   </div>
                 )}
-              </div>
 
-              {/* Botones */}
-              <div className="flex justify-end space-x-4 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
-                >
-                  Crear Usuario
-                </button>
+                <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
+                  >
+                    Crear Usuario
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -191,7 +210,7 @@ export function UsuarioModals({
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">Editar Usuario</h3>
-                    <p className="text-purple-100 text-sm">Actualizar información</p>
+                    <p className="text-purple-100 text-sm">Actualizar información del usuario</p>
                   </div>
                 </div>
                 <button
@@ -239,13 +258,15 @@ export function UsuarioModals({
                   </label>
                   <select
                     value={usuarioForm.rol}
-                    onChange={(e) => setUsuarioForm({...usuarioForm, rol: e.target.value as 'admin' | 'medico'})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
+                    disabled
                   >
                     <option value="medico">Médico</option>
                     <option value="admin">Administrador</option>
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    El rol no se puede cambiar al editar
+                  </p>
                 </div>
 
                 <div>
@@ -254,9 +275,8 @@ export function UsuarioModals({
                   </label>
                   <select
                     value={usuarioForm.id_centro}
-                    onChange={(e) => setUsuarioForm({...usuarioForm, id_centro: Number(e.target.value)})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
+                    disabled
                   >
                     {centros.map((centro) => (
                       <option key={centro.id} value={centro.id}>
@@ -264,44 +284,49 @@ export function UsuarioModals({
                       </option>
                     ))}
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    El centro médico no se puede cambiar al editar
+                  </p>
                 </div>
 
                 {usuarioForm.rol === 'medico' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Médico Asociado (Opcional)
+                      Médico Asociado
                     </label>
                     <select
                       value={usuarioForm.id_medico || ''}
-                      onChange={(e) => setUsuarioForm({...usuarioForm, id_medico: e.target.value ? Number(e.target.value) : undefined})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
+                      disabled
                     >
-                      <option value="">Seleccionar médico</option>
+                      <option value="">Seleccionar médico...</option>
                       {medicos.map((medico) => (
                         <option key={medico.id} value={medico.id}>
                           {medico.nombres} {medico.apellidos}
                         </option>
                       ))}
                     </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      El médico asociado no se puede cambiar al editar. Si necesitas cambiar la asociación, elimina este usuario y crea uno nuevo.
+                    </p>
                   </div>
                 )}
-              </div>
 
-              {/* Botones */}
-              <div className="flex justify-end space-x-4 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
-                >
-                  Actualizar Usuario
-                </button>
+                <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-6 py-3 text-sm font-semibold text-white ${buttonColors.primary} ${buttonColors.primaryHover} rounded-xl transition-all duration-200 transform hover:scale-105`}
+                  >
+                    Actualizar Usuario
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -334,22 +359,19 @@ export function UsuarioModals({
                 </button>
               </div>
             </div>
-
-            {/* Contenido */}
-            <div className="p-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Trash2 className="h-8 w-8 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  ¿Estás seguro de eliminar este usuario?
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Se eliminará permanentemente el usuario <strong>{selectedUsuario.email}</strong> y toda su información asociada.
+            
+            {/* Contenido del modal */}
+            <div className="px-8 py-6">
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">
+                  ¿Estás seguro de que deseas eliminar al usuario <strong>{selectedUsuario.email}</strong>?
                 </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-sm text-red-700">
+                    <strong>Advertencia:</strong> Esta acción eliminará permanentemente el usuario y todos los datos asociados.
+                  </p>
+                </div>
               </div>
-
-              {/* Botones */}
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => setIsDeleteModalOpen(false)}

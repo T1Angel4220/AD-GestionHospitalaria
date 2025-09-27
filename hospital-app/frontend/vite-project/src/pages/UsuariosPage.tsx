@@ -42,6 +42,13 @@ export default function UsuariosPage() {
 
   // Estados para modales
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  
+  const openCreateModal = () => {
+    console.log('🆕 [CREATE] Abriendo modal de crear usuario');
+    console.log('🆕 [CREATE] Usuarios actuales:', usuarios);
+    console.log('🆕 [CREATE] Médicos disponibles actuales:', medicosDisponibles);
+    setIsCreateModalOpen(true);
+  }
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedUsuario, setSelectedUsuario] = useState<AdminUsuario | null>(null)
@@ -62,34 +69,119 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     loadData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadData = async () => {
     try {
       setLoading(true)
-      const [usuariosData, centrosData, medicosDisponiblesData] = await Promise.all([
+      const [usuariosData, centrosData] = await Promise.all([
         AdminApi.getUsuarios(),
         AdminApi.getCentros(),
-        AdminApi.getMedicos(),
       ])
       setUsuarios(usuariosData)
       setCentros(centrosData)
       
-      // Filtrar médicos que ya tienen cuenta asociada
-      const medicosConCuenta = usuariosData
-        .filter(u => u.rol === 'medico' && u.id_medico)
-        .map(u => u.id_medico)
+      // Cargar médicos del centro por defecto (Quito)
+      await filtrarMedicosPorCentro(1)
       
-      const medicosDisponiblesFiltrados = medicosDisponiblesData.filter(medico => 
-        !medicosConCuenta.includes(medico.id)
-      )
-      
-      setMedicosDisponibles(medicosDisponiblesFiltrados)
       setError(null)
-    } catch (err) {
+    } catch (error) {
       setError("Error al cargar los datos")
+      console.error(error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const filtrarMedicosPorCentro = async (centroId: number) => {
+    try {
+      console.log('🔍 [FILTER] Filtrando médicos por centro:', centroId);
+      
+      // Obtener médicos del centro específico
+      const medicosDelCentro = await AdminApi.getMedicosByCentro(centroId);
+      console.log('📋 [FILTER] Médicos del centro obtenidos:', medicosDelCentro);
+      
+      // Determinar el origen de la base de datos basado en el centroId
+      let origenBd = 'central';
+      if (centroId === 2) origenBd = 'guayaquil';
+      if (centroId === 3) origenBd = 'cuenca';
+      
+      console.log('🗄️ [FILTER] Origen de BD para centro', centroId, ':', origenBd);
+      
+      // Filtrar médicos que ya tienen cuenta asociada SOLO en la misma base de datos
+      const medicosConCuenta = usuarios
+        .filter(u => u.rol === 'medico' && u.id_medico && u.origen_bd === origenBd)
+        .map(u => u.id_medico);
+      
+      console.log('👥 [FILTER] Médicos con cuenta en', origenBd, ':', medicosConCuenta);
+      
+      const medicosDisponiblesFiltrados = medicosDelCentro.filter(medico => 
+        !medicosConCuenta.includes(medico.id)
+      );
+      
+      console.log('✅ [FILTER] Médicos disponibles después del filtro:', medicosDisponiblesFiltrados);
+      
+      setMedicosDisponibles(medicosDisponiblesFiltrados);
+      
+      console.log('✅ [FILTER] Resumen:', {
+        centroId,
+        origenBd,
+        totalMedicos: medicosDelCentro.length,
+        disponibles: medicosDisponiblesFiltrados.length,
+        conCuenta: medicosConCuenta.length,
+        medicosConCuenta: medicosConCuenta,
+        medicosDisponibles: medicosDisponiblesFiltrados.map(m => `${m.nombres} ${m.apellidos} (ID: ${m.id})`)
+      });
+    } catch (error) {
+      console.error('❌ [FILTER] Error filtrando médicos:', error);
+      setError("Error al cargar médicos del centro");
+    }
+  }
+
+  const cargarMedicosParaEdicion = async (centroId: number, medicoActualId?: number) => {
+    try {
+      console.log('📝 [EDIT-FILTER] Cargando médicos para edición, centro:', centroId, 'médico actual:', medicoActualId);
+      
+      // Obtener médicos del centro específico
+      const medicosDelCentro = await AdminApi.getMedicosByCentro(centroId);
+      console.log('📋 [EDIT-FILTER] Médicos del centro obtenidos:', medicosDelCentro);
+      
+      // Determinar el origen de la base de datos basado en el centroId
+      let origenBd = 'central';
+      if (centroId === 2) origenBd = 'guayaquil';
+      if (centroId === 3) origenBd = 'cuenca';
+      
+      console.log('🗄️ [EDIT-FILTER] Origen de BD para centro', centroId, ':', origenBd);
+      
+      // Filtrar médicos que ya tienen cuenta asociada SOLO en la misma base de datos
+      const medicosConCuenta = usuarios
+        .filter(u => u.rol === 'medico' && u.id_medico && u.origen_bd === origenBd)
+        .map(u => u.id_medico);
+      
+      console.log('👥 [EDIT-FILTER] Médicos con cuenta en', origenBd, ':', medicosConCuenta);
+      
+      // Incluir el médico actual si existe (para mostrarlo en el dropdown)
+      const medicosParaMostrar = medicosDelCentro.filter(medico => 
+        !medicosConCuenta.includes(medico.id) || medico.id === medicoActualId
+      );
+      
+      console.log('✅ [EDIT-FILTER] Médicos para mostrar (incluyendo actual):', medicosParaMostrar);
+      
+      setMedicosDisponibles(medicosParaMostrar);
+      
+      console.log('✅ [EDIT-FILTER] Resumen:', {
+        centroId,
+        origenBd,
+        totalMedicos: medicosDelCentro.length,
+        paraMostrar: medicosParaMostrar.length,
+        conCuenta: medicosConCuenta.length,
+        medicoActual: medicoActualId,
+        medicosParaMostrar: medicosParaMostrar.map(m => `${m.nombres} ${m.apellidos} (ID: ${m.id})`)
+      });
+    } catch (error) {
+      console.error('❌ [EDIT-FILTER] Error cargando médicos para edición:', error);
+      setError("Error al cargar médicos del centro");
     }
   }
 
@@ -117,13 +209,15 @@ export default function UsuariosPage() {
       setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
       // Recargar datos después de crear usuario
       await loadData()
-    } catch (err) {
+    } catch (error) {
       setError("Error al crear el usuario")
+      console.error(error)
     }
   }
 
   const handleEditUsuario = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🔄 [EDIT] Iniciando actualización de usuario...');
     setError(null)
 
     // Validar que no se asocie un médico ya asociado a otro usuario
@@ -144,13 +238,41 @@ export default function UsuariosPage() {
 
     try {
       if (selectedUsuario) {
-        await AdminApi.updateUsuario(selectedUsuario.id, userForm)
+        console.log('🔄 [UPDATE] Actualizando usuario:', {
+          selectedUsuario,
+          userForm,
+          idReal: selectedUsuario.id,
+          idFrontend: selectedUsuario.id_frontend
+        });
+        
+        // Determinar el centro correcto para la petición
+        let centroIdParaPeticion = selectedUsuario.id_centro;
+        if (selectedUsuario.origen_bd === 'guayaquil') {
+          centroIdParaPeticion = 2;
+        } else if (selectedUsuario.origen_bd === 'cuenca') {
+          centroIdParaPeticion = 3;
+        } else if (selectedUsuario.origen_bd === 'central') {
+          centroIdParaPeticion = 1;
+        }
+        
+        console.log('🔄 [UPDATE] Centro para petición:', centroIdParaPeticion);
+        
+        console.log('🔄 [UPDATE] Enviando petición al backend...');
+        const resultado = await AdminApi.updateUsuario(selectedUsuario.id, userForm, centroIdParaPeticion)
+        console.log('✅ [UPDATE] Respuesta del backend:', resultado);
+        console.log('✅ [UPDATE] Usuario actualizado exitosamente');
+        
+        // Actualizar solo la lista de usuarios, no recargar todo
+        const usuariosActualizados = await AdminApi.getUsuarios()
+        setUsuarios(usuariosActualizados)
+        console.log('✅ [UPDATE] Lista de usuarios actualizada');
+        
         setIsEditModalOpen(false)
         setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
         setSelectedUsuario(null)
-        await loadData()
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('❌ [UPDATE] Error actualizando usuario:', error);
       setError("Error al actualizar el usuario")
     }
   }
@@ -162,8 +284,9 @@ export default function UsuariosPage() {
         setIsDeleteModalOpen(false)
         setSelectedUsuario(null)
         await loadData()
-      } catch (err) {
+      } catch (error) {
         setError("Error al eliminar el usuario")
+        console.error(error)
       }
     }
   }
@@ -182,14 +305,34 @@ export default function UsuariosPage() {
   }
 
   const openEditModal = (usuario: AdminUsuario) => {
+    console.log('📝 [EDIT] Abriendo modal de edición para usuario:', usuario);
     setSelectedUsuario(usuario)
+    
+    // Determinar el centro correcto basado en origen_bd
+    let centroId = usuario.id_centro;
+    if (usuario.origen_bd === 'guayaquil') {
+      centroId = 2;
+    } else if (usuario.origen_bd === 'cuenca') {
+      centroId = 3;
+    } else if (usuario.origen_bd === 'central') {
+      centroId = 1;
+    }
+    
+    console.log('📝 [EDIT] Centro determinado:', { origen_bd: usuario.origen_bd, centroId });
+    
     setUserForm({
       email: usuario.email,
       password: '',
       rol: usuario.rol,
-      id_centro: usuario.id_centro,
+      id_centro: centroId,
       id_medico: usuario.id_medico
     })
+    
+    // Cargar médicos del centro del usuario (incluyendo el médico actual para mostrarlo)
+    if (usuario.rol === 'medico') {
+      cargarMedicosParaEdicion(centroId, usuario.id_medico);
+    }
+    
     setIsEditModalOpen(true)
   }
 
@@ -479,7 +622,7 @@ export default function UsuariosPage() {
             </div>
             <div className="mt-4 sm:mt-0 sm:ml-4">
               <button
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={openCreateModal}
                 className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all transform hover:scale-105"
               >
                 <Plus className="h-5 w-5 mr-2" />
@@ -521,7 +664,7 @@ export default function UsuariosPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredUsuarios.map((usuario) => (
-                    <tr key={usuario.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={usuario.id_frontend || usuario.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4">
@@ -546,7 +689,10 @@ export default function UsuariosPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {usuario.centro_nombre || `Centro ${usuario.id_centro}`}
+                          {usuario.origen_bd === 'central' ? 'Quito' : 
+                           usuario.origen_bd === 'guayaquil' ? 'Guayaquil' : 
+                           usuario.origen_bd === 'cuenca' ? 'Cuenca' : 
+                           usuario.centro_nombre || `Centro ${usuario.id_centro}`}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -602,6 +748,8 @@ export default function UsuariosPage() {
         handleCreateUsuario={handleCreateUser}
         handleEditUsuario={handleEditUsuario}
         handleDeleteUsuario={handleDeleteUsuario}
+        onCentroChange={filtrarMedicosPorCentro}
+        isEditMode={isEditModalOpen}
         buttonColors={{
           primary: 'bg-gradient-to-r from-purple-600 to-violet-600',
           primaryHover: 'hover:from-purple-700 hover:to-violet-700',

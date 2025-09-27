@@ -107,6 +107,9 @@ export interface AdminUsuario {
   centro_ciudad?: string;
   medico_nombres?: string;
   medico_apellidos?: string;
+  origen_bd?: string;
+  id_unico?: string;
+  id_frontend?: string;
 }
 
 export interface AdminUsuarioCreate {
@@ -123,6 +126,7 @@ export interface AdminUsuarioUpdate {
   rol?: 'admin' | 'medico';
   id_centro?: number;
   id_medico?: number;
+  origen_bd?: string;
 }
 
 export class AdminApi {
@@ -331,16 +335,20 @@ export class AdminApi {
     });
   }
 
-  static async updateUsuario(id: number, usuario: AdminUsuarioUpdate): Promise<AdminUsuario> {
+  static async updateUsuario(id: number, usuario: AdminUsuarioUpdate, centroId?: number): Promise<AdminUsuario> {
     return this.request<AdminUsuario>(`/usuarios/${id}`, {
       method: 'PUT',
       body: JSON.stringify(usuario),
-    });
+    }, centroId);
   }
 
   static async deleteUsuario(id: number): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/usuarios/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  static async getMedicosByCentro(centroId: number): Promise<AdminMedico[]> {
+    return this.request<AdminMedico[]>(`/usuarios/medicos-por-centro/${centroId}`);
   }
 }
