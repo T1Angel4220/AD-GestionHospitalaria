@@ -23,6 +23,99 @@ function isAdmin(req: Request): boolean {
 }
 
 // =========================
+// Función para obtener resumen de consultas de una base de datos específica (solo admin)
+// =========================
+async function getResumenConsultasFromSpecificDatabase(centroId: number, filters: any = {}) {
+  try {
+    const params: any[] = [];
+    const onFilters: string[] = [];
+
+    // Filtros de fecha aplican sobre la tabla de consultas
+    if (filters.desde) { onFilters.push(`c.fecha >= ?`); params.push(`${filters.desde} 00:00:00`); }
+    if (filters.hasta) { onFilters.push(`c.fecha <= ?`); params.push(`${filters.hasta} 23:59:59`); }
+
+    // Filtro de texto (paciente/motivo/diagnostico)
+    if (filters.q && filters.q.trim() !== "") {
+      onFilters.push(`(c.paciente_nombre LIKE ? OR c.paciente_apellido LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ?)`);
+      const like = `%${filters.q}%`;
+      params.push(like, like, like, like);
+    }
+
+    const whereClause = onFilters.length > 0 ? `WHERE ${onFilters.join(" AND ")}` : '';
+    
+    // Determinar qué base de datos usar según el centroId
+    let targetPool;
+    let centroNombre;
+    let centroCiudad;
+    
+    switch (centroId) {
+      case 1:
+        targetPool = pools.central;
+        centroNombre = 'Hospital Central Quito';
+        centroCiudad = 'Quito';
+        break;
+      case 2:
+        targetPool = pools.guayaquil;
+        centroNombre = 'Hospital Guayaquil';
+        centroCiudad = 'Guayaquil';
+        break;
+      case 3:
+        targetPool = pools.cuenca;
+        centroNombre = 'Hospital Cuenca';
+        centroCiudad = 'Cuenca';
+        break;
+      default:
+        throw new Error(`Centro ID ${centroId} no válido`);
+    }
+
+    console.log(`🔍 [REPORTS] Consultando BD para centro ${centroId} (${centroNombre})`);
+
+    console.log(`🔍 [REPORTS] Parámetros de consulta:`, { centroId, params, onFilters });
+    
+    const [reports] = await targetPool.query(`
+      SELECT
+        m.id,
+        m.id AS medico_id,
+        m.nombres,
+        m.apellidos,
+        e.nombre AS especialidad,
+        cm.nombre AS centro_medico,
+        cm.ciudad AS centro_ciudad,
+        m.id_centro AS medico_centro_id,
+        COUNT(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.id END) AS total_consultas,
+        COUNT(DISTINCT CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} AND c.id_paciente IS NOT NULL THEN c.id_paciente ELSE CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN CONCAT(c.paciente_nombre, '|', c.paciente_apellido) END END) AS pacientes_unicos,
+        MIN(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS primera_consulta,
+        MAX(CASE WHEN c.id IS NOT NULL ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''} THEN c.fecha END) AS ultima_consulta
+      FROM medicos m
+      INNER JOIN especialidades e ON e.id = m.id_especialidad
+      INNER JOIN centros_medicos cm ON cm.id = m.id_centro
+      LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = ?
+      WHERE m.id_centro = ? AND EXISTS (
+        SELECT 1 FROM consultas c2 
+        WHERE c2.id_medico = m.id AND c2.id_centro = ?
+        ${onFilters.length > 0 ? `AND (${onFilters.join(" AND ")})` : ''}
+      )
+      GROUP BY m.id, m.nombres, m.apellidos, e.nombre, cm.nombre, cm.ciudad, m.id_centro
+      ORDER BY total_consultas DESC, m.apellidos ASC, m.nombres ASC
+    `, [centroId, centroId, centroId, ...params]);
+    
+    // Agregar información de centro
+    (reports as any[]).forEach(report => {
+      report.centro_medico = report.centro_medico || centroNombre;
+      report.centro_ciudad = report.centro_ciudad || centroCiudad;
+      console.log(`📋 [REPORTS] Médico: ${report.nombres} ${report.apellidos} (Centro: ${report.medico_centro_id}) - Consultas: ${report.total_consultas}`);
+    });
+    
+    console.log(`✅ [REPORTS] Encontrados ${(reports as any[]).length} reportes en centro ${centroId}`);
+    return reports as any[];
+    
+  } catch (error) {
+    console.error(`❌ [REPORTS] Error consultando centro ${centroId}:`, error);
+    throw error;
+  }
+}
+
+// =========================
 // Función para obtener resumen de consultas de todas las bases de datos (solo admin)
 // =========================
 async function getAllResumenConsultasFromAllDatabases(filters: any = {}) {
@@ -168,6 +261,113 @@ async function getAllResumenConsultasFromAllDatabases(filters: any = {}) {
     }
     return a.apellidos.localeCompare(b.apellidos);
   });
+}
+
+// =========================
+// Función para obtener estadísticas de una base de datos específica (solo admin)
+// =========================
+async function getEstadisticasFromSpecificDatabase(centroId: number, filters: any = {}) {
+  try {
+    // Determinar qué base de datos usar según el centroId
+    let targetPool;
+    
+    switch (centroId) {
+      case 1:
+        targetPool = pools.central;
+        break;
+      case 2:
+        targetPool = pools.guayaquil;
+        break;
+      case 3:
+        targetPool = pools.cuenca;
+        break;
+      default:
+        throw new Error(`Centro ID ${centroId} no válido`);
+    }
+
+    console.log(`🔍 [STATS] Consultando estadísticas para centro ${centroId}`);
+
+    // Construir SQL dinámicamente para evitar problemas con parámetros
+    let sql = `
+      SELECT
+        (SELECT COUNT(*) FROM medicos WHERE id_centro = ${centroId}) as total_medicos,
+        (SELECT COUNT(*) FROM pacientes WHERE id_centro = ${centroId}) as total_pacientes,
+        (SELECT COUNT(*) FROM empleados WHERE id_centro = ${centroId}) as total_empleados
+    `;
+
+    // Agregar consultas con filtros de fecha si se proporcionan
+    if (filters.desde && filters.hasta) {
+      const fechaInicio = `${filters.desde} 00:00:00`;
+      const fechaFin = `${filters.hasta} 23:59:59`;
+      
+      sql += `,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND id_paciente IS NOT NULL AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'pendiente' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'programada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'completada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'cancelada' AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_canceladas,
+        (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ${centroId} AND duracion_minutos > 0 AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as duracion_promedio_minutos,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}') as consultas_periodo,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND fecha >= '${fechaInicio}' AND fecha <= '${fechaFin}' AND id_paciente IS NOT NULL) as pacientes_unicos_periodo
+      `;
+    } else if (filters.desde) {
+      const fechaInicio = `${filters.desde} 00:00:00`;
+      
+      sql += `,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND fecha >= '${fechaInicio}') as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND id_paciente IS NOT NULL AND fecha >= '${fechaInicio}') as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'pendiente' AND fecha >= '${fechaInicio}') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'programada' AND fecha >= '${fechaInicio}') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'completada' AND fecha >= '${fechaInicio}') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'cancelada' AND fecha >= '${fechaInicio}') as consultas_canceladas,
+        (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ${centroId} AND duracion_minutos > 0 AND fecha >= '${fechaInicio}') as duracion_promedio_minutos,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND fecha >= '${fechaInicio}') as consultas_periodo,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND fecha >= '${fechaInicio}' AND id_paciente IS NOT NULL) as pacientes_unicos_periodo
+      `;
+    } else if (filters.hasta) {
+      const fechaFin = `${filters.hasta} 23:59:59`;
+      
+      sql += `,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND fecha <= '${fechaFin}') as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND id_paciente IS NOT NULL AND fecha <= '${fechaFin}') as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'pendiente' AND fecha <= '${fechaFin}') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'programada' AND fecha <= '${fechaFin}') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'completada' AND fecha <= '${fechaFin}') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'cancelada' AND fecha <= '${fechaFin}') as consultas_canceladas,
+        (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ${centroId} AND duracion_minutos > 0 AND fecha <= '${fechaFin}') as duracion_promedio_minutos,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND fecha <= '${fechaFin}') as consultas_periodo,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND fecha <= '${fechaFin}' AND id_paciente IS NOT NULL) as pacientes_unicos_periodo
+      `;
+    } else {
+      sql += `,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId}) as total_consultas,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND id_paciente IS NOT NULL) as pacientes_con_consultas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'pendiente') as consultas_pendientes,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'programada') as consultas_programadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'completada') as consultas_completadas,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId} AND estado = 'cancelada') as consultas_canceladas,
+        (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ${centroId} AND duracion_minutos > 0) as duracion_promedio_minutos,
+        (SELECT COUNT(*) FROM consultas WHERE id_centro = ${centroId}) as consultas_periodo,
+        (SELECT COUNT(DISTINCT id_paciente) FROM consultas WHERE id_centro = ${centroId} AND id_paciente IS NOT NULL) as pacientes_unicos_periodo
+      `;
+    }
+
+    const [result] = await targetPool.query(sql);
+    const stats = (result as any[])[0];
+
+    // Agregar información adicional
+    stats.centro_id = centroId;
+    stats.fecha_generacion = new Date().toISOString();
+
+    console.log(`✅ [STATS] Estadísticas calculadas para centro ${centroId}:`, stats);
+    console.log(`🔍 [STATS] Campos disponibles:`, Object.keys(stats));
+    return stats;
+    
+  } catch (error) {
+    console.error(`❌ [STATS] Error calculando estadísticas para centro ${centroId}:`, error);
+    throw error;
+  }
 }
 
 // =========================
@@ -372,6 +572,14 @@ export async function getResumenConsultas(req: Request, res: Response) {
       return res.json(allReports);
     }
 
+    // Si es admin y hay centroId, consultar solo esa base de datos específica
+    if (adminUser && centroId) {
+      console.log(`👑 [REPORTS] Admin detectado - consultando solo centro ${centroId}`);
+      const specificReports = await getResumenConsultasFromSpecificDatabase(centroId, { desde, hasta, q });
+      console.log('📊 [REPORTS] Reportes encontrados en centro específico:', specificReports.length);
+      return res.json(specificReports);
+    }
+
     const params: any[] = [];
     const onFilters: string[] = [];
 
@@ -469,6 +677,8 @@ export async function getResumenConsultas(req: Request, res: Response) {
 export async function getDetalleConsultasMedico(req: Request, res: Response) {
   try {
     const centroId = getCentroId(req);
+    console.log(`🔍 [DETALLE] Headers recibidos:`, req.headers);
+    console.log(`🔍 [DETALLE] CentroId extraído:`, centroId);
     if (!centroId) return res.status(400).json({ error: "X-Centro-Id requerido" });
 
     const medicoId = Number(req.params.medicoId);
@@ -477,6 +687,31 @@ export async function getDetalleConsultasMedico(req: Request, res: Response) {
     }
 
     const adminUser = isAdmin(req);
+
+    // Determinar qué base de datos usar según el centroId
+    let targetPool;
+    
+    if (adminUser) {
+      // Para ADMIN: usar la BD específica del centro seleccionado
+      switch (centroId) {
+        case 1:
+          targetPool = pools.central;
+          break;
+        case 2:
+          targetPool = pools.guayaquil;
+          break;
+        case 3:
+          targetPool = pools.cuenca;
+          break;
+        default:
+          return res.status(400).json({ error: `Centro ID ${centroId} no válido` });
+      }
+      console.log(`🔍 [DETALLE] Admin consultando detalles del médico ${medicoId} en centro ${centroId}`);
+    } else {
+      // Para MÉDICO: usar la BD del centro del médico
+      targetPool = req.dbPool;
+      console.log(`🔍 [DETALLE] Médico consultando sus propios detalles`);
+    }
 
     // Verificar que el médico tenga consultas en el centro (para admin) o pertenezca al centro (para médico)
     let checkQuery: string;
@@ -492,7 +727,7 @@ export async function getDetalleConsultasMedico(req: Request, res: Response) {
       checkParams = [medicoId, centroId];
     }
 
-    const [check] = await req.dbPool.query(checkQuery, checkParams);
+    const [check] = await targetPool.query(checkQuery, checkParams);
     // @ts-ignore
     if (!check[0]) {
       return res.status(400).json({ 
@@ -538,7 +773,8 @@ export async function getDetalleConsultasMedico(req: Request, res: Response) {
       ORDER BY c.fecha DESC, c.id DESC
     `;
 
-    const [rows] = await req.dbPool.query(sql, params);
+    const [rows] = await targetPool.query(sql, params);
+    console.log(`✅ [DETALLE] Encontradas ${(rows as any[]).length} consultas para médico ${medicoId} en centro ${centroId}`);
     res.json(rows);
   } catch (err) {
     console.error("[reports] getDetalleConsultasMedico:", err);
@@ -568,6 +804,14 @@ export async function getEstadisticasGenerales(req: Request, res: Response) {
       const allStats = await getAllEstadisticasFromAllDatabases({ desde, hasta });
       console.log('📊 [REPORTS] Estadísticas consolidadas:', allStats);
       return res.json(allStats);
+    }
+
+    // Si es admin y hay centroId, consultar solo esa base de datos específica
+    if (adminUser && centroId) {
+      console.log(`👑 [STATS] Admin detectado - consultando solo centro ${centroId}`);
+      const specificStats = await getEstadisticasFromSpecificDatabase(centroId, { desde, hasta });
+      console.log('📊 [STATS] Estadísticas calculadas para centro específico');
+      return res.json(specificStats);
     }
 
     // Construir SQL dinámicamente para evitar problemas con parámetros
@@ -617,6 +861,76 @@ export async function getEstadisticasGenerales(req: Request, res: Response) {
   }
 }
 
+// =========================
+// Función para obtener pacientes frecuentes de una base de datos específica (solo admin)
+// =========================
+async function getPacientesFrecuentesFromSpecificDatabase(centroId: number, filters: any = {}) {
+  try {
+    // Determinar qué base de datos usar según el centroId
+    let targetPool;
+    
+    switch (centroId) {
+      case 1:
+        targetPool = pools.central;
+        break;
+      case 2:
+        targetPool = pools.guayaquil;
+        break;
+      case 3:
+        targetPool = pools.cuenca;
+        break;
+      default:
+        throw new Error(`Centro ID ${centroId} no válido`);
+    }
+
+    console.log(`🔍 [PACIENTES] Consultando pacientes frecuentes para centro ${centroId}`);
+
+    const params: any[] = [centroId, centroId]; // centroId para consultas y pacientes
+    let fechaFilter = "";
+    
+    if (filters.desde && filters.hasta) {
+      fechaFilter = "AND c.fecha >= ? AND c.fecha <= ?";
+      params.push(`${filters.desde} 00:00:00`, `${filters.hasta} 23:59:59`);
+    }
+
+    const limiteNum = Math.min(Number(filters.limite) || 10, 50); // Máximo 50 resultados
+
+    const sql = `
+      SELECT
+        p.id,
+        p.nombres,
+        p.apellidos,
+        p.cedula,
+        p.telefono,
+        p.email,
+        p.fecha_nacimiento,
+        p.genero,
+        COUNT(c.id) as total_consultas,
+        MIN(c.fecha) as primera_consulta,
+        MAX(c.fecha) as ultima_consulta,
+        GROUP_CONCAT(DISTINCT m.nombres, ' ', m.apellidos SEPARATOR ', ') as medicos_atendidos
+      FROM pacientes p
+      INNER JOIN consultas c ON c.id_paciente = p.id AND c.id_centro = ?
+      INNER JOIN medicos m ON m.id = c.id_medico
+      WHERE p.id_centro = ?
+      ${fechaFilter}
+      GROUP BY p.id, p.nombres, p.apellidos, p.cedula, p.telefono, p.email, p.fecha_nacimiento, p.genero
+      HAVING total_consultas > 0
+      ORDER BY total_consultas DESC, p.apellidos ASC, p.nombres ASC
+      LIMIT ${limiteNum}
+    `;
+
+    const [pacientes] = await targetPool.query(sql, params);
+    
+    console.log(`✅ [PACIENTES] Encontrados ${(pacientes as any[]).length} pacientes frecuentes en centro ${centroId}`);
+    return pacientes as any[];
+    
+  } catch (error) {
+    console.error(`❌ [PACIENTES] Error consultando pacientes frecuentes para centro ${centroId}:`, error);
+    throw error;
+  }
+}
+
 /**
  * Reporte de pacientes más frecuentes del centro.
  * Muestra pacientes con más consultas en el período.
@@ -624,9 +938,22 @@ export async function getEstadisticasGenerales(req: Request, res: Response) {
 export async function getPacientesFrecuentes(req: Request, res: Response) {
   try {
     const centroId = getCentroId(req);
-    if (!centroId) return res.status(400).json({ error: "X-Centro-Id requerido" });
+    const adminUser = isAdmin(req);
+    
+    // Si no es admin, requerir X-Centro-Id
+    if (!adminUser && !centroId) {
+      return res.status(400).json({ error: "X-Centro-Id requerido" });
+    }
 
     const { desde, hasta, limite = '10' } = req.query as Record<string, string | undefined>;
+
+    // Si es admin y hay centroId, consultar solo esa base de datos específica
+    if (adminUser && centroId) {
+      console.log(`👑 [PACIENTES] Admin detectado - consultando solo centro ${centroId}`);
+      const specificPacientes = await getPacientesFrecuentesFromSpecificDatabase(centroId, { desde, hasta, limite });
+      console.log('📊 [PACIENTES] Pacientes frecuentes encontrados en centro específico:', specificPacientes.length);
+      return res.json(specificPacientes);
+    }
 
     const params: any[] = [centroId];
     let fechaFilter = "";

@@ -7,6 +7,7 @@ import { PacientesFrecuentesTable } from '../components/reports/PacientesFrecuen
 import type { ReporteFiltros, ConsultaResumen, ConsultaDetalle, EstadisticasGenerales, PacienteFrecuente } from '../api/reports';
 import { apiService } from '../api/reports';
 import { useCentro } from '../contexts/CentroContext';
+import { AdminApi } from '../api/adminApi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -39,7 +40,7 @@ export const ReportesPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [filtros, setFiltros] = useState<ReporteFiltros>({
-    centroId: centroId,
+    centroId: user?.rol === 'admin' ? 1 : centroId, // Admin empieza con centro 1, médico con su centro
     desde: undefined,
     hasta: undefined,
     q: undefined
@@ -53,6 +54,7 @@ export const ReportesPage: React.FC = () => {
   const [loadingPacientes, setLoadingPacientes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [centros, setCentros] = useState<Array<{id: number, nombre: string, ciudad: string}>>([]);
 
   // Determinar el elemento activo del sidebar y obtener colores
   const activeItem = getActiveSidebarItem(window.location.pathname);
@@ -61,8 +63,19 @@ export const ReportesPage: React.FC = () => {
   // Cargar datos iniciales
   useEffect(() => {
     console.log('ReportesPage cargada correctamente');
+    loadCentros();
     // generarReporte(); // Comentado para evitar error 404
   }, []);
+
+  const loadCentros = async () => {
+    try {
+      const centrosData = await AdminApi.getCentros();
+      setCentros(centrosData);
+      console.log('✅ Centros cargados:', centrosData);
+    } catch (error) {
+      console.error('❌ Error cargando centros:', error);
+    }
+  };
 
   const generarReporte = async () => {
     setLoading(true);
@@ -72,6 +85,9 @@ export const ReportesPage: React.FC = () => {
     setSuccess(null);
 
     try {
+      console.log(`🔍 [FRONTEND] Generando reporte con filtros:`, filtros);
+      console.log(`🔍 [FRONTEND] CentroId para estadísticas:`, filtros.centroId);
+      
       // Cargar datos en paralelo
       const [consultasResponse, estadisticasResponse, pacientesResponse] = await Promise.all([
         apiService.getResumenConsultas(filtros),
@@ -154,6 +170,7 @@ export const ReportesPage: React.FC = () => {
         try {
           setSuccess(`Obteniendo detalles del medico ${i + 1}/${data.length}: Dr. ${medico.nombres} ${medico.apellidos}...`);
           
+          console.log(`🔍 [FRONTEND] Obteniendo detalles para médico ${medico.medico_id} con centroId: ${filtros.centroId}`);
           const response = await apiService.getDetalleConsultasMedico(
             medico.medico_id, 
             { desde: filtros.desde, hasta: filtros.hasta, q: filtros.q },
@@ -245,9 +262,13 @@ export const ReportesPage: React.FC = () => {
       addText('Parametros del Reporte:', 20, yPosition + 5, { fontSize: 12, color: primaryColor });
       yPosition += 8;
 
+      const centroNombre = user?.rol === 'admin' && centros.length > 0 
+        ? centros.find(c => c.id === filtros.centroId)?.nombre || `ID ${filtros.centroId}`
+        : `ID ${filtros.centroId}`;
+
       const filtrosInfo = [
         `Periodo: ${filtros.desde && filtros.hasta ? `${filtros.desde} - ${filtros.hasta}` : filtros.desde ? `Desde ${filtros.desde}` : filtros.hasta ? `Hasta ${filtros.hasta}` : 'Todos los registros'}`,
-        `Centro Medico: ID ${filtros.centroId}`,
+        `Centro Medico: ${centroNombre}`,
         `Busqueda: ${filtros.q ? `"${filtros.q}"` : 'Sin filtro de texto'}`,
         `Total de registros: ${data.length} medico${data.length !== 1 ? 's' : ''}`
       ];
@@ -798,10 +819,17 @@ export const ReportesPage: React.FC = () => {
             
       <ReportFilters
         filtros={filtros}
-        onFiltrosChange={setFiltros}
+        onFiltrosChange={(newFiltros) => {
+          console.log(`🔍 [FRONTEND] Filtros actualizados:`, newFiltros);
+          console.log(`🔍 [FRONTEND] CentroId anterior:`, filtros.centroId);
+          console.log(`🔍 [FRONTEND] CentroId nuevo:`, newFiltros.centroId);
+          setFiltros(newFiltros);
+        }}
         onGenerarReporte={generarReporte}
         onExportarReporte={exportarReporte}
         loading={loading}
+        centros={centros}
+        isAdmin={user?.rol === 'admin'}
       />
           </div>
 
@@ -826,6 +854,7 @@ export const ReportesPage: React.FC = () => {
               data={data}
               loading={loading}
               onError={handleError}
+              centroId={filtros.centroId}
             />
           </div>
 
@@ -854,7 +883,12 @@ export const ReportesPage: React.FC = () => {
             </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-500">Centro médico:</p>
-                  <p className="text-sm text-gray-900">ID {filtros.centroId}</p>
+                  <p className="text-sm text-gray-900">
+                    {user?.rol === 'admin' && centros.length > 0 
+                      ? centros.find(c => c.id === filtros.centroId)?.nombre || `ID ${filtros.centroId}`
+                      : `ID ${filtros.centroId}`
+                    }
+                  </p>
             </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-500">Filtro de búsqueda:</p>

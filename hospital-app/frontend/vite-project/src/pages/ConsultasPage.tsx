@@ -205,7 +205,7 @@ export default function MedicalConsultationsPage() {
         setConsultas(consultasMedico)
         console.log('👨‍⚕️ Consultas filtradas para médico:', consultasMedico.length)
       } else {
-        setConsultas(data)
+      setConsultas(data)
         console.log('👑 Consultas cargadas para admin:', data.length)
       }
     } catch (error) {
@@ -411,7 +411,7 @@ export default function MedicalConsultationsPage() {
         setConsultas(prev => [nuevaConsulta, ...prev])
         
         setShowSuccessModal(true)
-        resetForm()
+      resetForm()
       }
     } catch (err) {
       setError("Error al guardar la consulta")
@@ -1344,8 +1344,8 @@ export default function MedicalConsultationsPage() {
                         });
                         return medicosParaMostrar.map((medico) => (
                           <option key={medico.id_frontend || `${medico.id}-${medico.centro_nombre}`} value={medico.id}>
-                              Dr. {medico.nombres} {medico.apellidos}
-                          </option>
+                            Dr. {medico.nombres} {medico.apellidos}
+                        </option>
                         ));
                       })()}
                     </select>

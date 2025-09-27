@@ -8,6 +8,8 @@ interface ReportFiltersProps {
   onGenerarReporte: () => void;
   onExportarReporte: () => void;
   loading?: boolean;
+  centros?: Array<{id: number, nombre: string, ciudad: string}>;
+  isAdmin?: boolean;
 }
 
 export const ReportFilters: React.FC<ReportFiltersProps> = ({
@@ -15,7 +17,9 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   onFiltrosChange,
   onGenerarReporte,
   onExportarReporte,
-  loading = false
+  loading = false,
+  centros = [],
+  isAdmin = false
 }) => {
   const handleInputChange = (field: keyof ReporteFiltros, value: string) => {
     onFiltrosChange({
@@ -87,13 +91,27 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
           <label className="block text-sm font-medium text-gray-700">
             Centro Médico
           </label>
-          <input
-            type="number"
-            placeholder="ID del Centro"
-            value={filtros.centroId || ''}
-            onChange={(e) => handleInputChange('centroId', (parseInt(e.target.value) || 1).toString())}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
-          />
+          {isAdmin && centros.length > 0 ? (
+            <select
+              value={filtros.centroId || 1}
+              onChange={(e) => handleInputChange('centroId', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+            >
+              {centros.map((centro) => (
+                <option key={centro.id} value={centro.id}>
+                  {centro.nombre} - {centro.ciudad} (ID: {centro.id})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="number"
+              placeholder="ID del Centro"
+              value={filtros.centroId || ''}
+              onChange={(e) => handleInputChange('centroId', (parseInt(e.target.value) || 1).toString())}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+            />
+          )}
         </div>
       </div>
 
@@ -156,7 +174,12 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             )}
             <div className="flex items-center gap-2">
               <span className="font-medium text-amber-700">Centro:</span>
-              <span className="text-amber-900">ID {filtros.centroId}</span>
+              <span className="text-amber-900">
+                {isAdmin && centros.length > 0 
+                  ? centros.find(c => c.id === filtros.centroId)?.nombre || `ID ${filtros.centroId}`
+                  : `ID ${filtros.centroId}`
+                }
+              </span>
             </div>
           </div>
         </div>

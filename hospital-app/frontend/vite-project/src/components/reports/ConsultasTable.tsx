@@ -8,12 +8,14 @@ interface ConsultasTableProps {
   data: ConsultaResumen[];
   loading?: boolean;
   onError?: (error: string) => void;
+  centroId?: number;
 }
 
 export const ConsultasTable: React.FC<ConsultasTableProps> = ({
   data,
   loading = false,
   onError,
+  centroId = 1,
 }) => {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [detalleData, setDetalleData] = useState<Record<number, ConsultaDetalle[]>>({});
@@ -42,7 +44,8 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
         setLoadingDetalle(prev => new Set(prev).add(medicoId));
         
         try {
-          const response = await apiService.getDetalleConsultasMedico(medicoId, { desde: undefined, hasta: undefined, q: undefined }, 1);
+          console.log(`🔍 [CONSULTAS_TABLE] Obteniendo detalles para médico ${medicoId} con centroId: ${centroId}`);
+          const response = await apiService.getDetalleConsultasMedico(medicoId, { desde: undefined, hasta: undefined, q: undefined }, centroId);
           
           if (response.error) {
             onError?.(response.error);
@@ -53,6 +56,7 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
             }));
           }
         } catch (error) {
+          console.error('Error al cargar el detalle de consultas:', error);
           onError?.('Error al cargar el detalle de consultas');
         } finally {
           setLoadingDetalle(prev => {
