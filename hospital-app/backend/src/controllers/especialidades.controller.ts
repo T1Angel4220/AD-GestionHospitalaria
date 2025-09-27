@@ -220,7 +220,7 @@ export async function create(req: Request, res: Response) {
         res.status(201).json(created);
       } else {
         // Crear en TODAS las bases de datos (comportamiento original)
-        console.log('👑 [CREATE] Admin creando especialidad en TODAS las bases de datos:', nombre.trim());
+      console.log('👑 [CREATE] Admin creando especialidad en TODAS las bases de datos:', nombre.trim());
       
       const results: any[] = [];
       let insertId: number | null = null;
@@ -283,7 +283,7 @@ export async function create(req: Request, res: Response) {
         details: results
       };
 
-        res.status(201).json(created);
+      res.status(201).json(created);
       }
     } else {
       // Médico: crear solo en su base de datos
@@ -443,73 +443,73 @@ export async function update(req: Request, res: Response) {
         res.json(updated);
       } else {
         // Actualización normal (solo nombre) en TODAS las bases de datos
-        console.log('👑 [UPDATE] Admin actualizando especialidad en TODAS las bases de datos, ID:', id);
-        
-        const results: any[] = [];
-        let totalAffectedRows = 0;
-        
-        // Actualizar en BD Central
-        try {
-          const [centralResult] = await pools.central.execute(`
-            UPDATE especialidades 
-            SET nombre = ?
-            WHERE id = ?
-          `, [nombre.trim(), id]);
-          results.push({ db: 'central', success: true, affectedRows: (centralResult as any).affectedRows });
-          totalAffectedRows += (centralResult as any).affectedRows;
-          console.log('✅ [UPDATE] Especialidad actualizada en BD Central, filas afectadas:', (centralResult as any).affectedRows);
-        } catch (error: any) {
-          console.error('❌ [UPDATE] Error en BD Central:', error);
-          results.push({ db: 'central', success: false, error: error.message });
-        }
-        
-        // Actualizar en BD Guayaquil
-        try {
-          const [guayaquilResult] = await pools.guayaquil.execute(`
-            UPDATE especialidades 
-            SET nombre = ?
-            WHERE id = ?
-          `, [nombre.trim(), id]);
-          results.push({ db: 'guayaquil', success: true, affectedRows: (guayaquilResult as any).affectedRows });
-          totalAffectedRows += (guayaquilResult as any).affectedRows;
-          console.log('✅ [UPDATE] Especialidad actualizada en BD Guayaquil, filas afectadas:', (guayaquilResult as any).affectedRows);
-        } catch (error: any) {
-          console.error('❌ [UPDATE] Error en BD Guayaquil:', error);
-          results.push({ db: 'guayaquil', success: false, error: error.message });
-        }
-        
-        // Actualizar en BD Cuenca
-        try {
-          const [cuencaResult] = await pools.cuenca.execute(`
-            UPDATE especialidades 
-            SET nombre = ?
-            WHERE id = ?
-          `, [nombre.trim(), id]);
-          results.push({ db: 'cuenca', success: true, affectedRows: (cuencaResult as any).affectedRows });
-          totalAffectedRows += (cuencaResult as any).affectedRows;
-          console.log('✅ [UPDATE] Especialidad actualizada en BD Cuenca, filas afectadas:', (cuencaResult as any).affectedRows);
-        } catch (error: any) {
-          console.error('❌ [UPDATE] Error en BD Cuenca:', error);
-          results.push({ db: 'cuenca', success: false, error: error.message });
-        }
-        
-        if (totalAffectedRows === 0) {
-          return res.status(404).json({ 
-            error: "Especialidad no encontrada en ninguna base de datos",
-            details: results
-          });
-        }
-        
-        const updated = {
-          id,
-          nombre: nombre.trim(),
-          updated_in_databases: results.filter(r => r.success).length,
-          total_databases: results.length,
-          total_affected_rows: totalAffectedRows,
+      console.log('👑 [UPDATE] Admin actualizando especialidad en TODAS las bases de datos, ID:', id);
+      
+      const results: any[] = [];
+      let totalAffectedRows = 0;
+      
+      // Actualizar en BD Central
+      try {
+        const [centralResult] = await pools.central.execute(`
+          UPDATE especialidades 
+          SET nombre = ?
+          WHERE id = ?
+        `, [nombre.trim(), id]);
+        results.push({ db: 'central', success: true, affectedRows: (centralResult as any).affectedRows });
+        totalAffectedRows += (centralResult as any).affectedRows;
+        console.log('✅ [UPDATE] Especialidad actualizada en BD Central, filas afectadas:', (centralResult as any).affectedRows);
+      } catch (error: any) {
+        console.error('❌ [UPDATE] Error en BD Central:', error);
+        results.push({ db: 'central', success: false, error: error.message });
+      }
+      
+      // Actualizar en BD Guayaquil
+      try {
+        const [guayaquilResult] = await pools.guayaquil.execute(`
+          UPDATE especialidades 
+          SET nombre = ?
+          WHERE id = ?
+        `, [nombre.trim(), id]);
+        results.push({ db: 'guayaquil', success: true, affectedRows: (guayaquilResult as any).affectedRows });
+        totalAffectedRows += (guayaquilResult as any).affectedRows;
+        console.log('✅ [UPDATE] Especialidad actualizada en BD Guayaquil, filas afectadas:', (guayaquilResult as any).affectedRows);
+      } catch (error: any) {
+        console.error('❌ [UPDATE] Error en BD Guayaquil:', error);
+        results.push({ db: 'guayaquil', success: false, error: error.message });
+      }
+      
+      // Actualizar en BD Cuenca
+      try {
+        const [cuencaResult] = await pools.cuenca.execute(`
+          UPDATE especialidades 
+          SET nombre = ?
+          WHERE id = ?
+        `, [nombre.trim(), id]);
+        results.push({ db: 'cuenca', success: true, affectedRows: (cuencaResult as any).affectedRows });
+        totalAffectedRows += (cuencaResult as any).affectedRows;
+        console.log('✅ [UPDATE] Especialidad actualizada en BD Cuenca, filas afectadas:', (cuencaResult as any).affectedRows);
+      } catch (error: any) {
+        console.error('❌ [UPDATE] Error en BD Cuenca:', error);
+        results.push({ db: 'cuenca', success: false, error: error.message });
+      }
+      
+      if (totalAffectedRows === 0) {
+        return res.status(404).json({ 
+          error: "Especialidad no encontrada en ninguna base de datos",
           details: results
-        };
+        });
+      }
+      
+      const updated = {
+        id,
+        nombre: nombre.trim(),
+        updated_in_databases: results.filter(r => r.success).length,
+        total_databases: results.length,
+        total_affected_rows: totalAffectedRows,
+        details: results
+      };
 
-        res.json(updated);
+      res.json(updated);
       }
     } else {
       // Médico: actualizar solo en su base de datos

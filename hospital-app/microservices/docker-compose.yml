@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - FRONTEND_URL=http://localhost:5173
+      - JWT_SECRET=your-super-secret-jwt-key-here
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - ADMIN_SERVICE_URL=http://admin-service:3002
+      - CONSULTAS_SERVICE_URL=http://consultas-service:3003
+      - USERS_SERVICE_URL=http://users-service:3004
+      - REPORTS_SERVICE_URL=http://reports-service:3005
+    depends_on:
+      - auth-service
+      - admin-service
+      - consultas-service
+      - users-service
+      - reports-service
+    networks:
+      - hospital-network
+
+  # Auth Service
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_HOST=mysql-central
+      - DB_USER=root
+      - DB_PASSWORD=password123
+      - DB_PORT=3306
+      - DB_NAME=hospital_central
+      - JWT_SECRET=your-super-secret-jwt-key-here
+    depends_on:
+      - mysql-central
+    networks:
+      - hospital-network
+
+  # Admin Service
+  admin-service:
+    build: ./admin-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DB_HOST=mysql-central
+      - DB_USER=root
+      - DB_PASSWORD=password123
+      - DB_PORT=3306
+      - JWT_SECRET=your-super-secret-jwt-key-here
+    depends_on:
+      - mysql-central
+      - mysql-guayaquil
+      - mysql-cuenca
+    networks:
+      - hospital-network
+
+  # Consultas Service
+  consultas-service:
+    build: ./consultas-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - DB_HOST=mysql-central
+      - DB_USER=root
+      - DB_PASSWORD=password123
+      - DB_PORT=3306
+      - JWT_SECRET=your-super-secret-jwt-key-here
+    depends_on:
+      - mysql-central
+      - mysql-guayaquil
+      - mysql-cuenca
+    networks:
+      - hospital-network
+
+  # Users Service
+  users-service:
+    build: ./users-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - PORT=3004
+      - DB_HOST=mysql-central
+      - DB_USER=root
+      - DB_PASSWORD=password123
+      - DB_PORT=3306
+      - JWT_SECRET=your-super-secret-jwt-key-here
+    depends_on:
+      - mysql-central
+      - mysql-guayaquil
+      - mysql-cuenca
+    networks:
+      - hospital-network
+
+  # Reports Service
+  reports-service:
+    build: ./reports-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - DB_HOST=mysql-central
+      - DB_USER=root
+      - DB_PASSWORD=password123
+      - DB_PORT=3306
+      - JWT_SECRET=your-super-secret-jwt-key-here
+    depends_on:
+      - mysql-central
+      - mysql-guayaquil
+      - mysql-cuenca
+    networks:
+      - hospital-network
+
+  # MySQL Central (Quito)
+  mysql-central:
+    image: mysql:8.0
+    container_name: mysql-central
+    environment:
+      - MYSQL_ROOT_PASSWORD=SuperPasswordCentral123!
+      - MYSQL_DATABASE=hospital_central
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_central_data:/var/lib/mysql
+      - ./sql/central.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hospital-network
+
+  # MySQL Guayaquil
+  mysql-guayaquil:
+    image: mysql:8.0
+    container_name: mysql-guayaquil
+    environment:
+      - MYSQL_ROOT_PASSWORD=SuperPasswordGye123!
+      - MYSQL_DATABASE=hospital_guayaquil
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_guayaquil_data:/var/lib/mysql
+      - ./sql/guayaquil.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hospital-network
+
+  # MySQL Cuenca
+  mysql-cuenca:
+    image: mysql:8.0
+    container_name: mysql-cuenca
+    environment:
+      - MYSQL_ROOT_PASSWORD=SuperPasswordCuenca123!
+      - MYSQL_DATABASE=hospital_cuenca
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_cuenca_data:/var/lib/mysql
+      - ./sql/cuenca.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hospital-network
+
+volumes:
+  mysql_central_data:
+  mysql_guayaquil_data:
+  mysql_cuenca_data:
+
+networks:
+  hospital-network:
+    driver: bridge

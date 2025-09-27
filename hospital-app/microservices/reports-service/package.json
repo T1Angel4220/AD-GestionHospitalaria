@@ -1,0 +1,28 @@
+{
+  "name": "hospital-reports-service",
+  "version": "1.0.0",
+  "description": "Microservicio de reportes para sistema hospitalario",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-validator": "^7.0.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.10.0",
+    "jsonwebtoken": "^9.0.2",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["reports", "microservice", "hospital", "analytics", "nodejs"],
+  "author": "Hospital System",
+  "license": "MIT"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "hospital-auth-service",
+  "version": "1.0.0",
+  "description": "Microservicio de autenticación para sistema hospitalario",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.6.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-validator": "^7.0.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["auth", "microservice", "hospital", "jwt", "nodejs"],
+  "author": "Hospital System",
+  "license": "MIT"
+}
