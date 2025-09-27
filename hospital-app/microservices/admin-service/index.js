@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const helmet = require('helmet');
 const winston = require('winston');
+const rateLimit = require('express-rate-limit');
+const { validateMedico, validateEspecialidad, validatePaciente, validateEmpleado } = require('./validation');
 require('dotenv').config();
 
 const app = express();
@@ -22,10 +24,22 @@ const logger = winston.createLogger({
   ]
 });
 
+// Configuración de rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // límite de 100 requests por IP
+  message: {
+    error: 'Demasiadas solicitudes desde esta IP, intenta de nuevo en 15 minutos'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(limiter);
 
 // Configuración de bases de datos
 const dbConfigs = {
@@ -158,6 +172,9 @@ app.get('/medicos', authenticateToken, requireAdmin, async (req, res) => {
       // Agregar información de origen
       const medicosConOrigen = rows.map(medico => ({
         ...medico,
+        especialidad: medico.especialidad_nombre,
+        centro_medico: medico.centro_nombre,
+        centro_ciudad: medico.ciudad,
         origen_bd: centro,
         id_frontend: `${centro}-${medico.id}`
       }));
@@ -195,20 +212,20 @@ app.get('/medicos/centro/:centroId', authenticateToken, requireAdmin, async (req
 });
 
 // Crear médico
-app.post('/medicos', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/medicos', authenticateToken, requireAdmin, validateMedico, async (req, res) => {
   try {
-    const { nombres, apellidos, cedula, telefono, email, id_especialidad, id_centro } = req.body;
+    const { nombres, apellidos, id_especialidad, id_centro } = req.body;
     
-    if (!nombres || !apellidos || !cedula || !id_especialidad || !id_centro) {
+    if (!nombres || !apellidos || !id_especialidad || !id_centro) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
     
     const pool = getPoolByCentro(id_centro);
     
     const [result] = await pool.execute(`
-      INSERT INTO medicos (nombres, apellidos, cedula, telefono, email, id_especialidad, id_centro)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [nombres, apellidos, cedula, telefono, email, id_especialidad, id_centro]);
+      INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro)
+      VALUES (?, ?, ?, ?)
+    `, [nombres, apellidos, id_especialidad, id_centro]);
     
     res.status(201).json({
       message: 'Médico creado exitosamente',
@@ -250,6 +267,178 @@ app.get('/pacientes', authenticateToken, requireAdmin, async (req, res) => {
     res.json(pacientes);
   } catch (error) {
     logger.error('Error obteniendo pacientes:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ===== RUTAS DE ESPECIALIDADES =====
+
+// Obtener todas las especialidades de todos los centros
+app.get('/especialidades', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const especialidades = [];
+    
+    // Obtener especialidades de cada centro
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query(`
+        SELECT e.*, cm.nombre as centro_nombre, cm.ciudad
+        FROM especialidades e
+        CROSS JOIN centros_medicos cm
+        ORDER BY e.id
+      `);
+      
+      // Agregar información de origen
+      const especialidadesConOrigen = rows.map(especialidad => ({
+        ...especialidad,
+        origen_bd: centro,
+        id_frontend: `${centro}-${especialidad.id}`
+      }));
+      
+      especialidades.push(...especialidadesConOrigen);
+    }
+    
+    res.json(especialidades);
+  } catch (error) {
+    logger.error('Error obteniendo especialidades:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear especialidad
+app.post('/especialidades', authenticateToken, requireAdmin, validateEspecialidad, async (req, res) => {
+  try {
+    const { nombre, id_centro } = req.body;
+    
+    if (!nombre || !id_centro) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+    
+    const pool = getPoolByCentro(id_centro);
+    
+    const [result] = await pool.execute(`
+      INSERT INTO especialidades (nombre)
+      VALUES (?)
+    `, [nombre]);
+    
+    res.status(201).json({
+      message: 'Especialidad creada exitosamente',
+      id: result.insertId,
+      id_centro
+    });
+  } catch (error) {
+    logger.error('Error creando especialidad:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ===== RUTAS DE PACIENTES =====
+
+// Obtener todos los pacientes de todos los centros
+app.get('/pacientes', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pacientes = [];
+    
+    // Obtener pacientes de cada centro
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query(`
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad
+        FROM pacientes p
+        LEFT JOIN centros_medicos cm ON cm.id = p.id_centro
+        ORDER BY p.id
+      `);
+      
+      // Agregar información de origen
+      const pacientesConOrigen = rows.map(paciente => ({
+        ...paciente,
+        origen_bd: centro,
+        id_frontend: `${centro}-${paciente.id}`
+      }));
+      
+      pacientes.push(...pacientesConOrigen);
+    }
+    
+    res.json(pacientes);
+  } catch (error) {
+    logger.error('Error obteniendo pacientes:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear paciente
+app.post('/pacientes', authenticateToken, requireAdmin, validatePaciente, async (req, res) => {
+  try {
+    const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro } = req.body;
+    
+    const pool = getPoolByCentro(id_centro);
+    
+    const [result] = await pool.execute(`
+      INSERT INTO pacientes (nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro]);
+    
+    res.status(201).json({
+      message: 'Paciente creado exitosamente',
+      id: result.insertId,
+      id_centro
+    });
+  } catch (error) {
+    logger.error('Error creando paciente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ===== RUTAS DE EMPLEADOS =====
+
+// Obtener todos los empleados de todos los centros
+app.get('/empleados', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const empleados = [];
+    
+    // Obtener empleados de cada centro
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query(`
+        SELECT e.*, cm.nombre as centro_nombre, cm.ciudad
+        FROM empleados e
+        LEFT JOIN centros_medicos cm ON cm.id = e.id_centro
+        ORDER BY e.id
+      `);
+      
+      // Agregar información de origen
+      const empleadosConOrigen = rows.map(empleado => ({
+        ...empleado,
+        origen_bd: centro,
+        id_frontend: `${centro}-${empleado.id}`
+      }));
+      
+      empleados.push(...empleadosConOrigen);
+    }
+    
+    res.json(empleados);
+  } catch (error) {
+    logger.error('Error obteniendo empleados:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear empleado
+app.post('/empleados', authenticateToken, requireAdmin, validateEmpleado, async (req, res) => {
+  try {
+    const { nombres, apellidos, cargo, id_centro } = req.body;
+    
+    const pool = getPoolByCentro(id_centro);
+    
+    const [result] = await pool.execute(`
+      INSERT INTO empleados (nombres, apellidos, cargo, id_centro)
+      VALUES (?, ?, ?, ?)
+    `, [nombres, apellidos, cargo, id_centro]);
+    
+    res.status(201).json({
+      message: 'Empleado creado exitosamente',
+      id: result.insertId,
+      id_centro
+    });
+  } catch (error) {
+    logger.error('Error creando empleado:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
