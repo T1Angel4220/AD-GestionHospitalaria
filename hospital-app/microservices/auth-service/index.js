@@ -273,6 +273,28 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Ruta de prueba de base de datos
+app.get('/test', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.execute('SELECT 1 as test, NOW() as current_datetime');
+    connection.release();
+    
+    res.json({ 
+      message: 'Conexión a BD exitosa',
+      test: rows[0].test,
+      current_datetime: rows[0].current_datetime,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Error de conexión',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
   logger.error('Error en auth service:', err);
