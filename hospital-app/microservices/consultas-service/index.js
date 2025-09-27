@@ -8,7 +8,7 @@ const winston = require('winston');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 3004;
 
 // Configuración de logging
 const logger = winston.createLogger({
@@ -29,18 +29,35 @@ app.use(cors());
 app.use(express.json());
 
 // Configuración de bases de datos
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  port: process.env.DB_PORT || 3306
+const dbConfigs = {
+  central: {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'admin_central',
+    password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
+    database: 'hospital_central',
+    port: process.env.DB_PORT || 3307
+  },
+  guayaquil: {
+    host: process.env.DB_GUAYAQUIL_HOST || 'localhost',
+    user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
+    password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
+    database: 'hospital_guayaquil',
+    port: process.env.DB_GUAYAQUIL_PORT || 3308
+  },
+  cuenca: {
+    host: process.env.DB_CUENCA_HOST || 'localhost',
+    user: process.env.DB_CUENCA_USER || 'admin_cuenca',
+    password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
+    database: 'hospital_cuenca',
+    port: process.env.DB_CUENCA_PORT || 3309
+  }
 };
 
 // Pool de conexiones para cada BD
 const pools = {
-  central: mysql.createPool({ ...dbConfig, database: 'hospital_central' }),
-  guayaquil: mysql.createPool({ ...dbConfig, database: 'hospital_guayaquil' }),
-  cuenca: mysql.createPool({ ...dbConfig, database: 'hospital_cuenca' })
+  central: mysql.createPool(dbConfigs.central),
+  guayaquil: mysql.createPool(dbConfigs.guayaquil),
+  cuenca: mysql.createPool(dbConfigs.cuenca)
 };
 
 // Middleware de autenticación
