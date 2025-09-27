@@ -1,15 +1,14 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
-const cors = require('cors');
-const helmet = require('helmet');
-const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const cors = require('cors');
+const helmet = require('helmet');
 const winston = require('winston');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3004;
+const PORT = process.env.PORT || 3005;
 
 // Configuración de logging
 const logger = winston.createLogger({
@@ -30,22 +29,49 @@ app.use(cors());
 app.use(express.json());
 
 // Configuración de bases de datos
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  port: process.env.DB_PORT || 3306
+const dbConfigs = {
+  central: {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'admin_central',
+    password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
+    database: process.env.DB_NAME || 'hospital_central',
+    port: process.env.DB_PORT || 3307
+  },
+  guayaquil: {
+    host: process.env.DB_GUAYAQUIL_HOST || 'localhost',
+    user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
+    password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
+    database: process.env.DB_GUAYAQUIL_NAME || 'hospital_guayaquil',
+    port: process.env.DB_GUAYAQUIL_PORT || 3308
+  },
+  cuenca: {
+    host: process.env.DB_CUENCA_HOST || 'localhost',
+    user: process.env.DB_CUENCA_USER || 'admin_cuenca',
+    password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
+    database: process.env.DB_CUENCA_NAME || 'hospital_cuenca',
+    port: process.env.DB_CUENCA_PORT || 3309
+  }
 };
 
-// Pool de conexiones para cada BD
+// Pools de conexiones
 const pools = {
-  central: mysql.createPool({ ...dbConfig, database: 'hospital_central' }),
-  guayaquil: mysql.createPool({ ...dbConfig, database: 'hospital_guayaquil' }),
-  cuenca: mysql.createPool({ ...dbConfig, database: 'hospital_cuenca' })
+  central: mysql.createPool(dbConfigs.central),
+  guayaquil: mysql.createPool(dbConfigs.guayaquil),
+  cuenca: mysql.createPool(dbConfigs.cuenca)
 };
+
+// Función para obtener el pool correcto según el centro
+function getPoolByCentro(centroId) {
+  switch (centroId) {
+    case 1: return pools.central;
+    case 2: return pools.guayaquil;
+    case 3: return pools.cuenca;
+    default: return pools.central;
+  }
+}
 
 // Middleware de autenticación
-const authenticateToken = (req, res, next) => {
+function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -53,136 +79,175 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Token de acceso requerido' });
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = decoded;
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+    req.user = user;
     next();
-  } catch (error) {
-    return res.status(403).json({ error: 'Token inválido' });
-  }
-};
+  });
+}
 
 // Middleware para verificar rol admin
-const requireAdmin = (req, res, next) => {
+function requireAdmin(req, res, next) {
   if (req.user.rol !== 'admin') {
     return res.status(403).json({ error: 'Acceso denegado. Se requiere rol de administrador' });
   }
   next();
-};
+}
 
-// Utilidades
-const getPoolByCentroId = (centroId) => {
-  switch (centroId) {
-    case 1: return pools.central;
-    case 2: return pools.guayaquil;
-    case 3: return pools.cuenca;
-    default: throw new Error(`Centro ID ${centroId} no válido`);
+// Ruta de salud
+app.get('/health', async (req, res) => {
+  try {
+    await pools.central.query('SELECT 1');
+    res.json({
+      status: 'OK',
+      service: 'users-service',
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'ERROR',
+      service: 'users-service',
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+      error: error.message
+    });
   }
-};
+});
 
-const addFrontendId = (items, origenBd) => {
-  return items.map((item, index) => ({
-    ...item,
-    origen_bd: origenBd,
-    id_unico: `${origenBd}-${item.id}`,
-    id_frontend: `${origenBd}-${item.id}`
-  }));
-};
+// Ruta de prueba de base de datos
+app.get('/test', async (req, res) => {
+  try {
+    const connection = await pools.central.getConnection();
+    const [rows] = await connection.execute('SELECT 1 as test, NOW() as current_datetime');
+    connection.release();
+    
+    res.json({ 
+      message: 'Conexión a BD exitosa',
+      test: rows[0].test,
+      current_datetime: rows[0].current_datetime,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Error de conexión',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
-// =========================
-// RUTAS DE USUARIOS
-// =========================
+// ===== RUTAS DE USUARIOS =====
 
-// Obtener todos los usuarios de todas las BDs
+// Obtener todos los usuarios de todos los centros
 app.get('/usuarios', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const allUsuarios = [];
-
-    for (const [dbName, pool] of Object.entries(pools)) {
-      try {
-        const [usuarios] = await pool.query(`
-          SELECT u.*, 
-                 m.nombres as medico_nombres, m.apellidos as medico_apellidos,
-                 cm.nombre as centro_nombre
-          FROM usuarios u
-          LEFT JOIN medicos m ON u.id_medico = m.id
-          LEFT JOIN centros_medicos cm ON u.id_centro = cm.id
-          ORDER BY u.id
-        `);
-        
-        const usuariosWithFrontendId = addFrontendId(usuarios, dbName);
-        allUsuarios.push(...usuariosWithFrontendId);
-      } catch (error) {
-        logger.error(`Error obteniendo usuarios de ${dbName}:`, error.message);
-      }
+    const usuarios = [];
+    
+    // Obtener usuarios de cada centro
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query(`
+        SELECT u.*, m.nombres as medico_nombres, m.apellidos as medico_apellidos, 
+               cm.nombre as centro_nombre, cm.ciudad
+        FROM usuarios u
+        LEFT JOIN medicos m ON m.id = u.id_medico
+        LEFT JOIN centros_medicos cm ON cm.id = u.id_centro
+        ORDER BY u.id
+      `);
+      
+      // Agregar información de origen
+      const usuariosConOrigen = rows.map(usuario => ({
+        ...usuario,
+        origen_bd: centro,
+        id_frontend: `${centro}-${usuario.id}`
+      }));
+      
+      usuarios.push(...usuariosConOrigen);
     }
-
-    res.json(allUsuarios);
+    
+    res.json(usuarios);
   } catch (error) {
     logger.error('Error obteniendo usuarios:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Crear usuario
-app.post('/usuarios', authenticateToken, requireAdmin, [
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('rol').isIn(['admin', 'medico']),
-  body('id_centro').isInt({ min: 1, max: 3 }),
-  body('id_medico').optional().isInt({ min: 1 })
-], async (req, res) => {
+// Obtener usuarios por centro específico
+app.get('/usuarios/centro/:centroId', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+    const centroId = parseInt(req.params.centroId);
+    const pool = getPoolByCentro(centroId);
+    
+    const [rows] = await pool.query(`
+      SELECT u.*, m.nombres as medico_nombres, m.apellidos as medico_apellidos, 
+             cm.nombre as centro_nombre, cm.ciudad
+      FROM usuarios u
+      LEFT JOIN medicos m ON m.id = u.id_medico
+      LEFT JOIN centros_medicos cm ON cm.id = u.id_centro
+      WHERE u.id_centro = ?
+      ORDER BY u.id
+    `, [centroId]);
+    
+    res.json(rows);
+  } catch (error) {
+    logger.error('Error obteniendo usuarios por centro:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear usuario
+app.post('/usuarios', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { email, password, rol, id_medico, id_centro } = req.body;
+    
+    if (!email || !password || !rol || !id_centro) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
-
-    const { email, password, rol, id_centro, id_medico } = req.body;
-
-    // Verificar si el usuario ya existe en cualquier BD
-    for (const [dbName, pool] of Object.entries(pools)) {
-      try {
-        const [existingUsers] = await pool.query(
-          'SELECT id FROM usuarios WHERE email = ?',
-          [email]
-        );
-
-        if (existingUsers.length > 0) {
-          return res.status(400).json({ error: 'El email ya está registrado' });
-        }
-      } catch (error) {
-        logger.error(`Error verificando usuario en BD ${dbName}:`, error.message);
-        continue;
+    
+    // Validar que el médico pertenezca al centro especificado
+    if (id_medico) {
+      const pool = getPoolByCentro(id_centro);
+      const [medicoRows] = await pool.query(
+        'SELECT id FROM medicos WHERE id = ? AND id_centro = ?',
+        [id_medico, id_centro]
+      );
+      
+      if (medicoRows.length === 0) {
+        return res.status(400).json({ 
+          error: 'El médico especificado no pertenece al centro seleccionado' 
+        });
       }
     }
-
-    // Hash de la contraseña
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
-    // Crear usuario en la BD correspondiente
-    const pool = getPoolByCentroId(id_centro);
-
-    const [result] = await pool.query(`
-      INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico)
+    
+    // Verificar que el email no exista en ninguna base de datos
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [existingUser] = await pool.query(
+        'SELECT id FROM usuarios WHERE email = ?',
+        [email]
+      );
+      
+      if (existingUser.length > 0) {
+        return res.status(400).json({ 
+          error: 'El email ya está registrado en el sistema' 
+        });
+      }
+    }
+    
+    const pool = getPoolByCentro(id_centro);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const [result] = await pool.execute(`
+      INSERT INTO usuarios (email, password_hash, rol, id_medico, id_centro)
       VALUES (?, ?, ?, ?, ?)
-    `, [email, passwordHash, rol, id_centro, id_medico]);
-
-    const newUsuario = {
+    `, [email, hashedPassword, rol, id_medico || null, id_centro]);
+    
+    res.status(201).json({
+      message: 'Usuario creado exitosamente',
       id: result.insertId,
-      email,
-      rol,
-      id_centro,
-      id_medico,
-      origen_bd: Object.keys(pools)[id_centro - 1],
-      id_unico: `${Object.keys(pools)[id_centro - 1]}-${result.insertId}`,
-      id_frontend: `${Object.keys(pools)[id_centro - 1]}-${result.insertId}`
-    };
-
-    logger.info(`Usuario ${email} creado en centro ${id_centro}`);
-    res.status(201).json(newUsuario);
-
+      id_centro
+    });
   } catch (error) {
     logger.error('Error creando usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -190,58 +255,58 @@ app.post('/usuarios', authenticateToken, requireAdmin, [
 });
 
 // Actualizar usuario
-app.put('/usuarios/:id', authenticateToken, requireAdmin, [
-  body('email').optional().isEmail().normalizeEmail(),
-  body('password').optional().isLength({ min: 6 })
-], async (req, res) => {
+app.put('/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+    const userId = parseInt(req.params.id);
+    const { email, password } = req.body;
+    
+    if (!email && !password) {
+      return res.status(400).json({ error: 'Debe proporcionar email o password para actualizar' });
     }
-
-    const { id } = req.params;
-    const { email, password, origen_bd } = req.body;
-
-    if (!origen_bd) {
-      return res.status(400).json({ error: 'origen_bd requerido' });
+    
+    // Buscar el usuario en todas las bases de datos
+    let targetPool = null;
+    let foundUser = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM usuarios WHERE id = ?', [userId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundUser = rows[0];
+        break;
+      }
     }
-
-    const pool = getPoolByCentroId(origen_bd === 'central' ? 1 : origen_bd === 'guayaquil' ? 2 : 3);
-
-    // Verificar que el usuario existe
-    const [existingUsuario] = await pool.query(
-      'SELECT * FROM usuarios WHERE id = ?',
-      [id]
-    );
-
-    if (existingUsuario.length === 0) {
+    
+    if (!foundUser) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-
-    const updateData = {};
-    if (email) updateData.email = email;
+    
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (email) {
+      updateFields.push('email = ?');
+      updateValues.push(email);
+    }
+    
     if (password) {
-      const saltRounds = 10;
-      updateData.password_hash = await bcrypt.hash(password, saltRounds);
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateFields.push('password_hash = ?');
+      updateValues.push(hashedPassword);
     }
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ error: 'No hay campos para actualizar' });
-    }
-
-    const [result] = await pool.query(
-      `UPDATE usuarios SET ${Object.keys(updateData).map(key => `${key} = ?`).join(', ')} WHERE id = ?`,
-      [...Object.values(updateData), id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    logger.info(`Usuario ${id} actualizado en ${origen_bd}`);
-    res.json({ message: 'Usuario actualizado exitosamente' });
-
+    
+    updateValues.push(userId);
+    
+    await targetPool.execute(`
+      UPDATE usuarios 
+      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, updateValues);
+    
+    res.json({
+      message: 'Usuario actualizado exitosamente',
+      id: userId
+    });
   } catch (error) {
     logger.error('Error actualizando usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -251,88 +316,56 @@ app.put('/usuarios/:id', authenticateToken, requireAdmin, [
 // Eliminar usuario
 app.delete('/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { origen_bd } = req.body;
-
-    if (!origen_bd) {
-      return res.status(400).json({ error: 'origen_bd requerido' });
+    const userId = parseInt(req.params.id);
+    
+    // Buscar el usuario en todas las bases de datos
+    let targetPool = null;
+    let foundUser = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM usuarios WHERE id = ?', [userId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundUser = rows[0];
+        break;
+      }
     }
-
-    const pool = getPoolByCentroId(origen_bd === 'central' ? 1 : origen_bd === 'guayaquil' ? 2 : 3);
-
-    // Verificar que el usuario existe
-    const [existingUsuario] = await pool.query(
-      'SELECT * FROM usuarios WHERE id = ?',
-      [id]
-    );
-
-    if (existingUsuario.length === 0) {
+    
+    if (!foundUser) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-
-    const [result] = await pool.query('DELETE FROM usuarios WHERE id = ?', [id]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    logger.info(`Usuario ${id} eliminado de ${origen_bd}`);
-    res.json({ message: 'Usuario eliminado exitosamente' });
-
+    
+    await targetPool.execute('DELETE FROM usuarios WHERE id = ?', [userId]);
+    
+    res.json({
+      message: 'Usuario eliminado exitosamente',
+      id: userId
+    });
   } catch (error) {
     logger.error('Error eliminando usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Obtener médicos por centro para asignación de usuarios
-app.get('/medicos-por-centro/:centroId', authenticateToken, requireAdmin, async (req, res) => {
+// Obtener médicos por centro (para asociar con usuarios)
+app.get('/medicos/centro/:centroId', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { centroId } = req.params;
-    const pool = getPoolByCentroId(parseInt(centroId));
-
-    const [medicos] = await pool.query(`
-      SELECT m.*, e.nombre as especialidad_nombre
+    const centroId = parseInt(req.params.centroId);
+    const pool = getPoolByCentro(centroId);
+    
+    const [rows] = await pool.query(`
+      SELECT m.id, m.nombres, m.apellidos, m.cedula, m.email,
+             e.nombre as especialidad_nombre
       FROM medicos m
-      LEFT JOIN especialidades e ON m.id_especialidad = e.id
+      LEFT JOIN especialidades e ON e.id = m.id_especialidad
       WHERE m.id_centro = ?
       ORDER BY m.apellidos, m.nombres
     `, [centroId]);
-
-    res.json(medicos);
+    
+    res.json(rows);
   } catch (error) {
     logger.error('Error obteniendo médicos por centro:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Ruta de salud
-app.get('/health', async (req, res) => {
-  try {
-    const healthChecks = {};
-    
-    for (const [dbName, pool] of Object.entries(pools)) {
-      try {
-        await pool.query('SELECT 1');
-        healthChecks[dbName] = 'connected';
-      } catch (error) {
-        healthChecks[dbName] = 'disconnected';
-      }
-    }
-
-    res.json({
-      status: 'OK',
-      service: 'users-service',
-      timestamp: new Date().toISOString(),
-      databases: healthChecks
-    });
-  } catch (error) {
-    res.status(503).json({
-      status: 'ERROR',
-      service: 'users-service',
-      timestamp: new Date().toISOString(),
-      error: error.message
-    });
   }
 });
 
@@ -347,8 +380,8 @@ app.use((err, req, res, next) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  logger.info(`👤 Users Service iniciado en puerto ${PORT}`);
-  logger.info(`🗄️ Bases de datos: ${Object.keys(pools).join(', ')}`);
+  logger.info(`👥 Users Service iniciado en puerto ${PORT}`);
+  logger.info(`🗄️ Bases de datos: Central, Guayaquil, Cuenca`);
 });
 
 module.exports = app;
