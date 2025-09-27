@@ -482,26 +482,26 @@ export async function update(req: Request, res: Response) {
       if (!usuarioEncontrado || !targetPool) {
         return res.status(404).json({ error: "Usuario no encontrado" });
       }
-      
-      // Construir objeto dinámico con los campos presentes
-      const updates: string[] = [];
-      const values: any[] = [];
 
-      if (email !== undefined) {
-        // Verificar si el email ya existe (excluyendo el usuario actual)
+    // Construir objeto dinámico con los campos presentes
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (email !== undefined) {
+      // Verificar si el email ya existe (excluyendo el usuario actual)
         const [existingUsers] = await targetPool.query("SELECT id FROM usuarios WHERE email = ? AND id != ?", [email.trim(), id]);
         if ((existingUsers as any[]).length > 0) {
-          return res.status(409).json({ error: "El email ya está registrado" });
-        }
-        updates.push("email = ?");
-        values.push(email.trim());
+        return res.status(409).json({ error: "El email ya está registrado" });
       }
+      updates.push("email = ?");
+      values.push(email.trim());
+    }
 
       if (password !== undefined && password.trim() !== '') {
-        const passwordHash = await bcrypt.hash(password.trim(), 10);
-        updates.push("password_hash = ?");
-        values.push(passwordHash);
-      }
+      const passwordHash = await bcrypt.hash(password.trim(), 10);
+      updates.push("password_hash = ?");
+      values.push(passwordHash);
+    }
 
       if (updates.length === 0) {
         return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
@@ -553,33 +553,33 @@ export async function update(req: Request, res: Response) {
         const passwordHash = await bcrypt.hash(password.trim(), 10);
         updates.push("password_hash = ?");
         values.push(passwordHash);
-      }
+    }
 
-      if (updates.length === 0) {
-        return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
-      }
+    if (updates.length === 0) {
+      return res.status(400).json({ error: "Debe enviar al menos un campo para actualizar" });
+    }
 
-      values.push(id);
+    values.push(id);
 
-      const [result] = await req.dbPool.execute(`
-        UPDATE usuarios 
-        SET ${updates.join(", ")}
-        WHERE id = ?
-      `, values);
+    const [result] = await req.dbPool.execute(`
+      UPDATE usuarios 
+      SET ${updates.join(", ")}
+      WHERE id = ?
+    `, values);
 
-      if ((result as any).affectedRows === 0) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
+    if ((result as any).affectedRows === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
 
-      const updated = {
-        id,
-        email: email?.trim(),
+    const updated = {
+      id,
+      email: email?.trim(),
         rol: rol,
-        id_centro: id_centro ? Number(id_centro) : undefined,
-        id_medico: id_medico !== undefined ? (id_medico ? Number(id_medico) : null) : undefined
-      };
+      id_centro: id_centro ? Number(id_centro) : undefined,
+      id_medico: id_medico !== undefined ? (id_medico ? Number(id_medico) : null) : undefined
+    };
 
-      res.json(updated);
+    res.json(updated);
     }
   } catch (err) {
     console.error("[ERROR] actualizando usuario:", err);
@@ -699,14 +699,14 @@ export async function remove(req: Request, res: Response) {
     } else {
       // Médico: eliminar solo de su base de datos
       console.log('👨‍⚕️ [DELETE] Médico eliminando usuario de su BD local, ID:', id);
-      
-      const [result] = await req.dbPool.execute("DELETE FROM usuarios WHERE id = ?", [id]);
 
-      if ((result as any).affectedRows === 0) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
+    const [result] = await req.dbPool.execute("DELETE FROM usuarios WHERE id = ?", [id]);
 
-      res.json({ message: "Usuario eliminado correctamente" });
+    if ((result as any).affectedRows === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json({ message: "Usuario eliminado correctamente" });
     }
   } catch (err) {
     console.error("[ERROR] eliminando usuario:", err);
