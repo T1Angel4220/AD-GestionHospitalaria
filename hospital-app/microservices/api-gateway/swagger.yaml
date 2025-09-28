@@ -1,0 +1,1520 @@
+openapi: 3.0.3
+info:
+  title: HospitalApp - Microservicios API
+  description: |
+    API REST para el sistema de gestión hospitalaria con arquitectura de microservicios.
+    
+    ## Arquitectura de Microservicios
+    - **API Gateway** (Puerto 3000): Punto de entrada único
+    - **Auth Service** (Puerto 3001): Autenticación y autorización
+    - **Admin Service** (Puerto 3002): Gestión administrativa completa
+    - **Medico Service** (Puerto 3003): Funcionalidades específicas para médicos
+    
+    ## Características Principales
+    - **Autenticación JWT** con roles diferenciados (admin/medico)
+    - **Bases de datos distribuidas** por centro médico
+    - **Proxy inteligente** a través del API Gateway
+    - **Rate limiting** y seguridad centralizada
+    
+    ## Roles de Usuario
+    - **admin**: Acceso completo al sistema
+    - **medico**: Acceso limitado a su centro médico
+    
+  version: 1.0.0
+  contact:
+    name: Equipo de Desarrollo
+    email: desarrollo@hospitalapp.com
+  license:
+    name: ISC
+    url: https://opensource.org/licenses/ISC
+
+servers:
+  - url: http://localhost:3000/api
+    description: API Gateway - Servidor de desarrollo
+  - url: https://api.hospitalapp.com/api
+    description: API Gateway - Servidor de producción
+
+tags:
+  - name: auth
+    description: Autenticación y gestión de usuarios
+  - name: admin
+    description: Gestión administrativa completa (solo administradores)
+  - name: medico
+    description: Funcionalidades específicas para médicos
+
+paths:
+  # ===========================================
+  # AUTENTICACIÓN (Auth Service)
+  # ===========================================
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Iniciar sesión
+      description: Autentica un usuario y devuelve un token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "admin@hospital.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        example: "admin@hospital.com"
+                      rol:
+                        type: string
+                        enum: [admin, medico]
+                        example: "admin"
+                      id_centro:
+                        type: integer
+                        example: 1
+                      id_medico:
+                        type: integer
+                        nullable: true
+                        example: 1
+                      database:
+                        type: string
+                        example: "central"
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados intentos de login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/register:
+    post:
+      tags:
+        - auth
+      summary: Registrar nuevo usuario
+      description: Crea un nuevo usuario en el sistema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - rol
+                - id_centro
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "medico@hospital.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+                rol:
+                  type: string
+                  enum: [admin, medico]
+                  example: "medico"
+                id_centro:
+                  type: integer
+                  example: 1
+                id_medico:
+                  type: integer
+                  nullable: true
+                  example: 1
+      responses:
+        '201':
+          description: Usuario registrado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Usuario registrado exitosamente"
+                  id:
+                    type: integer
+                    example: 1
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email ya registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify-token:
+    post:
+      tags:
+        - auth
+      summary: Verificar token JWT
+      description: Valida un token JWT y devuelve información del usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Token válido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    example: true
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        example: "admin@hospital.com"
+                      rol:
+                        type: string
+                        example: "admin"
+        '401':
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ===========================================
+  # ADMINISTRACIÓN (Admin Service)
+  # ===========================================
+  /admin/usuarios:
+    get:
+      tags:
+        - admin
+      summary: Listar usuarios
+      description: Obtiene la lista de todos los usuarios del sistema
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Usuario'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - admin
+      summary: Crear usuario
+      description: Crea un nuevo usuario en el sistema
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioCreate'
+      responses:
+        '201':
+          description: Usuario creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/medicos:
+    get:
+      tags:
+        - admin
+      summary: Listar médicos
+      description: Obtiene la lista de todos los médicos del sistema
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de médicos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Medico'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - admin
+      summary: Crear médico
+      description: Crea un nuevo médico en el sistema
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicoCreate'
+      responses:
+        '201':
+          description: Médico creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medico'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/pacientes:
+    get:
+      tags:
+        - admin
+      summary: Listar pacientes
+      description: Obtiene la lista de todos los pacientes del sistema
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de pacientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Paciente'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/centros:
+    get:
+      tags:
+        - admin
+      summary: Listar centros médicos
+      description: Obtiene la lista de todos los centros médicos
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de centros médicos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CentroMedico'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/especialidades:
+    get:
+      tags:
+        - admin
+      summary: Listar especialidades
+      description: Obtiene la lista de todas las especialidades médicas
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de especialidades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Especialidad'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/empleados:
+    get:
+      tags:
+        - admin
+      summary: Listar empleados
+      description: Obtiene la lista de todos los empleados del sistema
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de empleados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Empleado'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/reportes/estadisticas:
+    get:
+      tags:
+        - admin
+      summary: Estadísticas generales
+      description: Obtiene estadísticas generales del sistema
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: desde
+          in: query
+          description: Fecha de inicio (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: hasta
+          in: query
+          description: Fecha de fin (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+        - name: centro
+          in: query
+          description: ID del centro médico
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Estadísticas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticasGenerales'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de administrador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ===========================================
+  # MÉDICO (Medico Service)
+  # ===========================================
+  /medico/consultas:
+    get:
+      tags:
+        - medico
+      summary: Listar consultas del médico
+      description: Obtiene las consultas del médico autenticado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: estado
+          in: query
+          description: Filtrar por estado de consulta
+          schema:
+            type: string
+            enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        - name: fecha_desde
+          in: query
+          description: Fecha de inicio (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: fecha_hasta
+          in: query
+          description: Fecha de fin (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+      responses:
+        '200':
+          description: Lista de consultas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Consulta'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - medico
+      summary: Crear consulta
+      description: Crea una nueva consulta médica
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultaCreate'
+      responses:
+        '201':
+          description: Consulta creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consulta'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/consultas/{id}:
+    put:
+      tags:
+        - medico
+      summary: Actualizar consulta
+      description: Actualiza una consulta existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultaUpdate'
+      responses:
+        '200':
+          description: Consulta actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Consulta actualizada correctamente"
+        '404':
+          description: Consulta no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - medico
+      summary: Eliminar consulta
+      description: Elimina una consulta existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Consulta eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Consulta eliminada correctamente"
+        '404':
+          description: Consulta no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/pacientes:
+    get:
+      tags:
+        - medico
+      summary: Listar pacientes del centro
+      description: Obtiene los pacientes del centro médico del médico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Buscar por nombre, apellido o cédula
+          schema:
+            type: string
+          example: "Juan"
+      responses:
+        '200':
+          description: Lista de pacientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Paciente'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/perfil:
+    get:
+      tags:
+        - medico
+      summary: Obtener perfil del médico
+      description: Obtiene la información del perfil del médico autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil del médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medico'
+        '404':
+          description: Médico no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - medico
+      summary: Actualizar perfil del médico
+      description: Actualiza la información del perfil del médico
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombres
+                - apellidos
+              properties:
+                nombres:
+                  type: string
+                  example: "Juan"
+                apellidos:
+                  type: string
+                  example: "Pérez"
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Perfil actualizado correctamente"
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/calendario:
+    get:
+      tags:
+        - medico
+      summary: Obtener calendario de consultas
+      description: Obtiene las consultas del médico formateadas para calendario
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fecha_desde
+          in: query
+          description: Fecha de inicio (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: fecha_hasta
+          in: query
+          description: Fecha de fin (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+      responses:
+        '200':
+          description: Eventos del calendario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoCalendario'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/estadisticas:
+    get:
+      tags:
+        - medico
+      summary: Estadísticas del médico
+      description: Obtiene estadísticas personales del médico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fecha_desde
+          in: query
+          description: Fecha de inicio (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: fecha_hasta
+          in: query
+          description: Fecha de fin (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+      responses:
+        '200':
+          description: Estadísticas del médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticasMedico'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtenido del endpoint de login
+
+  schemas:
+    # ===========================================
+    # ESQUEMAS DE AUTENTICACIÓN
+    # ===========================================
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "admin@hospital.com"
+        rol:
+          type: string
+          enum: [admin, medico]
+          example: "admin"
+        id_centro:
+          type: integer
+          example: 1
+        id_medico:
+          type: integer
+          nullable: true
+          example: 1
+        centro_nombre:
+          type: string
+          example: "Hospital Central"
+        centro_ciudad:
+          type: string
+          example: "Quito"
+        medico_nombres:
+          type: string
+          nullable: true
+          example: "Juan"
+        medico_apellidos:
+          type: string
+          nullable: true
+          example: "Pérez"
+        origen_bd:
+          type: string
+          example: "central"
+        id_unico:
+          type: string
+          example: "central-1"
+        id_frontend:
+          type: string
+          example: "central-1"
+
+    UsuarioCreate:
+      type: object
+      required:
+        - email
+        - password
+        - rol
+        - id_centro
+      properties:
+        email:
+          type: string
+          format: email
+          example: "medico@hospital.com"
+        password:
+          type: string
+          format: password
+          example: "password123"
+        rol:
+          type: string
+          enum: [admin, medico]
+          example: "medico"
+        id_centro:
+          type: integer
+          example: 1
+        id_medico:
+          type: integer
+          nullable: true
+          example: 1
+
+    # ===========================================
+    # ESQUEMAS DE MÉDICOS
+    # ===========================================
+    Medico:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombres:
+          type: string
+          example: "Juan"
+        apellidos:
+          type: string
+          example: "Pérez"
+        id_especialidad:
+          type: integer
+          example: 1
+        id_centro:
+          type: integer
+          example: 1
+        especialidad_nombre:
+          type: string
+          example: "Cardiología"
+        centro_nombre:
+          type: string
+          example: "Hospital Central"
+        centro_ciudad:
+          type: string
+          example: "Quito"
+        origen_bd:
+          type: string
+          example: "central"
+        id_unico:
+          type: string
+          example: "central-1"
+        id_frontend:
+          type: string
+          example: "central-1"
+
+    MedicoCreate:
+      type: object
+      required:
+        - nombres
+        - apellidos
+        - id_especialidad
+        - id_centro
+      properties:
+        nombres:
+          type: string
+          example: "Juan"
+        apellidos:
+          type: string
+          example: "Pérez"
+        id_especialidad:
+          type: integer
+          example: 1
+        id_centro:
+          type: integer
+          example: 1
+
+    # ===========================================
+    # ESQUEMAS DE PACIENTES
+    # ===========================================
+    Paciente:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombres:
+          type: string
+          example: "María"
+        apellidos:
+          type: string
+          example: "González"
+        cedula:
+          type: string
+          example: "12345678"
+        telefono:
+          type: string
+          example: "3001234567"
+        email:
+          type: string
+          format: email
+          example: "maria@email.com"
+        fecha_nacimiento:
+          type: string
+          format: date
+          example: "1985-05-15"
+        genero:
+          type: string
+          enum: [M, F, Otro]
+          example: "F"
+        direccion:
+          type: string
+          nullable: true
+          example: "Calle 123 #45-67"
+        id_centro:
+          type: integer
+          example: 1
+        centro_nombre:
+          type: string
+          example: "Hospital Central"
+        centro_ciudad:
+          type: string
+          example: "Quito"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        origen_bd:
+          type: string
+          example: "central"
+        id_unico:
+          type: string
+          example: "central-1"
+        id_frontend:
+          type: string
+          example: "central-1"
+
+    # ===========================================
+    # ESQUEMAS DE CENTROS MÉDICOS
+    # ===========================================
+    CentroMedico:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Hospital Central"
+        direccion:
+          type: string
+          nullable: true
+          example: "Calle 123 #45-67"
+        ciudad:
+          type: string
+          example: "Quito"
+        telefono:
+          type: string
+          nullable: true
+          example: "02-1234567"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "info@hospital.com"
+        director:
+          type: string
+          nullable: true
+          example: "Dr. Juan Pérez"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    # ===========================================
+    # ESQUEMAS DE ESPECIALIDADES
+    # ===========================================
+    Especialidad:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Cardiología"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Especialidad médica que se encarga del corazón"
+        activa:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    # ===========================================
+    # ESQUEMAS DE EMPLEADOS
+    # ===========================================
+    Empleado:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombres:
+          type: string
+          example: "María"
+        apellidos:
+          type: string
+          example: "González"
+        cargo:
+          type: string
+          example: "Enfermera"
+        id_centro:
+          type: integer
+          example: 1
+        centro_nombre:
+          type: string
+          example: "Hospital Central"
+        centro_ciudad:
+          type: string
+          example: "Quito"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        origen_bd:
+          type: string
+          example: "central"
+        id_unico:
+          type: string
+          example: "central-1"
+        id_frontend:
+          type: string
+          example: "central-1"
+
+    # ===========================================
+    # ESQUEMAS DE CONSULTAS
+    # ===========================================
+    Consulta:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        id_medico:
+          type: integer
+          example: 1
+        paciente_nombre:
+          type: string
+          example: "María"
+        paciente_apellido:
+          type: string
+          example: "González"
+        id_paciente:
+          type: integer
+          nullable: true
+          example: 1
+        fecha:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        diagnostico:
+          type: string
+          nullable: true
+          example: "Migraña"
+        tratamiento:
+          type: string
+          nullable: true
+          example: "Analgésicos"
+        estado:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        duracion_minutos:
+          type: integer
+          nullable: true
+          example: 30
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        medico_nombres:
+          type: string
+          example: "Dr. Juan"
+        medico_apellidos:
+          type: string
+          example: "Pérez"
+        especialidad_nombre:
+          type: string
+          example: "Cardiología"
+        cedula:
+          type: string
+          nullable: true
+          example: "12345678"
+        telefono:
+          type: string
+          nullable: true
+          example: "3001234567"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "maria@email.com"
+        fecha_nacimiento:
+          type: string
+          format: date
+          nullable: true
+          example: "1985-05-15"
+        genero:
+          type: string
+          enum: [M, F, Otro]
+          nullable: true
+          example: "F"
+
+    ConsultaCreate:
+      type: object
+      required:
+        - paciente_nombre
+        - paciente_apellido
+        - fecha
+      properties:
+        paciente_nombre:
+          type: string
+          example: "María"
+        paciente_apellido:
+          type: string
+          example: "González"
+        id_paciente:
+          type: integer
+          nullable: true
+          example: 1
+        fecha:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        diagnostico:
+          type: string
+          nullable: true
+          example: "Migraña"
+        tratamiento:
+          type: string
+          nullable: true
+          example: "Analgésicos"
+        estado:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          default: "pendiente"
+          example: "pendiente"
+        duracion_minutos:
+          type: integer
+          nullable: true
+          example: 30
+
+    ConsultaUpdate:
+      type: object
+      properties:
+        paciente_nombre:
+          type: string
+          example: "María"
+        paciente_apellido:
+          type: string
+          example: "González"
+        id_paciente:
+          type: integer
+          nullable: true
+          example: 1
+        fecha:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        diagnostico:
+          type: string
+          nullable: true
+          example: "Migraña"
+        tratamiento:
+          type: string
+          nullable: true
+          example: "Analgésicos"
+        estado:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        duracion_minutos:
+          type: integer
+          nullable: true
+          example: 30
+
+    # ===========================================
+    # ESQUEMAS DE CALENDARIO
+    # ===========================================
+    EventoCalendario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "María González"
+        start:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        end:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        status:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        duracion:
+          type: integer
+          nullable: true
+          example: 30
+        paciente:
+          type: object
+          properties:
+            cedula:
+              type: string
+              nullable: true
+              example: "12345678"
+            telefono:
+              type: string
+              nullable: true
+              example: "3001234567"
+            email:
+              type: string
+              format: email
+              nullable: true
+              example: "maria@email.com"
+
+    # ===========================================
+    # ESQUEMAS DE ESTADÍSTICAS
+    # ===========================================
+    EstadisticasGenerales:
+      type: object
+      properties:
+        total_medicos:
+          type: integer
+          example: 25
+        total_pacientes:
+          type: integer
+          example: 150
+        total_empleados:
+          type: integer
+          example: 50
+        total_consultas:
+          type: integer
+          example: 300
+        consultas_por_centro:
+          type: array
+          items:
+            type: object
+            properties:
+              centro:
+                type: string
+                example: "Hospital Central"
+              total:
+                type: integer
+                example: 100
+
+    EstadisticasMedico:
+      type: object
+      properties:
+        generales:
+          type: object
+          properties:
+            total_consultas:
+              type: integer
+              example: 45
+            consultas_completadas:
+              type: integer
+              example: 40
+            consultas_pendientes:
+              type: integer
+              example: 3
+            consultas_programadas:
+              type: integer
+              example: 2
+            consultas_canceladas:
+              type: integer
+              example: 0
+            duracion_promedio:
+              type: number
+              format: float
+              example: 35.5
+            pacientes_unicos:
+              type: integer
+              example: 30
+        por_mes:
+          type: array
+          items:
+            type: object
+            properties:
+              mes:
+                type: string
+                example: "2024-01"
+              total:
+                type: integer
+                example: 15
+
+    # ===========================================
+    # ESQUEMAS DE ERROR
+    # ===========================================
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Mensaje de error descriptivo"
+        details:
+          type: string
+          nullable: true
+          example: "Detalles adicionales del error"

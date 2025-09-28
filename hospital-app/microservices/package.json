@@ -11,6 +11,7 @@
     "start:medico": "cd medico-service && npm start",
     "start:gateway": "cd api-gateway && npm start",
     "install:all": "npm install && cd auth-service && npm install && cd ../admin-service && npm install && cd ../medico-service && npm install && cd ../api-gateway && npm install",
+    "install:swagger": "node install-swagger-deps.js",
     "build:all": "cd auth-service && npm run build && cd ../admin-service && npm run build && cd ../medico-service && npm run build && cd ../api-gateway && npm run build",
     "migrate:frontend": "node migrate-frontend.js",
     "test": "echo \"Tests no implementados aún\" && exit 0"

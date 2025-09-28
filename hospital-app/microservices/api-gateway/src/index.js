@@ -6,6 +6,10 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
 const compression = require('compression');
 const winston = require('winston');
+const swaggerUi = require('swagger-ui-express');
+const yaml = require('js-yaml');
+const fs = require('fs');
+const path = require('path');
 
 // Configuración de logging
 const logger = winston.createLogger({
@@ -46,6 +50,32 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Configuración de Swagger
+const swaggerFilePath = path.join(__dirname, '../swagger.yaml');
+const swaggerFile = fs.readFileSync(swaggerFilePath, 'utf8');
+const swaggerSpec = yaml.load(swaggerFile);
+
+// Configuración de Swagger UI
+const swaggerUiOptions = {
+  customCss: `
+    .swagger-ui .topbar { display: none; }
+    .swagger-ui .info .title { color: #2563eb; }
+    .swagger-ui .scheme-container { background: #f8fafc; padding: 20px; border-radius: 8px; }
+    .swagger-ui .info { margin: 20px 0; }
+  `,
+  customSiteTitle: 'HospitalApp - Microservicios API',
+  customfavIcon: '/favicon.ico'
+};
+
+// Rutas de documentación Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+
+// Ruta para el JSON de la especificación
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Middleware de autenticación
 const authenticateToken = (req, res, next) => {
@@ -145,6 +175,8 @@ app.listen(PORT, () => {
   logger.info(`API Gateway ejecutándose en puerto ${PORT}`);
   console.log(`🚀 API Gateway ejecutándose en puerto ${PORT}`);
   console.log('Servicios disponibles:', Object.keys(services));
+  console.log('📚 Swagger UI disponible en: http://localhost:3000/api-docs');
+  console.log('📄 Especificación OpenAPI en: http://localhost:3000/api-docs.json');
 });
 
 module.exports = app;

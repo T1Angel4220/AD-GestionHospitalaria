@@ -1,0 +1,888 @@
+openapi: 3.0.3
+info:
+  title: Medico Service - Sistema Hospitalario
+  description: |
+    Servicio específico para médicos del sistema hospitalario.
+    
+    ## Funcionalidades
+    - **Gestión de consultas**: CRUD completo de consultas médicas
+    - **Gestión de pacientes**: Vista limitada de pacientes del centro
+    - **Perfil del médico**: Gestión del perfil personal
+    - **Calendario**: Vista de consultas en formato calendario
+    - **Estadísticas**: Estadísticas personales del médico
+    
+    ## Bases de Datos
+    - **Central** (Quito): Base de datos principal
+    - **Guayaquil**: Base de datos regional
+    - **Cuenca**: Base de datos regional
+    
+    El médico solo accede a la base de datos de su centro médico asignado.
+    
+    ## Permisos
+    - **Solo médicos**: Todas las rutas requieren rol 'medico'
+    - **Autenticación JWT**: Todas las rutas requieren token válido
+    - **Acceso limitado**: Solo puede ver/modificar sus propias consultas
+    
+  version: 1.0.0
+  contact:
+    name: Equipo de Desarrollo
+    email: desarrollo@hospitalapp.com
+  license:
+    name: ISC
+    url: https://opensource.org/licenses/ISC
+
+servers:
+  - url: http://localhost:3003
+    description: Medico Service - Servidor de desarrollo
+  - url: https://medico.hospitalapp.com
+    description: Medico Service - Servidor de producción
+
+tags:
+  - name: medico
+    description: Funcionalidades específicas para médicos
+
+paths:
+  /medico/consultas:
+    get:
+      tags:
+        - medico
+      summary: Listar consultas del médico
+      description: |
+        Obtiene las consultas del médico autenticado.
+        
+        **Filtros disponibles**:
+        - Por estado de consulta
+        - Por rango de fechas
+        - Ordenadas por fecha descendente
+        
+        **Información incluida**:
+        - Datos completos de la consulta
+        - Información del paciente
+        - Información del médico
+        - Especialidad
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: estado
+          in: query
+          description: Filtrar por estado de consulta
+          schema:
+            type: string
+            enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        - name: fecha_desde
+          in: query
+          description: Fecha de inicio (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: fecha_hasta
+          in: query
+          description: Fecha de fin (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+      responses:
+        '200':
+          description: Lista de consultas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Consulta'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - medico
+      summary: Crear consulta
+      description: |
+        Crea una nueva consulta médica.
+        
+        **Campos requeridos**:
+        - paciente_nombre
+        - paciente_apellido
+        - fecha
+        
+        **Campos opcionales**:
+        - id_paciente (si el paciente está registrado)
+        - motivo, diagnostico, tratamiento
+        - estado (por defecto: 'pendiente')
+        - duracion_minutos
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultaCreate'
+      responses:
+        '201':
+          description: Consulta creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consulta'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/consultas/{id}:
+    put:
+      tags:
+        - medico
+      summary: Actualizar consulta
+      description: |
+        Actualiza una consulta existente.
+        
+        **Restricciones**:
+        - Solo puede actualizar sus propias consultas
+        - Todos los campos son opcionales
+        - Se actualizan solo los campos enviados
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultaUpdate'
+      responses:
+        '200':
+          description: Consulta actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Consulta actualizada correctamente"
+        '404':
+          description: Consulta no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - medico
+      summary: Eliminar consulta
+      description: |
+        Elimina una consulta existente.
+        
+        **Restricciones**:
+        - Solo puede eliminar sus propias consultas
+        - Eliminación permanente de la base de datos
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Consulta eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Consulta eliminada correctamente"
+        '404':
+          description: Consulta no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/pacientes:
+    get:
+      tags:
+        - medico
+      summary: Listar pacientes del centro
+      description: |
+        Obtiene los pacientes del centro médico del médico.
+        
+        **Restricciones**:
+        - Solo pacientes del centro del médico
+        - Búsqueda por nombre, apellido o cédula
+        - Ordenados por nombre ascendente
+        
+        **Información incluida**:
+        - Datos completos del paciente
+        - Información del centro médico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Buscar por nombre, apellido o cédula
+          schema:
+            type: string
+          example: "Juan"
+      responses:
+        '200':
+          description: Lista de pacientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Paciente'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/perfil:
+    get:
+      tags:
+        - medico
+      summary: Obtener perfil del médico
+      description: |
+        Obtiene la información del perfil del médico autenticado.
+        
+        **Información incluida**:
+        - Datos personales del médico
+        - Especialidad
+        - Centro médico
+        - Información de contacto del centro
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil del médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medico'
+        '404':
+          description: Médico no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - medico
+      summary: Actualizar perfil del médico
+      description: |
+        Actualiza la información del perfil del médico.
+        
+        **Campos editables**:
+        - nombres
+        - apellidos
+        
+        **Restricciones**:
+        - Solo puede actualizar sus propios datos
+        - No puede cambiar especialidad o centro
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombres
+                - apellidos
+              properties:
+                nombres:
+                  type: string
+                  example: "Juan"
+                apellidos:
+                  type: string
+                  example: "Pérez"
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Perfil actualizado correctamente"
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/calendario:
+    get:
+      tags:
+        - medico
+      summary: Obtener calendario de consultas
+      description: |
+        Obtiene las consultas del médico formateadas para calendario.
+        
+        **Formato de respuesta**:
+        - Eventos compatibles con FullCalendar
+        - Información del paciente
+        - Estado de la consulta
+        - Motivo y duración
+        
+        **Filtros disponibles**:
+        - Por rango de fechas
+        - Ordenadas por fecha ascendente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fecha_desde
+          in: query
+          description: Fecha de inicio (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: fecha_hasta
+          in: query
+          description: Fecha de fin (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+      responses:
+        '200':
+          description: Eventos del calendario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoCalendario'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /medico/estadisticas:
+    get:
+      tags:
+        - medico
+      summary: Estadísticas del médico
+      description: |
+        Obtiene estadísticas personales del médico.
+        
+        **Estadísticas generales**:
+        - Total de consultas
+        - Consultas por estado
+        - Duración promedio
+        - Pacientes únicos
+        
+        **Estadísticas por mes**:
+        - Consultas agrupadas por mes
+        - Últimos 12 meses
+        - Ordenadas por mes descendente
+        
+        **Filtros disponibles**:
+        - Por rango de fechas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fecha_desde
+          in: query
+          description: Fecha de inicio (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: fecha_hasta
+          in: query
+          description: Fecha de fin (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+      responses:
+        '200':
+          description: Estadísticas del médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticasMedico'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Se requieren permisos de médico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /health:
+    get:
+      tags:
+        - medico
+      summary: Health check
+      description: Verifica el estado del servicio
+      responses:
+        '200':
+          description: Servicio funcionando correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "OK"
+                  service:
+                    type: string
+                    example: "medico-service"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtenido del endpoint de login
+
+  schemas:
+    # ===========================================
+    # ESQUEMAS DE MÉDICOS
+    # ===========================================
+    Medico:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombres:
+          type: string
+          example: "Juan"
+        apellidos:
+          type: string
+          example: "Pérez"
+        id_especialidad:
+          type: integer
+          example: 1
+        id_centro:
+          type: integer
+          example: 1
+        especialidad_nombre:
+          type: string
+          example: "Cardiología"
+        centro_nombre:
+          type: string
+          example: "Hospital Central"
+        centro_ciudad:
+          type: string
+          example: "Quito"
+        centro_direccion:
+          type: string
+          nullable: true
+          example: "Calle 123 #45-67"
+        centro_telefono:
+          type: string
+          nullable: true
+          example: "02-1234567"
+
+    # ===========================================
+    # ESQUEMAS DE PACIENTES
+    # ===========================================
+    Paciente:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombres:
+          type: string
+          example: "María"
+        apellidos:
+          type: string
+          example: "González"
+        cedula:
+          type: string
+          example: "12345678"
+        telefono:
+          type: string
+          example: "3001234567"
+        email:
+          type: string
+          format: email
+          example: "maria@email.com"
+        fecha_nacimiento:
+          type: string
+          format: date
+          example: "1985-05-15"
+        genero:
+          type: string
+          enum: [M, F, Otro]
+          example: "F"
+        direccion:
+          type: string
+          nullable: true
+          example: "Calle 123 #45-67"
+        id_centro:
+          type: integer
+          example: 1
+        centro_nombre:
+          type: string
+          example: "Hospital Central"
+        centro_ciudad:
+          type: string
+          example: "Quito"
+
+    # ===========================================
+    # ESQUEMAS DE CONSULTAS
+    # ===========================================
+    Consulta:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        id_medico:
+          type: integer
+          example: 1
+        paciente_nombre:
+          type: string
+          example: "María"
+        paciente_apellido:
+          type: string
+          example: "González"
+        id_paciente:
+          type: integer
+          nullable: true
+          example: 1
+        fecha:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        diagnostico:
+          type: string
+          nullable: true
+          example: "Migraña"
+        tratamiento:
+          type: string
+          nullable: true
+          example: "Analgésicos"
+        estado:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        duracion_minutos:
+          type: integer
+          nullable: true
+          example: 30
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        medico_nombres:
+          type: string
+          example: "Dr. Juan"
+        medico_apellidos:
+          type: string
+          example: "Pérez"
+        especialidad_nombre:
+          type: string
+          example: "Cardiología"
+        cedula:
+          type: string
+          nullable: true
+          example: "12345678"
+        telefono:
+          type: string
+          nullable: true
+          example: "3001234567"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "maria@email.com"
+        fecha_nacimiento:
+          type: string
+          format: date
+          nullable: true
+          example: "1985-05-15"
+        genero:
+          type: string
+          enum: [M, F, Otro]
+          nullable: true
+          example: "F"
+
+    ConsultaCreate:
+      type: object
+      required:
+        - paciente_nombre
+        - paciente_apellido
+        - fecha
+      properties:
+        paciente_nombre:
+          type: string
+          example: "María"
+        paciente_apellido:
+          type: string
+          example: "González"
+        id_paciente:
+          type: integer
+          nullable: true
+          example: 1
+        fecha:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        diagnostico:
+          type: string
+          nullable: true
+          example: "Migraña"
+        tratamiento:
+          type: string
+          nullable: true
+          example: "Analgésicos"
+        estado:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          default: "pendiente"
+          example: "pendiente"
+        duracion_minutos:
+          type: integer
+          nullable: true
+          example: 30
+
+    ConsultaUpdate:
+      type: object
+      properties:
+        paciente_nombre:
+          type: string
+          example: "María"
+        paciente_apellido:
+          type: string
+          example: "González"
+        id_paciente:
+          type: integer
+          nullable: true
+          example: 1
+        fecha:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        diagnostico:
+          type: string
+          nullable: true
+          example: "Migraña"
+        tratamiento:
+          type: string
+          nullable: true
+          example: "Analgésicos"
+        estado:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        duracion_minutos:
+          type: integer
+          nullable: true
+          example: 30
+
+    # ===========================================
+    # ESQUEMAS DE CALENDARIO
+    # ===========================================
+    EventoCalendario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "María González"
+        start:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        end:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        status:
+          type: string
+          enum: [pendiente, programada, completada, cancelada]
+          example: "completada"
+        motivo:
+          type: string
+          nullable: true
+          example: "Dolor de cabeza"
+        duracion:
+          type: integer
+          nullable: true
+          example: 30
+        paciente:
+          type: object
+          properties:
+            cedula:
+              type: string
+              nullable: true
+              example: "12345678"
+            telefono:
+              type: string
+              nullable: true
+              example: "3001234567"
+            email:
+              type: string
+              format: email
+              nullable: true
+              example: "maria@email.com"
+
+    # ===========================================
+    # ESQUEMAS DE ESTADÍSTICAS
+    # ===========================================
+    EstadisticasMedico:
+      type: object
+      properties:
+        generales:
+          type: object
+          properties:
+            total_consultas:
+              type: integer
+              example: 45
+            consultas_completadas:
+              type: integer
+              example: 40
+            consultas_pendientes:
+              type: integer
+              example: 3
+            consultas_programadas:
+              type: integer
+              example: 2
+            consultas_canceladas:
+              type: integer
+              example: 0
+            duracion_promedio:
+              type: number
+              format: float
+              example: 35.5
+            pacientes_unicos:
+              type: integer
+              example: 30
+        por_mes:
+          type: array
+          items:
+            type: object
+            properties:
+              mes:
+                type: string
+                example: "2024-01"
+              total:
+                type: integer
+                example: 15
+
+    # ===========================================
+    # ESQUEMAS DE ERROR
+    # ===========================================
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Mensaje de error descriptivo"
+        details:
+          type: string
+          nullable: true
+          example: "Detalles adicionales del error"

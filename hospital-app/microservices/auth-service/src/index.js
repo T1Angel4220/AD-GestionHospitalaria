@@ -7,6 +7,9 @@ const Joi = require('joi');
 const rateLimit = require('express-rate-limit');
 const winston = require('winston');
 const path = require('path');
+const swaggerUi = require('swagger-ui-express');
+const yaml = require('js-yaml');
+const fs = require('fs');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 // Configuración de logging
@@ -32,6 +35,32 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Configuración de Swagger
+const swaggerFilePath = path.join(__dirname, '../swagger.yaml');
+const swaggerFile = fs.readFileSync(swaggerFilePath, 'utf8');
+const swaggerSpec = yaml.load(swaggerFile);
+
+// Configuración de Swagger UI
+const swaggerUiOptions = {
+  customCss: `
+    .swagger-ui .topbar { display: none; }
+    .swagger-ui .info .title { color: #2563eb; }
+    .swagger-ui .scheme-container { background: #f8fafc; padding: 20px; border-radius: 8px; }
+    .swagger-ui .info { margin: 20px 0; }
+  `,
+  customSiteTitle: 'Auth Service - Sistema Hospitalario',
+  customfavIcon: '/favicon.ico'
+};
+
+// Rutas de documentación Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+
+// Ruta para el JSON de la especificación
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Rate limiting para login
 const loginLimiter = rateLimit({
@@ -254,6 +283,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   logger.info(`Auth Service ejecutándose en puerto ${PORT}`);
   console.log(`🔐 Auth Service ejecutándose en puerto ${PORT}`);
+  console.log('📚 Swagger UI disponible en: http://localhost:3001/api-docs');
+  console.log('📄 Especificación OpenAPI en: http://localhost:3001/api-docs.json');
 });
 
 module.exports = app;
