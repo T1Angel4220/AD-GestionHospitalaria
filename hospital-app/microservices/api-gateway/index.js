@@ -136,16 +136,42 @@ app.use('/api/admin/usuarios', authenticateToken, requireAdmin, createProxyMiddl
   }
 }));
 
-// Ruta específica para médicos que debe ir al users-service
+// Ruta específica para médicos que debe ir al admin-service
 app.use('/api/admin/medicos', authenticateToken, requireAdmin, createProxyMiddleware({
-  target: services.users,
+  target: services.admin,
   changeOrigin: true,
   pathRewrite: {
     '^/api/admin/medicos': '/medicos'
   },
   onError: (err, req, res) => {
-    logger.error('Error en Users Service (medicos):', err);
-    res.status(503).json({ error: 'Users Service no disponible' });
+    logger.error('Error en Admin Service (medicos):', err);
+    res.status(503).json({ error: 'Admin Service no disponible' });
+  }
+}));
+
+// Ruta específica para pacientes que debe ir al admin-service
+app.use('/api/admin/pacientes', authenticateToken, requireAdmin, createProxyMiddleware({
+  target: services.admin,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/admin/pacientes': '/pacientes'
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Admin Service (pacientes):', err);
+    res.status(503).json({ error: 'Admin Service no disponible' });
+  }
+}));
+
+// Ruta específica para pacientes sin /admin (para compatibilidad con frontend)
+app.use('/api/pacientes', authenticateToken, requireAdmin, createProxyMiddleware({
+  target: services.admin,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/pacientes': '/pacientes'
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Admin Service (pacientes):', err);
+    res.status(503).json({ error: 'Admin Service no disponible' });
   }
 }));
 
@@ -163,11 +189,38 @@ app.use('/api/admin', authenticateToken, requireAdmin, createProxyMiddleware({
 }));
 
 // ===== RUTAS DE CONSULTAS =====
+// Ruta específica para pacientes de consultas
+app.use('/api/consultas/pacientes', authenticateToken, createProxyMiddleware({
+  target: services.consultas,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/consultas/pacientes': '/pacientes-por-centro/1' // Centro por defecto para admin
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Consultas Service (pacientes):', err);
+    res.status(503).json({ error: 'Consultas Service no disponible' });
+  }
+}));
+
+// Ruta específica para médicos de consultas
+app.use('/api/consultas/medicos', authenticateToken, createProxyMiddleware({
+  target: services.consultas,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/consultas/medicos': '/medicos-por-centro/1' // Centro por defecto para admin
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Consultas Service (medicos):', err);
+    res.status(503).json({ error: 'Consultas Service no disponible' });
+  }
+}));
+
+// Otras rutas de consultas
 app.use('/api/consultas', authenticateToken, createProxyMiddleware({
   target: services.consultas,
   changeOrigin: true,
   pathRewrite: {
-    '^/api/consultas': ''
+    '^/api/consultas': '/consultas'
   },
   onError: (err, req, res) => {
     logger.error('Error en Consultas Service:', err);
@@ -189,6 +242,54 @@ app.use('/api/users', authenticateToken, requireAdmin, createProxyMiddleware({
 }));
 
 // ===== RUTAS DE REPORTES =====
+// Ruta específica para detalle de consultas por médico (DEBE IR ANTES que la ruta general)
+app.use('/api/reports/consultas/:medicoId/detalle', authenticateToken, createProxyMiddleware({
+  target: services.reports,
+  changeOrigin: true,
+  pathRewrite: (path, req) => {
+    const medicoId = req.params.medicoId;
+    return `/consultas/medico/${medicoId}`;
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Reports Service (detalle consultas):', err);
+    res.status(503).json({ error: 'Reports Service no disponible' });
+  }
+}));
+
+// Ruta específica para consultas de reportes
+app.use('/api/reports/consultas', authenticateToken, createProxyMiddleware({
+  target: services.reports,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/reports/consultas': '/consultas/resumen'
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Reports Service (consultas):', err);
+    res.status(503).json({ error: 'Reports Service no disponible' });
+  }
+}));
+
+// Ruta específica para pacientes frecuentes de reportes
+app.use('/api/reports/pacientes', authenticateToken, createProxyMiddleware({
+  target: services.reports,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/reports/pacientes': '/pacientes/frecuentes'
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    logger.info('Proxying request to Reports Service (pacientes):', {
+      method: req.method,
+      url: req.url,
+      originalUrl: req.originalUrl
+    });
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Reports Service (pacientes):', err);
+    res.status(503).json({ error: 'Reports Service no disponible' });
+  }
+}));
+
+// Otras rutas de reportes
 app.use('/api/reports', authenticateToken, createProxyMiddleware({
   target: services.reports,
   changeOrigin: true,

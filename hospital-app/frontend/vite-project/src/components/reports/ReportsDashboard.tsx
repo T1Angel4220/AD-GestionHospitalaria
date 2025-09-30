@@ -190,6 +190,7 @@ export const ReportsDashboard: React.FC = () => {
           data={data} 
           loading={loading} 
           onError={setError}
+          centroId={filtros.centroId}
         />
 
         {/* Información adicional */}

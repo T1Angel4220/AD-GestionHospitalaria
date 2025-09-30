@@ -82,6 +82,12 @@ const authenticateToken = (req, res, next) => {
 const getCentroFromUser = (req, res, next) => {
   const centroId = req.headers['x-centro-id'] || req.user?.id_centro;
   
+  // Si es admin, permitir acceso sin centro específico
+  if (req.user?.rol === 'admin') {
+    req.centroId = centroId ? parseInt(centroId) : null; // null significa todas las BDs
+    return next();
+  }
+  
   if (!centroId) {
     return res.status(400).json({ error: 'X-Centro-Id requerido' });
   }
@@ -92,6 +98,11 @@ const getCentroFromUser = (req, res, next) => {
 
 // Utilidades
 const getPoolByCentroId = (centroId) => {
+  if (centroId === null) {
+    // Para administradores, devolver el pool central por defecto
+    return pools.central;
+  }
+  
   switch (centroId) {
     case 1: return pools.central;
     case 2: return pools.guayaquil;
@@ -379,6 +390,39 @@ app.get('/pacientes-por-centro/:centroId', authenticateToken, async (req, res) =
     res.json(pacientes);
   } catch (error) {
     logger.error('Error obteniendo pacientes por centro:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener todos los pacientes (solo admin)
+app.get('/pacientes', authenticateToken, async (req, res) => {
+  try {
+    // Solo admin puede obtener pacientes de todos los centros
+    if (req.user.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden obtener todos los pacientes' });
+    }
+
+    const allPacientes = [];
+
+    for (const [dbName, dbPool] of Object.entries(pools)) {
+      try {
+        const [pacientes] = await dbPool.query(`
+          SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+          FROM pacientes p
+          LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+          ORDER BY p.apellidos, p.nombres
+        `);
+        
+        const pacientesWithFrontendId = addFrontendId(pacientes, dbName);
+        allPacientes.push(...pacientesWithFrontendId);
+      } catch (error) {
+        logger.error(`Error obteniendo pacientes de ${dbName}:`, error.message);
+      }
+    }
+
+    res.json(allPacientes);
+  } catch (error) {
+    logger.error('Error obteniendo todos los pacientes:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -23,11 +23,14 @@ export class ConsultasApi {
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
     
-    // Si es admin y se proporciona centroId, usar ese centro
-    // Si es admin sin centroId, usar centro por defecto
+    // Si es admin y se proporciona centroId específico, usar ese centro
+    // Si es admin sin centroId específico, NO enviar X-Centro-Id para ver todos los centros
     // Si es médico, usar su centro específico
     if (user?.rol === 'admin') {
-      headers['X-Centro-Id'] = (centroId || user?.id_centro || 1).toString();
+      if (centroId) {
+        headers['X-Centro-Id'] = centroId.toString();
+      }
+      // Si no se especifica centroId, no enviar el header para que el backend devuelva datos de todos los centros
     } else {
       headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
     }
