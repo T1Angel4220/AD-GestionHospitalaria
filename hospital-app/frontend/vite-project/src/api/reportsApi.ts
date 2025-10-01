@@ -1,7 +1,7 @@
 import type { EstadisticasGenerales, ConsultasPorMedico, ConsultasPorEspecialidad, ConsultasPorCentro } from '../types/reports';
 import { config } from '../config/env';
 
-const API_BASE_URL = config.apiUrl;
+const REPORTS_BASE_URL = config.reportsUrl; // Usar reports-service directamente
 
 export class ReportsApi {
   private static getAuthHeaders(): HeadersInit {
@@ -32,7 +32,7 @@ export class ReportsApi {
   }
 
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${REPORTS_BASE_URL}${endpoint}`;
     const headers = {
       ...this.getAuthHeaders(),
       ...options.headers,

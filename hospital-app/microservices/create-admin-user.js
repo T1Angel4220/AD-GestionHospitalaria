@@ -13,10 +13,10 @@ colors.setTheme({
 
 // URLs de los microservicios
 const services = {
-  auth: 'http://localhost:3002',
-  admin: 'http://localhost:3003',
-  users: 'http://localhost:3005',
-  reports: 'http://localhost:3006'
+  auth: 'http://localhost:3001',
+  admin: 'http://localhost:3002',
+  users: 'http://localhost:3004',
+  reports: 'http://localhost:3005'
 };
 
 // Función para hacer peticiones HTTP

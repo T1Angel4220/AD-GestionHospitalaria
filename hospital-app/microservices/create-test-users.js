@@ -1,5 +1,7 @@
 const axios = require('axios');
 const colors = require('colors');
+const bcrypt = require('bcryptjs');
+
 
 // Configuración de colores
 colors.setTheme({

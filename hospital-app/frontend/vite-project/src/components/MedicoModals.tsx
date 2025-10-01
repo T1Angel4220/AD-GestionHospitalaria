@@ -116,6 +116,46 @@ export function MedicoModals({
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Cédula
+                </label>
+                <input
+                  type="text"
+                  value={medicoForm.cedula}
+                  onChange={(e) => setMedicoForm({...medicoForm, cedula: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.cedula ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="1234567890"
+                  required
+                />
+                {errors.cedula && (
+                  <p className="mt-1 text-sm text-red-600">{errors.cedula}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Teléfono
+                </label>
+                <input
+                  type="tel"
+                  value={medicoForm.telefono || ''}
+                  onChange={(e) => setMedicoForm({...medicoForm, telefono: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="0987654321"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={medicoForm.email || ''}
+                  onChange={(e) => setMedicoForm({...medicoForm, email: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="medico@hospital.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Especialidad
                 </label>
                 <select
@@ -221,6 +261,43 @@ export function MedicoModals({
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                   placeholder="Pérez"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Cédula
+                </label>
+                <input
+                  type="text"
+                  value={medicoForm.cedula}
+                  onChange={(e) => setMedicoForm({...medicoForm, cedula: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  placeholder="1234567890"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Teléfono
+                </label>
+                <input
+                  type="tel"
+                  value={medicoForm.telefono || ''}
+                  onChange={(e) => setMedicoForm({...medicoForm, telefono: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  placeholder="0987654321"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={medicoForm.email || ''}
+                  onChange={(e) => setMedicoForm({...medicoForm, email: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  placeholder="medico@hospital.com"
                 />
               </div>
               <div>

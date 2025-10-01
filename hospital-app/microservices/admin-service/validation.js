@@ -1,12 +1,19 @@
 // Middleware de validación para Admin Service
 const validateMedico = (req, res, next) => {
-  const { nombres, apellidos, id_especialidad, id_centro } = req.body;
+  const { nombres, apellidos, cedula, id_especialidad, id_centro } = req.body;
   
   // Validar campos requeridos
-  if (!nombres || !apellidos || !id_especialidad || !id_centro) {
+  if (!nombres || !apellidos || !cedula || !id_especialidad || !id_centro) {
     return res.status(400).json({ 
       error: 'Faltan campos requeridos',
-      required: ['nombres', 'apellidos', 'id_especialidad', 'id_centro']
+      required: ['nombres', 'apellidos', 'cedula', 'id_especialidad', 'id_centro']
+    });
+  }
+  
+  // Validar formato de cédula (básico)
+  if (typeof cedula !== 'string' || cedula.trim().length < 5) {
+    return res.status(400).json({ 
+      error: 'Cédula inválida. Debe tener al menos 5 caracteres' 
     });
   }
   

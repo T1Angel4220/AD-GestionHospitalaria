@@ -107,6 +107,6 @@ export class PacientesApi {
   }
 
   static async getCentros(): Promise<CentroMedico[]> {
-    return this.request<CentroMedico[]>('/admin/centros');
+    return this.request<CentroMedico[]>('/centros');
   }
 }

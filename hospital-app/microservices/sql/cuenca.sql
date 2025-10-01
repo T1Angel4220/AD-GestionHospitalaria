@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS centros_medicos (
     ciudad VARCHAR(100) NOT NULL,
     direccion TEXT,
     telefono VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Insertar centro Cuenca
@@ -37,7 +38,8 @@ CREATE TABLE IF NOT EXISTS especialidades (
     nombre VARCHAR(255) NOT NULL,
     descripcion TEXT,
     id_centro INT NOT NULL DEFAULT 3,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Insertar especialidades básicas
@@ -57,6 +59,7 @@ CREATE TABLE IF NOT EXISTS medicos (
     id_especialidad INT NOT NULL,
     id_centro INT NOT NULL DEFAULT 3,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (id_especialidad) REFERENCES especialidades(id),
     FOREIGN KEY (id_centro) REFERENCES centros_medicos(id)
 );
@@ -77,6 +80,7 @@ CREATE TABLE IF NOT EXISTS pacientes (
     genero ENUM('M', 'F', 'O'),
     id_centro INT NOT NULL DEFAULT 3,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (id_centro) REFERENCES centros_medicos(id)
 );
 
@@ -107,3 +111,26 @@ CREATE TABLE IF NOT EXISTS consultas (
 -- Insertar consulta de prueba
 INSERT IGNORE INTO consultas (fecha, motivo, diagnostico, tratamiento, estado, id_medico, id_paciente, id_centro) 
 VALUES ('2024-01-17 09:00:00', 'Fiebre', 'Gripe', 'Reposo y medicamento', 'completada', 1, 1, 3);
+
+-- Crear tabla de empleados
+CREATE TABLE IF NOT EXISTS empleados (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombres VARCHAR(255) NOT NULL,
+    apellidos VARCHAR(255) NOT NULL,
+    cedula VARCHAR(20) UNIQUE NOT NULL,
+    telefono VARCHAR(20),
+    email VARCHAR(255),
+    cargo VARCHAR(100) NOT NULL,
+    salario DECIMAL(10,2),
+    fecha_ingreso DATE,
+    activo BOOLEAN DEFAULT TRUE,
+    id_centro INT NOT NULL DEFAULT 3,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id)
+);
+
+-- Insertar empleados de prueba
+INSERT IGNORE INTO empleados (nombres, apellidos, cedula, telefono, email, cargo, salario, fecha_ingreso, id_centro) VALUES
+('Roberto', 'Herrera', '6666666666', '0996666666', 'roberto.herrera@hospital.com', 'Farmacéutico', 1100.00, '2023-06-15', 3),
+('Sofia', 'Morales', '7777777777', '0997777777', 'sofia.morales@hospital.com', 'Técnico de Farmacia', 750.00, '2023-07-20', 3);

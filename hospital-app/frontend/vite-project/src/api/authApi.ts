@@ -1,7 +1,7 @@
 import type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, User, ChangePasswordRequest } from '../types/auth';
 import { config } from '../config/env';
 
-const API_BASE_URL = config.apiUrl;
+const AUTH_BASE_URL = config.authUrl; // Usar auth-service directamente
 
 // Interfaz para el token decodificado
 interface DecodedToken {
@@ -16,7 +16,7 @@ interface DecodedToken {
 
 export class AuthApi {
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${AUTH_BASE_URL}${endpoint}`;
     
     // Agregar token a las cabeceras si existe
     const token = this.getToken();
@@ -115,14 +115,14 @@ export class AuthApi {
   }
 
   static async login(credentials: LoginRequest): Promise<LoginResponse> {
-    return this.request<LoginResponse>('/auth/login', {
+    return this.request<LoginResponse>('/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
   }
 
   static async register(userData: RegisterRequest): Promise<RegisterResponse> {
-    return this.request<RegisterResponse>('/auth/register', {
+    return this.request<RegisterResponse>('/register', {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(userData),
@@ -130,14 +130,14 @@ export class AuthApi {
   }
 
   static async getProfile(): Promise<User> {
-    return this.request<User>('/auth/profile', {
+    return this.request<User>('/profile', {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });
   }
 
   static async changePassword(passwordData: ChangePasswordRequest): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/auth/change-password', {
+    return this.request<{ message: string }>('/change-password', {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(passwordData),
@@ -172,5 +172,48 @@ export class AuthApi {
   static hasAnyRole(roles: string[]): boolean {
     const user = this.getUser();
     return user ? roles.includes(user.rol) : false;
+  }
+
+  // =========================
+  // CRUD DE USUARIOS
+  // =========================
+  
+  static async getUsuarios(): Promise<User[]> {
+    return this.request<User[]>('/usuarios');
+  }
+
+  static async getUsuarioById(id: number): Promise<User> {
+    return this.request<User>(`/usuarios/${id}`);
+  }
+
+  static async createUsuario(usuario: {
+    email: string;
+    password: string;
+    rol: 'admin' | 'medico';
+    id_centro?: number;
+    id_medico?: number;
+  }): Promise<{ message: string; id: number }> {
+    return this.request<{ message: string; id: number }>('/usuarios', {
+      method: 'POST',
+      body: JSON.stringify(usuario),
+    });
+  }
+
+  static async updateUsuario(id: number, usuario: {
+    email?: string;
+    rol?: 'admin' | 'medico';
+    id_centro?: number;
+    id_medico?: number;
+  }): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/usuarios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(usuario),
+    });
+  }
+
+  static async deleteUsuario(id: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/usuarios/${id}`, {
+      method: 'DELETE',
+    });
   }
 }

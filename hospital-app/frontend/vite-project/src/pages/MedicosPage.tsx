@@ -39,6 +39,27 @@ export default function MedicosPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  // Función auxiliar para extraer mensajes de error del servidor
+  const extractServerErrorMessage = (err: unknown, defaultMessage: string): string => {
+    if (err instanceof Error && err.message.includes('message:')) {
+      try {
+        const messageMatch = err.message.match(/message:\s*(.+)$/)
+        if (messageMatch) {
+          const serverMessage = messageMatch[1]
+          // Intentar parsear el JSON del mensaje del servidor
+          const parsedMessage = JSON.parse(serverMessage)
+          if (parsedMessage.error) {
+            return parsedMessage.error
+          }
+        }
+      } catch (parseError) {
+        // Si no se puede parsear, usar el mensaje original
+        console.warn('No se pudo parsear el mensaje del servidor:', parseError)
+      }
+    }
+    return defaultMessage
+  }
   
   // Estados para modales
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -104,7 +125,7 @@ export default function MedicosPage() {
       setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
       loadData()
     } catch (err) {
-      setError("Error al crear el médico")
+      setError(extractServerErrorMessage(err, "Error al crear el médico"))
       console.error(err)
     }
   }
@@ -147,7 +168,7 @@ export default function MedicosPage() {
       // Recargar datos para mostrar los cambios
       await loadData()
     } catch (err) {
-      setError("Error al actualizar el médico")
+      setError(extractServerErrorMessage(err, "Error al actualizar el médico"))
       console.error(err)
     }
   }
@@ -169,7 +190,7 @@ export default function MedicosPage() {
       setSelectedMedico(null)
       loadData()
     } catch (err) {
-      setError("Error al eliminar el médico")
+      setError(extractServerErrorMessage(err, "Error al eliminar el médico"))
       console.error(err)
     }
   }

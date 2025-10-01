@@ -4,7 +4,7 @@ async function testLogin() {
   try {
     console.log('🔍 Probando login con usuario de prueba...');
     
-    const response = await axios.post('http://localhost:3002/login', {
+    const response = await axios.post('http://localhost:3001/login', {
       email: 'test@hospital.com',
       password: 'test123'
     }, {

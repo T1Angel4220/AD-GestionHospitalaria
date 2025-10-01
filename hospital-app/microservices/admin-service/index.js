@@ -27,13 +27,16 @@ const logger = winston.createLogger({
 // Configuración de rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // límite de 100 requests por IP
+  max: 1000, // límite de 1000 requests por IP (aumentado para desarrollo)
   message: {
     error: 'Demasiadas solicitudes desde esta IP, intenta de nuevo en 15 minutos'
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Configuración para Docker/proxy
+app.set('trust proxy', true);
 
 // Middleware
 app.use(helmet());
@@ -152,6 +155,7 @@ app.get('/test', async (req, res) => {
   }
 });
 
+
 // ===== RUTAS DE MÉDICOS =====
 
 // Obtener todos los médicos de todos los centros
@@ -214,18 +218,18 @@ app.get('/medicos/centro/:centroId', authenticateToken, requireAdmin, async (req
 // Crear médico
 app.post('/medicos', authenticateToken, requireAdmin, validateMedico, async (req, res) => {
   try {
-    const { nombres, apellidos, id_especialidad, id_centro } = req.body;
+    const { nombres, apellidos, cedula, telefono, email, id_especialidad, id_centro } = req.body;
     
-    if (!nombres || !apellidos || !id_especialidad || !id_centro) {
-      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    if (!nombres || !apellidos || !cedula || !id_especialidad || !id_centro) {
+      return res.status(400).json({ error: 'Faltan campos requeridos: nombres, apellidos, cedula, id_especialidad, id_centro' });
     }
     
     const pool = getPoolByCentro(id_centro);
     
     const [result] = await pool.execute(`
-      INSERT INTO medicos (nombres, apellidos, id_especialidad, id_centro)
-      VALUES (?, ?, ?, ?)
-    `, [nombres, apellidos, id_especialidad, id_centro]);
+      INSERT INTO medicos (nombres, apellidos, cedula, telefono, email, id_especialidad, id_centro)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [nombres, apellidos, cedula, telefono || null, email || null, id_especialidad, id_centro]);
     
     res.status(201).json({
       message: 'Médico creado exitosamente',
@@ -234,6 +238,117 @@ app.post('/medicos', authenticateToken, requireAdmin, validateMedico, async (req
     });
   } catch (error) {
     logger.error('Error creando médico:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Actualizar médico
+app.put('/medicos/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const medicoId = parseInt(req.params.id);
+    const { nombres, apellidos, id_especialidad } = req.body;
+    
+    if (!nombres && !apellidos && !id_especialidad) {
+      return res.status(400).json({ error: 'Debe proporcionar al menos un campo para actualizar' });
+    }
+    
+    // Buscar el médico en todas las bases de datos
+    let targetPool = null;
+    let foundMedico = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM medicos WHERE id = ?', [medicoId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundMedico = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundMedico) {
+      return res.status(404).json({ error: 'Médico no encontrado' });
+    }
+    
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (nombres) {
+      updateFields.push('nombres = ?');
+      updateValues.push(nombres);
+    }
+    if (apellidos) {
+      updateFields.push('apellidos = ?');
+      updateValues.push(apellidos);
+    }
+    if (id_especialidad) {
+      updateFields.push('id_especialidad = ?');
+      updateValues.push(id_especialidad);
+    }
+    
+    updateValues.push(medicoId);
+    
+    await targetPool.execute(`
+      UPDATE medicos 
+      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, updateValues);
+    
+    res.json({
+      message: 'Médico actualizado exitosamente',
+      id: medicoId
+    });
+  } catch (error) {
+    logger.error('Error actualizando médico:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar médico
+app.delete('/medicos/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const medicoId = parseInt(req.params.id);
+    
+    // Buscar el médico en todas las bases de datos
+    let targetPool = null;
+    let foundMedico = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM medicos WHERE id = ?', [medicoId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundMedico = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundMedico) {
+      return res.status(404).json({ error: 'Médico no encontrado' });
+    }
+    
+    // Verificar si el médico tiene consultas asociadas
+    const [consultas] = await targetPool.query('SELECT COUNT(*) as count FROM consultas WHERE id_medico = ?', [medicoId]);
+    if (consultas[0].count > 0) {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar el médico porque tiene consultas asociadas' 
+      });
+    }
+    
+    // Verificar si el médico tiene usuarios asociados
+    const [usuarios] = await targetPool.query('SELECT COUNT(*) as count FROM usuarios WHERE id_medico = ?', [medicoId]);
+    if (usuarios[0].count > 0) {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar el médico porque tiene usuarios asociados' 
+      });
+    }
+    
+    await targetPool.execute('DELETE FROM medicos WHERE id = ?', [medicoId]);
+    
+    res.json({
+      message: 'Médico eliminado exitosamente',
+      id: medicoId
+    });
+  } catch (error) {
+    logger.error('Error eliminando médico:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -331,6 +446,91 @@ app.post('/especialidades', authenticateToken, requireAdmin, validateEspecialida
   }
 });
 
+// Actualizar especialidad
+app.put('/especialidades/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const especialidadId = parseInt(req.params.id);
+    const { nombre } = req.body;
+    
+    if (!nombre) {
+      return res.status(400).json({ error: 'Debe proporcionar el nombre para actualizar' });
+    }
+    
+    // Buscar la especialidad en todas las bases de datos
+    let targetPool = null;
+    let foundEspecialidad = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM especialidades WHERE id = ?', [especialidadId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundEspecialidad = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundEspecialidad) {
+      return res.status(404).json({ error: 'Especialidad no encontrada' });
+    }
+    
+    await targetPool.execute(`
+      UPDATE especialidades 
+      SET nombre = ?
+      WHERE id = ?
+    `, [nombre, especialidadId]);
+    
+    res.json({
+      message: 'Especialidad actualizada exitosamente',
+      id: especialidadId
+    });
+  } catch (error) {
+    logger.error('Error actualizando especialidad:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar especialidad
+app.delete('/especialidades/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const especialidadId = parseInt(req.params.id);
+    
+    // Buscar la especialidad en todas las bases de datos
+    let targetPool = null;
+    let foundEspecialidad = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM especialidades WHERE id = ?', [especialidadId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundEspecialidad = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundEspecialidad) {
+      return res.status(404).json({ error: 'Especialidad no encontrada' });
+    }
+    
+    // Verificar si la especialidad tiene médicos asociados
+    const [medicos] = await targetPool.query('SELECT COUNT(*) as count FROM medicos WHERE id_especialidad = ?', [especialidadId]);
+    if (medicos[0].count > 0) {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar la especialidad porque tiene médicos asociados' 
+      });
+    }
+    
+    await targetPool.execute('DELETE FROM especialidades WHERE id = ?', [especialidadId]);
+    
+    res.json({
+      message: 'Especialidad eliminada exitosamente',
+      id: especialidadId
+    });
+  } catch (error) {
+    logger.error('Error eliminando especialidad:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // ===== RUTAS DE PACIENTES =====
 
 // Obtener todos los pacientes de todos los centros
@@ -383,6 +583,121 @@ app.post('/pacientes', authenticateToken, requireAdmin, validatePaciente, async 
     });
   } catch (error) {
     logger.error('Error creando paciente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Actualizar paciente
+app.put('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pacienteId = parseInt(req.params.id);
+    const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro } = req.body;
+    
+    if (!nombres && !apellidos && !cedula && !telefono && !email && !fecha_nacimiento && !genero && !direccion) {
+      return res.status(400).json({ error: 'Debe proporcionar al menos un campo para actualizar' });
+    }
+    
+    // Buscar el paciente en todas las bases de datos
+    let targetPool = null;
+    let foundPaciente = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM pacientes WHERE id = ?', [pacienteId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundPaciente = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundPaciente) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
+    
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (nombres) {
+      updateFields.push('nombres = ?');
+      updateValues.push(nombres);
+    }
+    if (apellidos) {
+      updateFields.push('apellidos = ?');
+      updateValues.push(apellidos);
+    }
+    if (cedula) {
+      updateFields.push('cedula = ?');
+      updateValues.push(cedula);
+    }
+    if (telefono) {
+      updateFields.push('telefono = ?');
+      updateValues.push(telefono);
+    }
+    if (email) {
+      updateFields.push('email = ?');
+      updateValues.push(email);
+    }
+    if (fecha_nacimiento) {
+      updateFields.push('fecha_nacimiento = ?');
+      updateValues.push(fecha_nacimiento);
+    }
+    if (genero) {
+      updateFields.push('genero = ?');
+      updateValues.push(genero);
+    }
+    if (direccion) {
+      updateFields.push('direccion = ?');
+      updateValues.push(direccion);
+    }
+    
+    updateValues.push(pacienteId);
+    
+    await targetPool.execute(`
+      UPDATE pacientes 
+      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, updateValues);
+    
+    res.json({
+      message: 'Paciente actualizado exitosamente',
+      id: pacienteId
+    });
+  } catch (error) {
+    logger.error('Error actualizando paciente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar paciente
+app.delete('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pacienteId = parseInt(req.params.id);
+    
+    // Buscar el paciente en todas las bases de datos
+    let targetPool = null;
+    let foundPaciente = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM pacientes WHERE id = ?', [pacienteId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundPaciente = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundPaciente) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
+    
+    await targetPool.execute('DELETE FROM pacientes WHERE id = ?', [pacienteId]);
+    
+    res.json({
+      message: 'Paciente eliminado exitosamente',
+      id: pacienteId
+    });
+  } catch (error) {
+    logger.error('Error eliminando paciente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -443,6 +758,101 @@ app.post('/empleados', authenticateToken, requireAdmin, validateEmpleado, async 
   }
 });
 
+// Actualizar empleado
+app.put('/empleados/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const empleadoId = parseInt(req.params.id);
+    const { nombres, apellidos, cargo } = req.body;
+    
+    if (!nombres && !apellidos && !cargo) {
+      return res.status(400).json({ error: 'Debe proporcionar al menos un campo para actualizar' });
+    }
+    
+    // Buscar el empleado en todas las bases de datos
+    let targetPool = null;
+    let foundEmpleado = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM empleados WHERE id = ?', [empleadoId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundEmpleado = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundEmpleado) {
+      return res.status(404).json({ error: 'Empleado no encontrado' });
+    }
+    
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (nombres) {
+      updateFields.push('nombres = ?');
+      updateValues.push(nombres);
+    }
+    if (apellidos) {
+      updateFields.push('apellidos = ?');
+      updateValues.push(apellidos);
+    }
+    if (cargo) {
+      updateFields.push('cargo = ?');
+      updateValues.push(cargo);
+    }
+    
+    updateValues.push(empleadoId);
+    
+    await targetPool.execute(`
+      UPDATE empleados 
+      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, updateValues);
+    
+    res.json({
+      message: 'Empleado actualizado exitosamente',
+      id: empleadoId
+    });
+  } catch (error) {
+    logger.error('Error actualizando empleado:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar empleado
+app.delete('/empleados/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const empleadoId = parseInt(req.params.id);
+    
+    // Buscar el empleado en todas las bases de datos
+    let targetPool = null;
+    let foundEmpleado = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM empleados WHERE id = ?', [empleadoId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundEmpleado = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundEmpleado) {
+      return res.status(404).json({ error: 'Empleado no encontrado' });
+    }
+    
+    await targetPool.execute('DELETE FROM empleados WHERE id = ?', [empleadoId]);
+    
+    res.json({
+      message: 'Empleado eliminado exitosamente',
+      id: empleadoId
+    });
+  } catch (error) {
+    logger.error('Error eliminando empleado:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // ===== RUTAS DE CENTROS MÉDICOS =====
 
 // Obtener todos los centros médicos
@@ -459,6 +869,131 @@ app.get('/centros', authenticateToken, requireAdmin, async (req, res) => {
     res.json(centros);
   } catch (error) {
     logger.error('Error obteniendo centros:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint de prueba para centros
+app.put('/centros/test', (req, res) => {
+  res.json({ message: 'Endpoint PUT centros funcionando' });
+});
+
+// Actualizar centro médico
+app.put('/centros/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const centroId = parseInt(req.params.id);
+    const { nombre, ciudad, direccion, telefono } = req.body;
+    
+    if (!nombre || !ciudad) {
+      return res.status(400).json({ error: 'Faltan campos requeridos: nombre, ciudad' });
+    }
+    
+    // Buscar el centro en todas las bases de datos
+    let targetPool = null;
+    let foundCentro = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM centros_medicos WHERE id = ?', [centroId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundCentro = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundCentro) {
+      return res.status(404).json({ error: 'Centro médico no encontrado' });
+    }
+    
+    await targetPool.execute(`
+      UPDATE centros_medicos 
+      SET nombre = ?, ciudad = ?, direccion = ?, telefono = ?
+      WHERE id = ?
+    `, [nombre, ciudad, direccion || null, telefono || null, centroId]);
+    
+    res.json({
+      message: 'Centro médico actualizado exitosamente',
+      id: centroId
+    });
+  } catch (error) {
+    logger.error('Error actualizando centro:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear centro médico
+app.post('/centros', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { nombre, ciudad, direccion, telefono } = req.body;
+    
+    if (!nombre || !ciudad) {
+      return res.status(400).json({ error: 'Faltan campos requeridos: nombre, ciudad' });
+    }
+    
+    // Usar la base de datos central para crear centros
+    const pool = pools.central;
+    
+    const [result] = await pool.execute(`
+      INSERT INTO centros_medicos (nombre, ciudad, direccion, telefono)
+      VALUES (?, ?, ?, ?)
+    `, [nombre, ciudad, direccion || null, telefono || null]);
+    
+    res.status(201).json({
+      message: 'Centro médico creado exitosamente',
+      id: result.insertId
+    });
+  } catch (error) {
+    logger.error('Error creando centro:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar centro médico
+app.delete('/centros/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const centroId = parseInt(req.params.id);
+    
+    // Buscar el centro en todas las bases de datos
+    let targetPool = null;
+    let foundCentro = null;
+    
+    for (const [centro, pool] of Object.entries(pools)) {
+      const [rows] = await pool.query('SELECT * FROM centros_medicos WHERE id = ?', [centroId]);
+      if (rows.length > 0) {
+        targetPool = pool;
+        foundCentro = rows[0];
+        break;
+      }
+    }
+    
+    if (!foundCentro) {
+      return res.status(404).json({ error: 'Centro médico no encontrado' });
+    }
+    
+    // Verificar si el centro tiene médicos asociados
+    const [medicos] = await targetPool.query('SELECT COUNT(*) as count FROM medicos WHERE id_centro = ?', [centroId]);
+    if (medicos[0].count > 0) {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar el centro porque tiene médicos asociados' 
+      });
+    }
+    
+    // Verificar si el centro tiene empleados asociados
+    const [empleados] = await targetPool.query('SELECT COUNT(*) as count FROM empleados WHERE id_centro = ?', [centroId]);
+    if (empleados[0].count > 0) {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar el centro porque tiene empleados asociados' 
+      });
+    }
+    
+    await targetPool.execute('DELETE FROM centros_medicos WHERE id = ?', [centroId]);
+    
+    res.json({
+      message: 'Centro médico eliminado exitosamente',
+      id: centroId
+    });
+  } catch (error) {
+    logger.error('Error eliminando centro:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -22,13 +22,17 @@ const logger = winston.createLogger({
   ]
 });
 
+// Configuración para Docker/proxy
+app.set('trust proxy', true);
+
 // Middleware
 app.use(helmet());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Configuración de microservicios
 const services = {
@@ -135,6 +139,20 @@ app.use('/api/admin/usuarios', authenticateToken, requireAdmin, createProxyMiddl
     res.status(503).json({ error: 'Users Service no disponible' });
   }
 }));
+
+// Ruta específica para especialidades que debe ir al admin-service
+app.use('/api/admin/especialidades', authenticateToken, requireAdmin, createProxyMiddleware({
+  target: services.admin,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/admin/especialidades': '/especialidades'
+  },
+  onError: (err, req, res) => {
+    logger.error('Error en Admin Service (especialidades):', err);
+    res.status(503).json({ error: 'Admin Service no disponible' });
+  }
+}));
+
 
 // Ruta específica para médicos que debe ir al admin-service
 app.use('/api/admin/medicos', authenticateToken, requireAdmin, createProxyMiddleware({
@@ -353,6 +371,7 @@ app.use('*', (req, res) => {
       'POST /api/auth/register',
       'GET /api/admin/medicos',
       'GET /api/admin/pacientes',
+      'POST /api/admin/usuarios',
       'GET /api/admin/centros'
     ]
   });

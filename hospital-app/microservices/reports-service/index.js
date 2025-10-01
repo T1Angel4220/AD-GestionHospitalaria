@@ -8,7 +8,7 @@ const PDFDocument = require('pdfkit');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3006;
+const PORT = process.env.PORT || 3005;
 
 // Configuración de logging
 const logger = winston.createLogger({
@@ -163,11 +163,12 @@ app.get('/estadisticas', authenticateToken, async (req, res) => {
 // Obtener resumen de consultas por médico
 app.get('/consultas/resumen', authenticateToken, async (req, res) => {
   try {
-    const { centroId, desde, hasta } = req.query;
+    const { centroId, desde, hasta, q } = req.query;
     const centro = centroId ? parseInt(centroId) : 1;
     const pool = getPoolByCentro(centro);
     
     let fechaFilter = '';
+    let searchFilter = '';
     let params = [centro, centro];
     
     if (desde && hasta) {
@@ -181,9 +182,15 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
       params.push(hasta);
     }
     
+    if (q) {
+      searchFilter = 'AND (m.nombres LIKE ? OR m.apellidos LIKE ? OR e.nombre LIKE ?)';
+      const searchTerm = `%${q}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+    }
+    
     const [reports] = await pool.query(`
       SELECT 
-        m.id, m.nombres, m.apellidos, e.nombre as especialidad,
+        m.id as medico_id, m.nombres, m.apellidos, e.nombre as especialidad,
         COUNT(c.id) as total_consultas,
         COUNT(DISTINCT c.id_paciente) as pacientes_unicos,
         MIN(c.fecha) as primera_consulta,
@@ -191,7 +198,7 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
       FROM medicos m
       LEFT JOIN especialidades e ON e.id = m.id_especialidad
       LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = ? ${fechaFilter}
-      WHERE m.id_centro = ?
+      WHERE m.id_centro = ? ${searchFilter}
       GROUP BY m.id, m.nombres, m.apellidos, e.nombre
       ORDER BY total_consultas DESC
     `, params);
@@ -206,11 +213,12 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
 // Obtener pacientes más frecuentes
 app.get('/pacientes/frecuentes', authenticateToken, async (req, res) => {
   try {
-    const { centroId, limite = 10, desde, hasta } = req.query;
+    const { centroId, limite = 10, desde, hasta, q } = req.query;
     const centro = centroId ? parseInt(centroId) : 1;
     const pool = getPoolByCentro(centro);
     
     let fechaFilter = '';
+    let searchFilter = '';
     let params = [centro, centro];
     
     if (desde && hasta) {
@@ -224,6 +232,12 @@ app.get('/pacientes/frecuentes', authenticateToken, async (req, res) => {
       params.push(hasta);
     }
     
+    if (q) {
+      searchFilter = 'AND (p.nombres LIKE ? OR p.apellidos LIKE ? OR p.cedula LIKE ?)';
+      const searchTerm = `%${q}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+    }
+    
     const [pacientes] = await pool.query(`
       SELECT 
         p.id, p.nombres, p.apellidos, p.cedula, p.telefono, p.email,
@@ -232,7 +246,7 @@ app.get('/pacientes/frecuentes', authenticateToken, async (req, res) => {
         MAX(c.fecha) as ultima_consulta
       FROM pacientes p
       INNER JOIN consultas c ON c.id_paciente = p.id AND c.id_centro = ? ${fechaFilter}
-      WHERE p.id_centro = ?
+      WHERE p.id_centro = ? ${searchFilter}
       GROUP BY p.id, p.nombres, p.apellidos, p.cedula, p.telefono, p.email
       ORDER BY total_consultas DESC
       LIMIT ?
@@ -249,11 +263,12 @@ app.get('/pacientes/frecuentes', authenticateToken, async (req, res) => {
 app.get('/consultas/medico/:medicoId', authenticateToken, async (req, res) => {
   try {
     const { medicoId } = req.params;
-    const { centroId, desde, hasta } = req.query;
+    const { centroId, desde, hasta, q } = req.query;
     const centro = centroId ? parseInt(centroId) : 1;
     const pool = getPoolByCentro(centro);
     
     let fechaFilter = '';
+    let searchFilter = '';
     let params = [centro, parseInt(medicoId)];
     
     if (desde && hasta) {
@@ -267,6 +282,12 @@ app.get('/consultas/medico/:medicoId', authenticateToken, async (req, res) => {
       params.push(hasta);
     }
     
+    if (q) {
+      searchFilter = 'AND (p.nombres LIKE ? OR p.apellidos LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ?)';
+      const searchTerm = `%${q}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+    
     const [consultas] = await pool.query(`
       SELECT 
         c.id, c.fecha, c.motivo, c.diagnostico, c.tratamiento, c.estado,
@@ -274,7 +295,7 @@ app.get('/consultas/medico/:medicoId', authenticateToken, async (req, res) => {
         p.cedula as paciente_cedula
       FROM consultas c
       LEFT JOIN pacientes p ON p.id = c.id_paciente
-      WHERE c.id_centro = ? AND c.id_medico = ? ${fechaFilter}
+      WHERE c.id_centro = ? AND c.id_medico = ? ${fechaFilter} ${searchFilter}
       ORDER BY c.fecha DESC
     `, params);
     

@@ -20,6 +20,9 @@ export interface AdminMedico {
 export interface AdminMedicoCreate {
   nombres: string;
   apellidos: string;
+  cedula: string;
+  telefono?: string;
+  email?: string;
   id_especialidad: number;
   id_centro: number;
 }
@@ -27,6 +30,9 @@ export interface AdminMedicoCreate {
 export interface AdminMedicoUpdate {
   nombres: string;
   apellidos: string;
+  cedula: string;
+  telefono?: string;
+  email?: string;
   id_especialidad: number;
   id_centro: number;
 }
@@ -162,7 +168,8 @@ export class AdminApi {
   }
 
   private static async request<T>(endpoint: string, options: RequestInit = {}, centroId?: number): Promise<T> {
-    const url = `${API_BASE_URL}/admin${endpoint}`;
+    // Usar admin-service directamente en puerto 3003 (sin pasar por API Gateway)
+    const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       headers: {
         ...this.getAuthHeaders(centroId),
@@ -349,6 +356,6 @@ export class AdminApi {
   }
 
   static async getMedicosByCentro(centroId: number): Promise<AdminMedico[]> {
-    return this.request<AdminMedico[]>(`/usuarios/medicos-por-centro/${centroId}`);
+    return this.request<AdminMedico[]>(`/medicos/centro/${centroId}`);
   }
 }

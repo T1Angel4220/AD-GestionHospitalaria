@@ -139,9 +139,17 @@ export default function EspecialidadesPage() {
       setIsDeleteModalOpen(false)
       setSelectedEspecialidad(null)
       loadData()
-    } catch (err) {
-      setError("Error al eliminar la especialidad")
+    } catch (err: any) {
       console.error(err)
+      
+      // Manejar diferentes tipos de errores
+      if (err.message && err.message.includes('médicos asociados')) {
+        setError("No se puede eliminar la especialidad porque tiene médicos asociados. Primero elimina o reasigna los médicos de esta especialidad.")
+      } else if (err.message && err.message.includes('No se puede eliminar')) {
+        setError(err.message)
+      } else {
+        setError("Error al eliminar la especialidad. Inténtalo de nuevo.")
+      }
     }
   }
 
@@ -721,6 +729,9 @@ export default function EspecialidadesPage() {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-sm text-red-700">
                     <strong>Advertencia:</strong> Esta acción eliminará permanentemente la especialidad y todos los datos asociados.
+                  </p>
+                  <p className="text-sm text-red-600 mt-2">
+                    <strong>Nota:</strong> Si la especialidad tiene médicos asociados, no se podrá eliminar. Primero deberás eliminar o reasignar esos médicos.
                   </p>
                 </div>
               </div>

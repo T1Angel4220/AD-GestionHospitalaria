@@ -1,7 +1,7 @@
 // api/reports.ts - API calls para reportes
 import { config } from '../config/env';
 
-const API_BASE_URL = config.apiUrl;
+const API_BASE_URL = config.reportsUrl;
 
 export interface ApiResponse<T> {
   data?: T;
@@ -80,10 +80,15 @@ class ApiService {
     centroId?: number
   ): Promise<ApiResponse<T>> {
     try {
+      const token = localStorage.getItem('token');
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         ...options.headers,
       };
+
+      if (token) {
+        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+      }
 
       if (centroId) {
         (headers as Record<string, string>)["X-Centro-Id"] = centroId.toString();
@@ -118,7 +123,7 @@ class ApiService {
     if (filtros.q) params.append('q', filtros.q);
 
     const queryString = params.toString();
-    const endpoint = `/reports/consultas${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/consultas/resumen${queryString ? `?${queryString}` : ''}`;
 
     return this.request<ConsultaResumen[]>(endpoint, { method: 'GET' }, filtros.centroId || 1);
   }
@@ -135,7 +140,7 @@ class ApiService {
     if (filtros.q) params.append('q', filtros.q);
 
     const queryString = params.toString();
-    const endpoint = `/reports/consultas/${medicoId}/detalle${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/consultas/medico/${medicoId}${queryString ? `?${queryString}` : ''}`;
 
     return this.request<ConsultaDetalle[]>(endpoint, { method: 'GET' }, centroId);
   }
@@ -148,7 +153,7 @@ class ApiService {
     if (filtros.hasta) params.append('hasta', filtros.hasta);
 
     const queryString = params.toString();
-    const endpoint = `/reports/estadisticas${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/estadisticas${queryString ? `?${queryString}` : ''}`;
 
     return this.request<EstadisticasGenerales>(endpoint, { method: 'GET' }, filtros.centroId || 1);
   }
@@ -165,14 +170,14 @@ class ApiService {
     params.append('limite', limite.toString());
 
     const queryString = params.toString();
-    const endpoint = `/reports/pacientes-frecuentes${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/pacientes/frecuentes${queryString ? `?${queryString}` : ''}`;
 
     return this.request<PacienteFrecuente[]>(endpoint, { method: 'GET' }, filtros.centroId || 1);
   }
 
   // Health check
   async healthCheck(): Promise<ApiResponse<{ ok: boolean; module: string }>> {
-    return this.request<{ ok: boolean; module: string }>('/reports/health', { method: 'GET' });
+    return this.request<{ ok: boolean; module: string }>('/health', { method: 'GET' });
   }
 }
 

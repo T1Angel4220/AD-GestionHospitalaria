@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
-import { AdminApi, type AdminUsuario, type AdminUsuarioCreate, type AdminCentro, type AdminMedico } from '../api/adminApi'
+import { AuthApi } from '../api/authApi'
+import { AdminApi, type AdminCentro, type AdminMedico } from '../api/adminApi'
+import type { User } from '../types/auth'
 import { 
   Activity, 
   Users, 
@@ -31,7 +33,7 @@ import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, g
 
 export default function UsuariosPage() {
   const { user, logout } = useAuth()
-  const [usuarios, setUsuarios] = useState<AdminUsuario[]>([])
+  const [usuarios, setUsuarios] = useState<User[]>([])
   const [centros, setCentros] = useState<AdminCentro[]>([])
   const [medicosDisponibles, setMedicosDisponibles] = useState<AdminMedico[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,7 +78,7 @@ export default function UsuariosPage() {
     try {
       setLoading(true)
       const [usuariosData, centrosData] = await Promise.all([
-        AdminApi.getUsuarios(),
+        AuthApi.getUsuarios(),
         AdminApi.getCentros(),
       ])
       setUsuarios(usuariosData)

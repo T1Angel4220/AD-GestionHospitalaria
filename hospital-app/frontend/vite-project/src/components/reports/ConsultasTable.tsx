@@ -187,12 +187,12 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {data.map((medico) => {
-              const isExpanded = expandedRows.has(medico.id);
-              const isLoadingDetalle = loadingDetalle.has(medico.id);
-              const detalle = detalleData[medico.id] || [];
+              const isExpanded = expandedRows.has(medico.medico_id);
+              const isLoadingDetalle = loadingDetalle.has(medico.medico_id);
+              const detalle = detalleData[medico.medico_id] || [];
 
               return (
-                <React.Fragment key={medico.id}>
+                <React.Fragment key={medico.medico_id}>
                   <tr className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -205,7 +205,7 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
                           <div className="text-sm font-medium text-gray-900">
                             {medico.nombres} {medico.apellidos}
                           </div>
-                          <div className="text-sm text-gray-500">ID: {medico.id}</div>
+                          <div className="text-sm text-gray-500">ID: {medico.medico_id}</div>
                         </div>
                       </div>
                     </td>
@@ -235,7 +235,7 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => toggleRow(medico.id)}
+                          onClick={() => toggleRow(medico.medico_id)}
                           className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                         >
                           <Eye className="w-3 h-3 mr-1" />
@@ -261,7 +261,7 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
                             </h4>
                             {detalle.length > 0 && (
                               <button
-                                onClick={() => exportarDetalle(medico.id)}
+                                onClick={() => exportarDetalle(medico.medico_id)}
                                 className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                               >
                                 <Download className="w-3 h-3 mr-1" />

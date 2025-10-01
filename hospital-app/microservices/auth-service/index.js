@@ -58,8 +58,12 @@ const dbConfigs = {
   }
 };
 
-// Pool de conexiones
-const pool = mysql.createPool(dbConfigs.central);
+// Pools de conexiones persistentes
+const pools = {
+  central: mysql.createPool(dbConfigs.central),
+  guayaquil: mysql.createPool(dbConfigs.guayaquil),
+  cuenca: mysql.createPool(dbConfigs.cuenca)
+};
 
 // Middleware de validación
 const validateLogin = [
@@ -100,11 +104,11 @@ app.post('/login', validateLogin, async (req, res) => {
 
     const { email, password } = req.body;
 
-    // Buscar usuario en todas las bases de datos
+    // Buscar usuario en todas las bases de datos usando pools persistentes
     const databases = [
-      { name: 'central', id: 1, config: dbConfigs.central },
-      { name: 'guayaquil', id: 2, config: dbConfigs.guayaquil },
-      { name: 'cuenca', id: 3, config: dbConfigs.cuenca }
+      { name: 'central', id: 1, pool: pools.central },
+      { name: 'guayaquil', id: 2, pool: pools.guayaquil },
+      { name: 'cuenca', id: 3, pool: pools.cuenca }
     ];
 
     let user = null;
@@ -112,9 +116,7 @@ app.post('/login', validateLogin, async (req, res) => {
 
     for (const db of databases) {
       try {
-        const dbPool = mysql.createPool(db.config);
-
-        const [rows] = await dbPool.query(
+        const [rows] = await db.pool.query(
           'SELECT * FROM usuarios WHERE email = ?',
           [email]
         );
@@ -122,10 +124,8 @@ app.post('/login', validateLogin, async (req, res) => {
         if (rows.length > 0) {
           user = rows[0];
           userDatabase = db;
-          await dbPool.end();
           break;
         }
-        await dbPool.end();
       } catch (error) {
         logger.error(`Error consultando BD ${db.name}:`, error.message);
         continue;
@@ -150,6 +150,13 @@ app.post('/login', validateLogin, async (req, res) => {
 
     logger.info(`Usuario ${email} autenticado exitosamente desde BD ${userDatabase.name}`);
 
+    // Mapear centros conocidos
+    const centros = {
+      1: { id: 1, nombre: 'Hospital Central Quito', ciudad: 'Quito' },
+      2: { id: 2, nombre: 'Hospital Guayaquil', ciudad: 'Guayaquil' },
+      3: { id: 3, nombre: 'Hospital Cuenca', ciudad: 'Cuenca' }
+    };
+
     res.json({
       message: 'Autenticación exitosa',
       token,
@@ -158,7 +165,8 @@ app.post('/login', validateLogin, async (req, res) => {
         email: user.email,
         rol: user.rol,
         id_centro: userDatabase.id,
-        id_medico: user.id_medico
+        id_medico: user.id_medico,
+        centro: centros[userDatabase.id]
       }
     });
 
@@ -177,25 +185,43 @@ app.post('/register', validateRegister, async (req, res) => {
 
     const { email, password, rol, id_centro, id_medico } = req.body;
 
-    // Verificar si el usuario ya existe en cualquier BD
-    const databases = ['central', 'guayaquil', 'cuenca'];
-    for (const dbName of databases) {
-      try {
-        const dbPool = mysql.createPool(dbConfigs[dbName]);
+    // Verificar si el usuario ya existe en cualquier BD usando pools persistentes
+    const databases = [
+      { name: 'central', pool: pools.central },
+      { name: 'guayaquil', pool: pools.guayaquil },
+      { name: 'cuenca', pool: pools.cuenca }
+    ];
 
-        const [existingUsers] = await dbPool.query(
+    for (const db of databases) {
+      try {
+        const [existingUsers] = await db.pool.query(
           'SELECT id FROM usuarios WHERE email = ?',
           [email]
         );
 
         if (existingUsers.length > 0) {
-          await dbPool.end();
           return res.status(400).json({ error: 'El email ya está registrado' });
         }
-        await dbPool.end();
       } catch (error) {
-        logger.error(`Error verificando usuario en BD ${dbName}:`, error.message);
+        logger.error(`Error verificando usuario en BD ${db.name}:`, error.message);
         continue;
+      }
+    }
+
+    // Validar que el médico exista si se proporciona
+    if (id_medico) {
+      const targetDb = databases[id_centro - 1];
+      try {
+        const [medico] = await targetDb.pool.query(
+          'SELECT id FROM medicos WHERE id = ? AND id_centro = ?',
+          [id_medico, id_centro]
+        );
+        if (medico.length === 0) {
+          return res.status(400).json({ error: 'El médico especificado no existe en el centro seleccionado' });
+        }
+      } catch (error) {
+        logger.error('Error validando médico:', error.message);
+        return res.status(500).json({ error: 'Error validando médico' });
       }
     }
 
@@ -205,10 +231,9 @@ app.post('/register', validateRegister, async (req, res) => {
 
     // Determinar en qué BD crear el usuario
     const targetDatabase = databases[id_centro - 1];
-    const targetPool = mysql.createPool(dbConfigs[targetDatabase]);
 
     // Crear usuario
-    const [result] = await targetPool.query(
+    const [result] = await targetDatabase.pool.query(
       'INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) VALUES (?, ?, ?, ?, ?)',
       [email, passwordHash, rol, id_centro, id_medico]
     );
@@ -224,15 +249,13 @@ app.post('/register', validateRegister, async (req, res) => {
     // Generar token
     const token = generateToken(newUser);
 
-    logger.info(`Usuario ${email} registrado exitosamente en BD ${targetDatabase}`);
+    logger.info(`Usuario ${email} registrado exitosamente en BD ${targetDatabase.name}`);
 
     res.status(201).json({
       message: 'Usuario registrado exitosamente',
       token,
       user: newUser
     });
-
-    await targetPool.end();
 
   } catch (error) {
     logger.error('Error en registro:', error);
@@ -266,19 +289,28 @@ app.post('/verify-token', async (req, res) => {
 // Ruta de salud
 app.get('/health', async (req, res) => {
   try {
-    await pool.query('SELECT 1');
+    const healthChecks = {};
+    
+    for (const [dbName, pool] of Object.entries(pools)) {
+      try {
+        await pool.query('SELECT 1');
+        healthChecks[dbName] = 'connected';
+      } catch (error) {
+        healthChecks[dbName] = 'disconnected';
+      }
+    }
+
     res.json({
       status: 'OK',
       service: 'auth-service',
       timestamp: new Date().toISOString(),
-      database: 'connected'
+      databases: healthChecks
     });
   } catch (error) {
     res.status(503).json({
       status: 'ERROR',
       service: 'auth-service',
       timestamp: new Date().toISOString(),
-      database: 'disconnected',
       error: error.message
     });
   }
@@ -287,22 +319,159 @@ app.get('/health', async (req, res) => {
 // Ruta de prueba de base de datos
 app.get('/test', async (req, res) => {
   try {
+    const connection = await pools.central.getConnection();
+
+  try {
     const connection = await pool.getConnection();
-    const [rows] = await connection.execute('SELECT 1 as test, NOW() as current_datetime');
-    connection.release();
-    
-    res.json({ 
-      message: 'Conexión a BD exitosa',
-      test: rows[0].test,
-      current_datetime: rows[0].current_datetime,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
+ {
     res.status(500).json({ 
       error: 'Error de conexión',
       message: error.message,
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// =========================
+// ENDPOINTS CRUD PARA USUARIOS
+// =========================
+
+// Obtener todos los usuarios
+app.get('/usuarios', authenticateToken, async (req, res) => {
+  try {
+    const pool = getPoolByCentro(req.user.id_centro);
+    const [usuarios] = await pool.execute(`
+      SELECT u.id, u.email, u.rol, u.id_centro, u.id_medico, u.created_at,
+             c.nombre as centro_nombre,
+             m.nombres as medico_nombres, m.apellidos as medico_apellidos
+      FROM usuarios u
+      LEFT JOIN centros_medicos c ON u.id_centro = c.id
+      LEFT JOIN medicos m ON u.id_medico = m.id
+      ORDER BY u.created_at DESC
+    `);
+    
+    res.json(usuarios);
+  } catch (error) {
+    logger.error('Error obteniendo usuarios:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener usuario por ID
+app.get('/usuarios/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const pool = getPoolByCentro(req.user.id_centro);
+    
+    const [usuarios] = await pool.execute(`
+      SELECT u.id, u.email, u.rol, u.id_centro, u.id_medico, u.created_at,
+             c.nombre as centro_nombre,
+             m.nombres as medico_nombres, m.apellidos as medico_apellidos
+      FROM usuarios u
+      LEFT JOIN centros_medicos c ON u.id_centro = c.id
+      LEFT JOIN medicos m ON u.id_medico = m.id
+      WHERE u.id = ?
+    `, [userId]);
+    
+    if (usuarios.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    res.json(usuarios[0]);
+  } catch (error) {
+    logger.error('Error obteniendo usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear usuario
+app.post('/usuarios', authenticateToken, async (req, res) => {
+  try {
+    const { email, password, rol, id_centro, id_medico } = req.body;
+    
+    if (!email || !password || !rol) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+    
+    // Validar rol
+    if (!['admin', 'medico'].includes(rol)) {
+      return res.status(400).json({ error: 'Rol inválido' });
+    }
+    
+    const pool = getPoolByCentro(id_centro || req.user.id_centro);
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    const [result] = await pool.execute(
+      'INSERT INTO usuarios (email, password_hash, rol, id_centro, id_medico) VALUES (?, ?, ?, ?, ?)',
+      [email, passwordHash, rol, id_centro || req.user.id_centro, id_medico || null]
+    );
+    
+    res.status(201).json({
+      message: 'Usuario creado exitosamente',
+      id: result.insertId
+    });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'El email ya está registrado' });
+    }
+    logger.error('Error creando usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Actualizar usuario
+app.put('/usuarios/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { email, rol, id_centro, id_medico } = req.body;
+    
+    const pool = getPoolByCentro(req.user.id_centro);
+    
+    // Verificar que el usuario existe
+    const [usuarios] = await pool.execute('SELECT * FROM usuarios WHERE id = ?', [userId]);
+    if (usuarios.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    // Actualizar usuario
+    await pool.execute(
+      'UPDATE usuarios SET email = ?, rol = ?, id_centro = ?, id_medico = ? WHERE id = ?',
+      [email, rol, id_centro, id_medico, userId]
+    );
+    
+    res.json({ message: 'Usuario actualizado exitosamente' });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'El email ya está registrado' });
+    }
+    logger.error('Error actualizando usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar usuario
+app.delete('/usuarios/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const pool = getPoolByCentro(req.user.id_centro);
+    
+    // Verificar que el usuario existe
+    const [usuarios] = await pool.execute('SELECT * FROM usuarios WHERE id = ?', [userId]);
+    if (usuarios.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    // No permitir eliminar el usuario actual
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propio usuario' });
+    }
+    
+    await pool.execute('DELETE FROM usuarios WHERE id = ?', [userId]);
+    
+    res.json({ message: 'Usuario eliminado exitosamente' });
+  } catch (error) {
+    logger.error('Error eliminando usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
