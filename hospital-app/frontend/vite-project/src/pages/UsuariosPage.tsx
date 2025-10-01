@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { AuthApi } from '../api/authApi'
 import { AdminApi, type AdminCentro, type AdminMedico } from '../api/adminApi'
+import { UsersApi, type User as UserApi, type UserCreate } from '../api/usersApi'
 import type { User } from '../types/auth'
 import { 
   Activity, 
@@ -33,7 +34,7 @@ import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, g
 
 export default function UsuariosPage() {
   const { user, logout } = useAuth()
-  const [usuarios, setUsuarios] = useState<User[]>([])
+  const [usuarios, setUsuarios] = useState<UserApi[]>([])
   const [centros, setCentros] = useState<AdminCentro[]>([])
   const [medicosDisponibles, setMedicosDisponibles] = useState<AdminMedico[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +54,7 @@ export default function UsuariosPage() {
   }
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [selectedUsuario, setSelectedUsuario] = useState<AdminUsuario | null>(null)
+  const [selectedUsuario, setSelectedUsuario] = useState<UserApi | null>(null)
   
   // Determinar el elemento activo del sidebar y obtener colores
   const activeItem = getActiveSidebarItem(window.location.pathname);
@@ -61,7 +62,7 @@ export default function UsuariosPage() {
 
 
   // Estados para formularios
-  const [userForm, setUserForm] = useState<AdminUsuarioCreate>({
+  const [userForm, setUserForm] = useState<UserCreate>({
     email: '',
     password: '',
     rol: 'medico',
@@ -78,7 +79,7 @@ export default function UsuariosPage() {
     try {
       setLoading(true)
       const [usuariosData, centrosData] = await Promise.all([
-        AuthApi.getUsuarios(),
+        UsersApi.getUsuarios(),
         AdminApi.getCentros(),
       ])
       setUsuarios(usuariosData)
@@ -206,7 +207,7 @@ export default function UsuariosPage() {
     }
 
     try {
-      await AdminApi.createUsuario(userForm)
+      await UsersApi.createUsuario(userForm)
       setIsCreateModalOpen(false)
       setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
       // Recargar datos después de crear usuario
@@ -260,12 +261,12 @@ export default function UsuariosPage() {
         console.log('🔄 [UPDATE] Centro para petición:', centroIdParaPeticion);
         
         console.log('🔄 [UPDATE] Enviando petición al backend...');
-        const resultado = await AdminApi.updateUsuario(selectedUsuario.id, userForm, centroIdParaPeticion)
+        const resultado = await UsersApi.updateUsuario(selectedUsuario.id, userForm)
         console.log('✅ [UPDATE] Respuesta del backend:', resultado);
         console.log('✅ [UPDATE] Usuario actualizado exitosamente');
         
         // Actualizar solo la lista de usuarios, no recargar todo
-        const usuariosActualizados = await AdminApi.getUsuarios()
+        const usuariosActualizados = await UsersApi.getUsuarios()
         setUsuarios(usuariosActualizados)
         console.log('✅ [UPDATE] Lista de usuarios actualizada');
         
@@ -282,7 +283,7 @@ export default function UsuariosPage() {
   const handleDeleteUsuario = async () => {
     if (selectedUsuario) {
       try {
-        await AdminApi.deleteUsuario(selectedUsuario.id)
+        await UsersApi.deleteUsuario(selectedUsuario.id)
         setIsDeleteModalOpen(false)
         setSelectedUsuario(null)
         await loadData()
