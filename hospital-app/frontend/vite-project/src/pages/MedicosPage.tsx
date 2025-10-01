@@ -76,6 +76,9 @@ export default function MedicosPage() {
   const [medicoForm, setMedicoForm] = useState<AdminMedicoCreate>({
     nombres: '',
     apellidos: '',
+    cedula: '',
+    telefono: '',
+    email: '',
     id_especialidad: 1,
     id_centro: 1
   })
@@ -122,7 +125,7 @@ export default function MedicosPage() {
       // Usar el centro seleccionado en el formulario
       await AdminApi.createMedico(medicoForm, medicoForm.id_centro)
       setIsCreateModalOpen(false)
-      setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
+      setMedicoForm({ nombres: '', apellidos: '', cedula: '', telefono: '', email: '', id_especialidad: 1, id_centro: 1 })
       loadData()
     } catch (err) {
       setError(extractServerErrorMessage(err, "Error al crear el médico"))
@@ -162,7 +165,7 @@ export default function MedicosPage() {
       console.log('✅ [EDIT] Médico actualizado:', updatedMedico);
       
       setIsEditModalOpen(false)
-      setMedicoForm({ nombres: '', apellidos: '', id_especialidad: 1, id_centro: 1 })
+      setMedicoForm({ nombres: '', apellidos: '', cedula: '', telefono: '', email: '', id_especialidad: 1, id_centro: 1 })
       setSelectedMedico(null)
       
       // Recargar datos para mostrar los cambios
@@ -200,6 +203,9 @@ export default function MedicosPage() {
     setMedicoForm({
       nombres: medico.nombres,
       apellidos: medico.apellidos,
+      cedula: medico.cedula || '',
+      telefono: medico.telefono || '',
+      email: medico.email || '',
       id_especialidad: medico.id_especialidad,
       id_centro: medico.id_centro
     })

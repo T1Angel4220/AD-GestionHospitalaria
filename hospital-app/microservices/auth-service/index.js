@@ -40,21 +40,30 @@ const dbConfigs = {
     user: process.env.DB_USER || 'admin_central',
     password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
     database: process.env.DB_NAME || 'hospital_central',
-    port: process.env.DB_PORT || 3306
+    port: process.env.DB_PORT || 3306,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci',
+    timezone: '+00:00'
   },
   guayaquil: {
     host: process.env.DB_GUAYAQUIL_HOST || 'mysql-guayaquil',
     user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
     password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
     database: process.env.DB_GUAYAQUIL_NAME || 'hospital_guayaquil',
-    port: process.env.DB_GUAYAQUIL_PORT || 3306
+    port: process.env.DB_GUAYAQUIL_PORT || 3306,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci',
+    timezone: '+00:00'
   },
   cuenca: {
     host: process.env.DB_CUENCA_HOST || 'mysql-cuenca',
     user: process.env.DB_CUENCA_USER || 'admin_cuenca',
     password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
     database: process.env.DB_CUENCA_NAME || 'hospital_cuenca',
-    port: process.env.DB_CUENCA_PORT || 3306
+    port: process.env.DB_CUENCA_PORT || 3306,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci',
+    timezone: '+00:00'
   }
 };
 
@@ -92,6 +101,38 @@ const generateToken = (user) => {
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: '24h' }
   );
+};
+
+// Middleware de autenticación
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de acceso requerido' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Función para obtener pool por centro
+const getPoolByCentro = (idCentro) => {
+  switch (idCentro) {
+    case 1:
+      return pools.central;
+    case 2:
+      return pools.guayaquil;
+    case 3:
+      return pools.cuenca;
+    default:
+      return pools.central;
+  }
 };
 
 // Rutas de autenticación
@@ -320,10 +361,14 @@ app.get('/health', async (req, res) => {
 app.get('/test', async (req, res) => {
   try {
     const connection = await pools.central.getConnection();
-
-  try {
-    const connection = await pool.getConnection();
- {
+    await connection.query('SELECT 1');
+    connection.release();
+    res.json({ 
+      status: 'OK',
+      message: 'Conexión a base de datos exitosa',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
     res.status(500).json({ 
       error: 'Error de conexión',
       message: error.message,

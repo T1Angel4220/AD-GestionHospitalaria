@@ -10,6 +10,7 @@ services:
       MYSQL_DATABASE: hospital_central
       MYSQL_USER: admin_central
       MYSQL_PASSWORD: SuperPasswordCentral123!
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3307:3306"
     volumes:
@@ -27,6 +28,7 @@ services:
       MYSQL_DATABASE: hospital_guayaquil
       MYSQL_USER: admin_guayaquil
       MYSQL_PASSWORD: SuperPasswordGye123!
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3308:3306"
     volumes:
@@ -44,6 +46,7 @@ services:
       MYSQL_DATABASE: hospital_cuenca
       MYSQL_USER: admin_cuenca
       MYSQL_PASSWORD: SuperPasswordCuenca123!
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3309:3306"
     volumes:

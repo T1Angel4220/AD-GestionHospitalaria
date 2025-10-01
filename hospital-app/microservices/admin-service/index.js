@@ -51,21 +51,30 @@ const dbConfigs = {
     user: process.env.DB_USER || 'admin_central',
     password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
     database: process.env.DB_NAME || 'hospital_central',
-    port: process.env.DB_PORT || 3306
+    port: process.env.DB_PORT || 3306,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci',
+    timezone: '+00:00'
   },
   guayaquil: {
     host: process.env.DB_GUAYAQUIL_HOST || 'mysql-guayaquil',
     user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
     password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
     database: process.env.DB_GUAYAQUIL_NAME || 'hospital_guayaquil',
-    port: process.env.DB_GUAYAQUIL_PORT || 3306
+    port: process.env.DB_GUAYAQUIL_PORT || 3306,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci',
+    timezone: '+00:00'
   },
   cuenca: {
     host: process.env.DB_CUENCA_HOST || 'mysql-cuenca',
     user: process.env.DB_CUENCA_USER || 'admin_cuenca',
     password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
     database: process.env.DB_CUENCA_NAME || 'hospital_cuenca',
-    port: process.env.DB_CUENCA_PORT || 3306
+    port: process.env.DB_CUENCA_PORT || 3306,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_unicode_ci',
+    timezone: '+00:00'
   }
 };
 
@@ -289,7 +298,7 @@ app.put('/medicos/:id', authenticateToken, requireAdmin, async (req, res) => {
     
     await targetPool.execute(`
       UPDATE medicos 
-      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      SET ${updateFields.join(', ')}
       WHERE id = ?
     `, updateValues);
     
@@ -567,14 +576,14 @@ app.get('/pacientes', authenticateToken, requireAdmin, async (req, res) => {
 // Crear paciente
 app.post('/pacientes', authenticateToken, requireAdmin, validatePaciente, async (req, res) => {
   try {
-    const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro } = req.body;
+    const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro } = req.body;
     
     const pool = getPoolByCentro(id_centro);
     
     const [result] = await pool.execute(`
-      INSERT INTO pacientes (nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro]);
+      INSERT INTO pacientes (nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro]);
     
     res.status(201).json({
       message: 'Paciente creado exitosamente',
@@ -591,9 +600,9 @@ app.post('/pacientes', authenticateToken, requireAdmin, validatePaciente, async 
 app.put('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const pacienteId = parseInt(req.params.id);
-    const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro } = req.body;
+    const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro } = req.body;
     
-    if (!nombres && !apellidos && !cedula && !telefono && !email && !fecha_nacimiento && !genero && !direccion) {
+    if (!nombres && !apellidos && !cedula && !telefono && !email && !fecha_nacimiento && !genero) {
       return res.status(400).json({ error: 'Debe proporcionar al menos un campo para actualizar' });
     }
     
@@ -645,16 +654,12 @@ app.put('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) => {
       updateFields.push('genero = ?');
       updateValues.push(genero);
     }
-    if (direccion) {
-      updateFields.push('direccion = ?');
-      updateValues.push(direccion);
-    }
     
     updateValues.push(pacienteId);
     
     await targetPool.execute(`
       UPDATE pacientes 
-      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      SET ${updateFields.join(', ')}
       WHERE id = ?
     `, updateValues);
     
@@ -805,7 +810,7 @@ app.put('/empleados/:id', authenticateToken, requireAdmin, async (req, res) => {
     
     await targetPool.execute(`
       UPDATE empleados 
-      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      SET ${updateFields.join(', ')}
       WHERE id = ?
     `, updateValues);
     
