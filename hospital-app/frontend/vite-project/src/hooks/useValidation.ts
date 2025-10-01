@@ -35,7 +35,10 @@ export const useValidation = () => {
 
   // Validar nombres (mínimo 2, máximo 50 caracteres, solo letras y espacios)
   const validateName = useCallback((name: string, fieldName: string): boolean => {
+    console.log(`🔍 [VALIDATION] Validando ${fieldName}:`, { name, type: typeof name });
+    
     if (!name || typeof name !== 'string') {
+      console.log(`❌ [VALIDATION] ${fieldName} es obligatorio o no es string`);
       setError(fieldName, `${fieldName} es obligatorio`);
       return false;
     }
@@ -43,20 +46,24 @@ export const useValidation = () => {
     const trimmedName = name.trim();
     
     if (trimmedName.length < 2) {
+      console.log(`❌ [VALIDATION] ${fieldName} muy corto:`, trimmedName.length);
       setError(fieldName, `${fieldName} debe tener al menos 2 caracteres`);
       return false;
     }
     
     if (trimmedName.length > 50) {
+      console.log(`❌ [VALIDATION] ${fieldName} muy largo:`, trimmedName.length);
       setError(fieldName, `${fieldName} no puede exceder 50 caracteres`);
       return false;
     }
     
     if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(trimmedName)) {
+      console.log(`❌ [VALIDATION] ${fieldName} contiene caracteres inválidos:`, trimmedName);
       setError(fieldName, `${fieldName} solo puede contener letras y espacios`);
       return false;
     }
     
+    console.log(`✅ [VALIDATION] ${fieldName} válido`);
     clearError(fieldName);
     return true;
   }, [setError, clearError]);
@@ -108,6 +115,14 @@ export const useValidation = () => {
 
   // Validar fecha de consulta
   const validateConsultationDate = useCallback((date: string, estado: string): boolean => {
+    // Para consultas pendientes, la fecha es opcional
+    if (estado === 'pendiente') {
+      if (!date) {
+        clearError('fecha');
+        return true;
+      }
+    }
+    
     if (!date || typeof date !== 'string') {
       setError('fecha', 'Fecha es obligatoria');
       return false;
@@ -142,6 +157,14 @@ export const useValidation = () => {
 
   // Validar duración de consulta
   const validateDuration = useCallback((minutes: number, estado: string): boolean => {
+    // Para consultas pendientes, la duración es opcional
+    if (estado === 'pendiente') {
+      if (!minutes || minutes === 0) {
+        clearError('duracion_minutos');
+        return true;
+      }
+    }
+    
     if (estado === 'programada' || estado === 'completada') {
       if (!minutes || minutes <= 0) {
         setError('duracion_minutos', 'La duración es obligatoria para consultas programadas o completadas');
@@ -310,23 +333,50 @@ export const useValidation = () => {
 
   // Validar formulario completo de consulta
   const validateConsulta = useCallback((formData: any): boolean => {
+    console.log('🔍 [VALIDATION] Validando consulta con datos:', formData);
     let isValid = true;
     
     // Validar nombres
-    if (!validateName(formData.paciente_nombre, 'paciente_nombre')) isValid = false;
-    if (!validateName(formData.paciente_apellido, 'paciente_apellido')) isValid = false;
+    console.log('🔍 [VALIDATION] Validando nombres...');
+    if (!validateName(formData.paciente_nombre, 'paciente_nombre')) {
+      console.log('❌ [VALIDATION] Error en paciente_nombre');
+      isValid = false;
+    }
+    if (!validateName(formData.paciente_apellido, 'paciente_apellido')) {
+      console.log('❌ [VALIDATION] Error en paciente_apellido');
+      isValid = false;
+    }
     
     // Validar fecha
-    if (!validateConsultationDate(formData.fecha, formData.estado)) isValid = false;
+    console.log('🔍 [VALIDATION] Validando fecha...', { fecha: formData.fecha, estado: formData.estado });
+    if (!validateConsultationDate(formData.fecha, formData.estado)) {
+      console.log('❌ [VALIDATION] Error en fecha');
+      isValid = false;
+    }
     
     // Validar duración
-    if (!validateDuration(formData.duracion_minutos, formData.estado)) isValid = false;
+    console.log('🔍 [VALIDATION] Validando duración...', { duracion: formData.duracion_minutos, estado: formData.estado });
+    if (!validateDuration(formData.duracion_minutos, formData.estado)) {
+      console.log('❌ [VALIDATION] Error en duración');
+      isValid = false;
+    }
     
     // Validar textos médicos
-    if (formData.motivo && !validateMedicalText(formData.motivo, 'motivo', 500)) isValid = false;
-    if (formData.diagnostico && !validateMedicalText(formData.diagnostico, 'diagnostico', 1000)) isValid = false;
-    if (formData.tratamiento && !validateMedicalText(formData.tratamiento, 'tratamiento', 1000)) isValid = false;
+    console.log('🔍 [VALIDATION] Validando textos médicos...');
+    if (formData.motivo && !validateMedicalText(formData.motivo, 'motivo', 500)) {
+      console.log('❌ [VALIDATION] Error en motivo');
+      isValid = false;
+    }
+    if (formData.diagnostico && !validateMedicalText(formData.diagnostico, 'diagnostico', 1000)) {
+      console.log('❌ [VALIDATION] Error en diagnostico');
+      isValid = false;
+    }
+    if (formData.tratamiento && !validateMedicalText(formData.tratamiento, 'tratamiento', 1000)) {
+      console.log('❌ [VALIDATION] Error en tratamiento');
+      isValid = false;
+    }
     
+    console.log('🔍 [VALIDATION] Resultado final:', { isValid, errors });
     return isValid;
   }, [validateName, validateConsultationDate, validateDuration, validateMedicalText]);
 

@@ -89,7 +89,7 @@ const authenticateToken = (req, res, next) => {
 
 // Middleware para obtener centro del usuario
 const getCentroFromUser = (req, res, next) => {
-  const centroId = req.headers['x-centro-id'] || req.user?.id_centro;
+  const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.user?.id_centro;
   
   // Si es admin, permitir acceso sin centro específico
   if (req.user?.rol === 'admin') {
@@ -196,7 +196,7 @@ app.post('/consultas', authenticateToken, getCentroFromUser, [
   body('tratamiento').optional().trim(),
   body('estado').isIn(['pendiente', 'programada', 'completada', 'cancelada']),
   body('fecha').isISO8601().toDate(),
-  body('duracion_minutos').optional().isInt({ min: 1 })
+  body('duracion_minutos').optional().isInt({ min: 0 })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -260,7 +260,7 @@ app.put('/consultas/:id', authenticateToken, getCentroFromUser, [
   body('diagnostico').optional().trim(),
   body('tratamiento').optional().trim(),
   body('estado').optional().isIn(['pendiente', 'programada', 'completada', 'cancelada']),
-  body('duracion_minutos').optional().isInt({ min: 1 })
+  body('duracion_minutos').optional().isInt({ min: 0 })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -362,6 +362,51 @@ app.delete('/consultas/:id', authenticateToken, getCentroFromUser, async (req, r
 // =========================
 // RUTAS DE MÉDICOS Y PACIENTES
 // =========================
+
+// Obtener médicos (ruta general)
+app.get('/medicos', authenticateToken, getCentroFromUser, async (req, res) => {
+  try {
+    const { centroId } = req;
+    
+    // Si es admin, obtener de todas las BDs
+    if (req.user.rol === 'admin') {
+      const allMedicos = [];
+
+      for (const [dbName, dbPool] of Object.entries(pools)) {
+        try {
+          const [medicos] = await dbPool.query(`
+            SELECT m.*, e.nombre as especialidad_nombre
+            FROM medicos m
+            LEFT JOIN especialidades e ON m.id_especialidad = e.id
+            ORDER BY m.apellidos, m.nombres
+          `);
+          
+          const medicosWithFrontendId = addFrontendId(medicos, dbName);
+          allMedicos.push(...medicosWithFrontendId);
+        } catch (error) {
+          logger.error(`Error obteniendo médicos de ${dbName}:`, error.message);
+        }
+      }
+
+      return res.json(allMedicos);
+    }
+
+    // Si es médico, obtener solo médicos de su centro
+    const pool = getPoolByCentroId(centroId);
+    const [medicos] = await pool.query(`
+      SELECT m.*, e.nombre as especialidad_nombre
+      FROM medicos m
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id
+      WHERE m.id_centro = ?
+      ORDER BY m.apellidos, m.nombres
+    `, [centroId]);
+
+    res.json(medicos);
+  } catch (error) {
+    logger.error('Error obteniendo médicos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
 
 // Obtener médicos por centro
 app.get('/medicos-por-centro/:centroId', authenticateToken, async (req, res) => {

@@ -537,7 +537,7 @@ export default function MedicalConsultationsPage() {
         }
       })
       
-      await ConsultasApi.deleteConsulta(consultaToDelete.id, centroIdDeLaConsulta)
+      await ConsultasApi.deleteConsulta(consultaToDelete.id)
       
       // Actualizar el estado local inmediatamente sin recargar desde el servidor
       setConsultas(prev => prev.filter(c => c.id !== consultaToDelete.id))

@@ -583,7 +583,7 @@ app.post('/pacientes', authenticateToken, requireAdmin, validatePaciente, async 
     const [result] = await pool.execute(`
       INSERT INTO pacientes (nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro]);
+    `, [nombres, apellidos, cedula, telefono || null, email || null, fecha_nacimiento || null, genero || null, id_centro]);
     
     res.status(201).json({
       message: 'Paciente creado exitosamente',
