@@ -344,13 +344,49 @@ app.put('/consultas/:id', authenticateToken, getCentroFromUser, [
 
     const { id } = req.params;
     const { centroId } = req;
-    const pool = getPoolByCentroId(centroId);
-
-    // Verificar que la consulta existe y pertenece al médico (si no es admin)
-    const [existingConsulta] = await pool.query(
-      'SELECT * FROM consultas WHERE id = ? AND id_centro = ?',
-      [id, centroId]
-    );
+    
+    // Si es admin y no se especifica centro en header, buscar en todas las BDs
+    let finalCentroId = centroId;
+    let pool;
+    let existingConsulta = [];
+    
+    if (req.user.rol === 'admin' && !centroId) {
+      // Admin sin centro específico - buscar en todas las BDs
+      logger.info(`Admin editando consulta ${id} - buscando en todas las BDs`);
+      
+      for (const [dbName, dbPool] of Object.entries(pools)) {
+        try {
+          const [consulta] = await dbPool.query('SELECT * FROM consultas WHERE id = ?', [id]);
+          if (consulta.length > 0) {
+            existingConsulta = consulta;
+            finalCentroId = consulta[0].id_centro;
+            pool = dbPool;
+            logger.info(`Consulta ${id} encontrada en ${dbName}, centro: ${finalCentroId}`);
+            break;
+          }
+        } catch (error) {
+          logger.error(`Error buscando consulta en ${dbName}:`, error.message);
+        }
+      }
+      
+      if (existingConsulta.length === 0) {
+        return res.status(404).json({ error: 'Consulta no encontrada' });
+      }
+    } else {
+      // Usuario con centro específico o médico
+      if (!finalCentroId) {
+        return res.status(400).json({ error: 'Centro ID requerido' });
+      }
+      
+      pool = getPoolByCentroId(finalCentroId);
+      
+      // Verificar que la consulta existe y pertenece al centro
+      const [consulta] = await pool.query(
+        'SELECT * FROM consultas WHERE id = ? AND id_centro = ?',
+        [id, finalCentroId]
+      );
+      existingConsulta = consulta;
+    }
 
     if (existingConsulta.length === 0) {
       return res.status(404).json({ error: 'Consulta no encontrada' });
@@ -387,7 +423,7 @@ app.put('/consultas/:id', authenticateToken, getCentroFromUser, [
       return res.status(404).json({ error: 'Consulta no encontrada' });
     }
 
-    logger.info(`Consulta ${id} actualizada en centro ${centroId}`);
+    logger.info(`Consulta ${id} actualizada en centro ${finalCentroId}`);
     res.json({ message: 'Consulta actualizada exitosamente' });
 
   } catch (error) {
@@ -401,13 +437,49 @@ app.delete('/consultas/:id', authenticateToken, getCentroFromUser, async (req, r
   try {
     const { id } = req.params;
     const { centroId } = req;
-    const pool = getPoolByCentroId(centroId);
-
-    // Verificar que la consulta existe
-    const [existingConsulta] = await pool.query(
-      'SELECT * FROM consultas WHERE id = ? AND id_centro = ?',
-      [id, centroId]
-    );
+    
+    // Si es admin y no se especifica centro en header, buscar en todas las BDs
+    let finalCentroId = centroId;
+    let pool;
+    let existingConsulta = [];
+    
+    if (req.user.rol === 'admin' && !centroId) {
+      // Admin sin centro específico - buscar en todas las BDs
+      logger.info(`Admin eliminando consulta ${id} - buscando en todas las BDs`);
+      
+      for (const [dbName, dbPool] of Object.entries(pools)) {
+        try {
+          const [consulta] = await dbPool.query('SELECT * FROM consultas WHERE id = ?', [id]);
+          if (consulta.length > 0) {
+            existingConsulta = consulta;
+            finalCentroId = consulta[0].id_centro;
+            pool = dbPool;
+            logger.info(`Consulta ${id} encontrada en ${dbName}, centro: ${finalCentroId}`);
+            break;
+          }
+        } catch (error) {
+          logger.error(`Error buscando consulta en ${dbName}:`, error.message);
+        }
+      }
+      
+      if (existingConsulta.length === 0) {
+        return res.status(404).json({ error: 'Consulta no encontrada' });
+      }
+    } else {
+      // Usuario con centro específico o médico
+      if (!finalCentroId) {
+        return res.status(400).json({ error: 'Centro ID requerido' });
+      }
+      
+      pool = getPoolByCentroId(finalCentroId);
+      
+      // Verificar que la consulta existe y pertenece al centro
+      const [consulta] = await pool.query(
+        'SELECT * FROM consultas WHERE id = ? AND id_centro = ?',
+        [id, finalCentroId]
+      );
+      existingConsulta = consulta;
+    }
 
     if (existingConsulta.length === 0) {
       return res.status(404).json({ error: 'Consulta no encontrada' });
@@ -424,7 +496,7 @@ app.delete('/consultas/:id', authenticateToken, getCentroFromUser, async (req, r
       return res.status(404).json({ error: 'Consulta no encontrada' });
     }
 
-    logger.info(`Consulta ${id} eliminada de centro ${centroId}`);
+    logger.info(`Consulta ${id} eliminada de centro ${finalCentroId}`);
     res.json({ message: 'Consulta eliminada exitosamente' });
 
   } catch (error) {
