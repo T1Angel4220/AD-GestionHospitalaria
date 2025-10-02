@@ -252,26 +252,26 @@ export default function MedicalConsultationsPage() {
   }
 
   // Función para filtrar médicos por centro del paciente
-  const filtrarMedicosPorCentro = async (pacienteId: number) => {
+  const filtrarMedicosPorCentro = async (centroId: number) => {
     if (user?.rol !== 'admin') {
       // Si no es admin, usar los médicos ya cargados (filtrados por su centro)
       return
     }
 
     try {
-      const paciente = pacientes.find(p => p.id === pacienteId)
+      const paciente = pacientes.find(p => p.id_centro === centroId)
       if (!paciente) {
-        console.error('❌ Paciente no encontrado con ID:', pacienteId)
+        console.error('❌ No se encontró paciente del centro:', centroId)
         return
       }
 
-      console.log('🔍 Filtrando médicos para paciente:', paciente.nombres, paciente.apellidos, 'Centro:', paciente.id_centro)
+      console.log('🔍 Filtrando médicos para centro:', centroId, 'Paciente:', paciente.nombres, paciente.apellidos)
       console.log('📊 Estado actual - medicosFiltrados:', medicosFiltrados.length, 'medicos:', medicos.length)
       
-      if (paciente.id_centro) {
-        // Obtener médicos del centro específico del paciente usando su origen de BD
-        const medicosDelCentro = await ConsultasApi.getMedicosPorCentroEspecifico(paciente.id_centro, paciente.origen_bd || 'central')
-        console.log('👨‍⚕️ Médicos del centro', paciente.id_centro, 'en BD', paciente.origen_bd, ':', medicosDelCentro.length)
+      if (centroId) {
+        // Obtener médicos del centro específico usando el origen de BD del paciente
+        const medicosDelCentro = await ConsultasApi.getMedicosPorCentroEspecifico(centroId, paciente.origen_bd || 'central')
+        console.log('👨‍⚕️ Médicos del centro', centroId, 'en BD', paciente.origen_bd, ':', medicosDelCentro.length)
         console.log('👨‍⚕️ Médicos recibidos:', medicosDelCentro.map(m => ({
           id: m.id,
           id_frontend: m.id_frontend,
@@ -367,46 +367,93 @@ export default function MedicalConsultationsPage() {
           paciente_apellido: sanitizedFormData.paciente_apellido!,
           id_paciente: sanitizedFormData.id_paciente,
           id_medico: sanitizedFormData.id_medico!,
-          fecha: sanitizedFormData.fecha!,
+          fecha: sanitizedFormData.fecha || undefined, // Enviar undefined en lugar de string vacío
           motivo: sanitizedFormData.motivo,
           diagnostico: sanitizedFormData.diagnostico,
           tratamiento: sanitizedFormData.tratamiento,
           estado: sanitizedFormData.estado!,
           duracion_minutos: sanitizedFormData.duracion_minutos,
         }
-        // Obtener el centro del médico seleccionado para enviarlo en el header
-        const medicoSeleccionado = user?.rol === 'admin' 
-          ? medicosFiltrados.find(m => m.id === newData.id_medico)
-          : medicos.find(m => m.id === newData.id_medico)
+        // Obtener el centro del PACIENTE seleccionado para enviarlo en el header
+        console.log('🔍 DEBUGGING PACIENTE SELECCIONADO:', {
+          id_paciente: sanitizedFormData.id_paciente,
+          totalPacientes: pacientes.length,
+          pacientes: pacientes.map(p => ({ 
+            id: p.id, 
+            id_original: p.id_original, 
+            id_frontend: p.id_frontend,
+            nombre: `${p.nombres} ${p.apellidos}`, 
+            centro: p.id_centro 
+          }))
+        })
         
-        const centroIdDelMedico = medicoSeleccionado?.id_centro
+        console.log('🔍 BUSCANDO PACIENTE:', {
+          id_paciente: sanitizedFormData.id_paciente,
+          tipo: typeof sanitizedFormData.id_paciente,
+          comparaciones: pacientes.map(p => ({
+            id: p.id,
+            id_original: p.id_original,
+            tipo_id: typeof p.id,
+            coincide_id: p.id == sanitizedFormData.id_paciente,
+            coincide_original: p.id_original == sanitizedFormData.id_paciente
+          }))
+        })
         
-        console.log('💾 Creando consulta:', {
-          centroIdDelMedico,
-          medicoSeleccionado: medicoSeleccionado ? {
-            id: medicoSeleccionado.id,
-            nombre: `${medicoSeleccionado.nombres} ${medicoSeleccionado.apellidos}`,
-            centro: medicoSeleccionado.id_centro,
-            centro_nombre: medicoSeleccionado.centro_nombre,
-            origen_bd: medicoSeleccionado.origen_bd
+        const pacienteSeleccionado = sanitizedFormData.id_paciente 
+          ? pacientes.find(p => p.id == sanitizedFormData.id_paciente)
+          : null
+        
+        console.log('🔍 PACIENTE ENCONTRADO:', {
+          encontrado: !!pacienteSeleccionado,
+          paciente: pacienteSeleccionado ? {
+            id: pacienteSeleccionado.id,
+            id_original: pacienteSeleccionado.id_original,
+            id_frontend: pacienteSeleccionado.id_frontend,
+            nombres: pacienteSeleccionado.nombres,
+            apellidos: pacienteSeleccionado.apellidos,
+            id_centro: pacienteSeleccionado.id_centro
           } : null
         })
         
-        await ConsultasApi.createConsulta(newData, centroIdDelMedico)
+        const centroIdDelPaciente = pacienteSeleccionado?.id_centro
+        
+        console.log('💾 Creando consulta:', {
+          centroIdDelPaciente,
+          pacienteSeleccionado: pacienteSeleccionado ? {
+            id: pacienteSeleccionado.id,
+            nombre: `${pacienteSeleccionado.nombres} ${pacienteSeleccionado.apellidos}`,
+            centro: pacienteSeleccionado.id_centro,
+            centro_nombre: pacienteSeleccionado.centro_nombre,
+            origen_bd: pacienteSeleccionado.origen_bd
+          } : null
+        })
+        
+        if (!centroIdDelPaciente) {
+          console.error('❌ ERROR: No se pudo determinar el centro del paciente')
+          setError("Error: No se pudo determinar el centro del paciente")
+          return
+        }
+        
+        await ConsultasApi.createConsulta(newData, centroIdDelPaciente)
+        
+        // Obtener información del médico para la consulta local
+        const medicoSeleccionado = user?.rol === 'admin' 
+          ? medicosFiltrados.find(m => m.id === newData.id_medico)
+          : medicos.find(m => m.id === newData.id_medico)
         
         // Actualizar el estado local inmediatamente sin recargar desde el servidor
         const nuevaConsulta: Consulta = {
           ...newData,
           id: Date.now(), // ID temporal hasta que el servidor responda
-          id_centro: centroIdDelMedico || 1,
+          id_centro: centroIdDelPaciente || 1,
           estado: newData.estado || 'pendiente',
           created_at: new Date().toISOString(),
           medico_nombres: medicoSeleccionado?.nombres,
           medico_apellidos: medicoSeleccionado?.apellidos,
           especialidad_nombre: medicoSeleccionado?.especialidad_nombre,
-          centro_nombre: medicoSeleccionado?.centro_nombre,
-          centro_ciudad: medicoSeleccionado?.origen_bd === 'central' ? 'Quito' : 
-                        medicoSeleccionado?.origen_bd === 'guayaquil' ? 'Guayaquil' : 'Cuenca'
+          centro_nombre: pacienteSeleccionado?.centro_nombre,
+          centro_ciudad: pacienteSeleccionado?.origen_bd === 'central' ? 'Quito' : 
+                        pacienteSeleccionado?.origen_bd === 'guayaquil' ? 'Guayaquil' : 'Cuenca'
         }
         setConsultas(prev => [nuevaConsulta, ...prev])
         
@@ -433,7 +480,7 @@ export default function MedicalConsultationsPage() {
     
     if (medico) {
       setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
-      setSelectedCentro(medico.centro_nombre || 'Sin centro')
+      setSelectedCentro(`Centro: ${medico.id_centro}`)
       // Actualizar también el id_centro en el formulario
       setFormData((prev) => ({ ...prev, id_centro: medico.id_centro }))
       console.log('✅ Centro asignado correctamente:', {
@@ -449,8 +496,31 @@ export default function MedicalConsultationsPage() {
   }
 
   const handlePacienteChange = async (pacienteIdFrontend: string) => {
+    console.log('🔍 handlePacienteChange:', {
+      pacienteIdFrontend,
+      totalPacientes: pacientes.length,
+      pacientes: pacientes.map(p => ({ 
+        id: p.id, 
+        id_frontend: p.id_frontend, 
+        nombre: `${p.nombres} ${p.apellidos}`, 
+        centro: p.id_centro 
+      }))
+    })
+    
     const paciente = pacientes.find(p => p.id_frontend === pacienteIdFrontend)
+    console.log('🔍 PACIENTE ENCONTRADO EN handlePacienteChange:', paciente)
+    
     if (paciente) {
+      console.log('✅ Paciente encontrado, actualizando formData:', {
+        id: paciente.id,
+        id_frontend: paciente.id_frontend,
+        nombres: paciente.nombres,
+        apellidos: paciente.apellidos,
+        id_centro: paciente.id_centro,
+        centro_nombre: paciente.centro_nombre,
+        origen_bd: paciente.origen_bd
+      })
+      
       setFormData((prev) => ({ 
         ...prev, 
         id_paciente: paciente.id,
@@ -462,7 +532,8 @@ export default function MedicalConsultationsPage() {
       }))
       
       // Filtrar médicos por centro del paciente (solo para admin)
-      await filtrarMedicosPorCentro(paciente.id)
+      console.log('🎯 Filtrando médicos por centro:', paciente.id_centro)
+      await filtrarMedicosPorCentro(paciente.id_centro)
     } else {
       setFormData((prev) => ({ 
         ...prev, 
@@ -502,13 +573,17 @@ export default function MedicalConsultationsPage() {
       const medico = medicos.find(m => m.id === consulta.id_medico)
       if (medico) {
         setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
-        setSelectedCentro(medico.centro_nombre || 'Sin centro')
+        setSelectedCentro(`Centro: ${medico.id_centro}`)
       }
     }
     
     // Si es admin y hay un paciente seleccionado, filtrar médicos por su centro
     if (user?.rol === 'admin' && consulta.id_paciente) {
-      await filtrarMedicosPorCentro(consulta.id_paciente)
+      // Encontrar el paciente para obtener su centro
+      const paciente = pacientes.find(p => p.id === consulta.id_paciente)
+      if (paciente) {
+        await filtrarMedicosPorCentro(paciente.id_centro)
+      }
     }
     
     setIsDialogOpen(true)
@@ -622,7 +697,7 @@ export default function MedicalConsultationsPage() {
       }))
       // Cargar especialidad y centro del médico actual
       setSelectedEspecialidad(medicoActual.especialidad_nombre || 'Sin especialidad')
-      setSelectedCentro(medicoActual.centro_nombre || 'Sin centro')
+      setSelectedCentro(`Centro: ${medicoActual.id_centro}`)
     }
     
     setIsDialogOpen(true)
@@ -1098,10 +1173,7 @@ export default function MedicalConsultationsPage() {
                       <p className="text-base text-gray-600 font-semibold">Centro</p>
                     </div>
                     <p className="text-base text-gray-800 font-medium">
-                            {consulta.centro_nombre
-                              ? `${consulta.centro_nombre}${consulta.centro_ciudad ? ` - ${consulta.centro_ciudad}` : ''}`
-                              : `ID: ${consulta.id_centro}`
-                            }
+                      Centro: {consulta.id_centro}
                     </p>
                       </div>
 

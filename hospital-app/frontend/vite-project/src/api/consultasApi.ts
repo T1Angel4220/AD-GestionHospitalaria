@@ -24,17 +24,16 @@ export class ConsultasApi {
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
     
-    // Si es admin y se proporciona centroId específico, usar ese centro
-    // Si es admin sin centroId específico, NO enviar X-Centro-Id para ver todos los centros
+    // Si es admin, NO enviar X-Centro-Id para ver todas las consultas de todos los centros
     // Si es médico, usar su centro específico
     if (user?.rol === 'admin') {
-      if (centroId) {
-        headers['X-Centro-Id'] = centroId.toString();
-      }
-      // Si no se especifica centroId, no enviar el header para que el backend devuelva datos de todos los centros
+      console.log('✅ Admin: No se envía X-Centro-Id para ver todas las consultas');
     } else {
       headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
+      console.log('✅ Agregando X-Centro-Id para médico:', user?.id_centro || '1');
     }
+    
+    console.log('📤 Headers finales:', headers);
     
     return headers;
   }
@@ -141,9 +140,23 @@ export class ConsultasApi {
   }
 
   static async createConsulta(consulta: ConsultaCreate, centroId?: number): Promise<Consulta> {
+    console.log('🔍 ConsultasApi.createConsulta:', {
+      consulta,
+      centroId,
+      centroIdType: typeof centroId
+    });
+    
+    // Incluir centroId en el body de la request
+    const consultaData = {
+      ...consulta,
+      centroId: centroId
+    };
+    
+    console.log('📤 Datos finales a enviar:', consultaData);
+    
     return this.request<Consulta>('/consultas', {
       method: 'POST',
-      body: JSON.stringify(consulta),
+      body: JSON.stringify(consultaData),
     }, centroId);
   }
 

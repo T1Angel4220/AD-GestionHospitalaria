@@ -145,7 +145,7 @@ app.get('/test', async (req, res) => {
 // Obtener estadísticas generales
 app.get('/estadisticas', authenticateToken, async (req, res) => {
   try {
-    const { centroId } = req.query;
+    const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.query.centroId;
     const centro = centroId ? parseInt(centroId) : 1;
     const pool = getPoolByCentro(centro);
     
@@ -172,7 +172,8 @@ app.get('/estadisticas', authenticateToken, async (req, res) => {
 // Obtener resumen de consultas por médico
 app.get('/consultas/resumen', authenticateToken, async (req, res) => {
   try {
-    const { centroId, desde, hasta, q } = req.query;
+    const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.query.centroId;
+    const { desde, hasta, q } = req.query;
     const centro = centroId ? parseInt(centroId) : 1;
     const pool = getPoolByCentro(centro);
     
@@ -222,7 +223,8 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
 // Obtener pacientes más frecuentes
 app.get('/pacientes/frecuentes', authenticateToken, async (req, res) => {
   try {
-    const { centroId, limite = 10, desde, hasta, q } = req.query;
+    const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.query.centroId;
+    const { limite = 10, desde, hasta, q } = req.query;
     const centro = centroId ? parseInt(centroId) : 1;
     const pool = getPoolByCentro(centro);
     

@@ -89,7 +89,7 @@ const authenticateToken = (req, res, next) => {
 
 // Middleware para obtener centro del usuario
 const getCentroFromUser = (req, res, next) => {
-  const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.user?.id_centro;
+  const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'];
   
   // Si es admin, permitir acceso sin centro específico
   if (req.user?.rol === 'admin') {
@@ -97,11 +97,14 @@ const getCentroFromUser = (req, res, next) => {
     return next();
   }
   
-  if (!centroId) {
+  // Para médicos, usar su centro específico si no se proporciona header
+  const finalCentroId = centroId || req.user?.id_centro;
+  
+  if (!finalCentroId) {
     return res.status(400).json({ error: 'X-Centro-Id requerido' });
   }
 
-  req.centroId = parseInt(centroId);
+  req.centroId = parseInt(finalCentroId);
   next();
 };
 
@@ -137,35 +140,60 @@ const addFrontendId = (items, origenBd) => {
 app.get('/consultas', authenticateToken, getCentroFromUser, async (req, res) => {
   try {
     const { centroId } = req;
-    const pool = getPoolByCentroId(centroId);
 
-    // Si es admin, obtener de todas las BDs
+    // Si es admin, obtener consultas del centro específico o todas si no se especifica centro
     if (req.user.rol === 'admin') {
-      const allConsultas = [];
+      logger.info(`Admin request - centroId: ${centroId}, tipo: ${typeof centroId}`);
+      
+      if (centroId) {
+        // Admin con centro específico - obtener solo consultas de ese centro
+        logger.info(`Admin con centro específico: ${centroId}`);
+        const pool = getPoolByCentroId(centroId);
+        const [consultas] = await pool.query(`
+          SELECT c.*, 
+                 m.nombres as medico_nombres, m.apellidos as medico_apellidos,
+                 p.nombres as paciente_nombres, p.apellidos as paciente_apellidos
+          FROM consultas c
+          LEFT JOIN medicos m ON c.id_medico = m.id
+          LEFT JOIN pacientes p ON c.id_paciente = p.id
+          WHERE c.id_centro = ?
+          ORDER BY c.fecha DESC
+        `, [centroId]);
+        
+        return res.json(consultas);
+      } else {
+        // Admin sin centro específico - obtener de todas las BDs
+        logger.info('Admin sin centro específico - obteniendo de todas las BDs');
+        const allConsultas = [];
 
-      for (const [dbName, dbPool] of Object.entries(pools)) {
-        try {
-          const [consultas] = await dbPool.query(`
-            SELECT c.*, 
-                   m.nombres as medico_nombres, m.apellidos as medico_apellidos,
-                   p.nombres as paciente_nombres, p.apellidos as paciente_apellidos
-            FROM consultas c
-            LEFT JOIN medicos m ON c.id_medico = m.id
-            LEFT JOIN pacientes p ON c.id_paciente = p.id
-            ORDER BY c.fecha DESC
-          `);
-          
-          const consultasWithFrontendId = addFrontendId(consultas, dbName);
-          allConsultas.push(...consultasWithFrontendId);
-        } catch (error) {
-          logger.error(`Error obteniendo consultas de ${dbName}:`, error.message);
+        for (const [dbName, dbPool] of Object.entries(pools)) {
+          try {
+            logger.info(`Obteniendo consultas de ${dbName}`);
+            const [consultas] = await dbPool.query(`
+              SELECT c.*, 
+                     m.nombres as medico_nombres, m.apellidos as medico_apellidos,
+                     p.nombres as paciente_nombres, p.apellidos as paciente_apellidos
+              FROM consultas c
+              LEFT JOIN medicos m ON c.id_medico = m.id
+              LEFT JOIN pacientes p ON c.id_paciente = p.id
+              ORDER BY c.fecha DESC
+            `);
+            
+            logger.info(`${dbName}: ${consultas.length} consultas encontradas`);
+            const consultasWithFrontendId = addFrontendId(consultas, dbName);
+            allConsultas.push(...consultasWithFrontendId);
+          } catch (error) {
+            logger.error(`Error obteniendo consultas de ${dbName}:`, error.message);
+          }
         }
-      }
 
-      return res.json(allConsultas);
+        logger.info(`Total consultas obtenidas: ${allConsultas.length}`);
+        return res.json(allConsultas);
+      }
     }
 
     // Si es médico, obtener solo sus consultas
+    const pool = getPoolByCentroId(centroId);
     const [consultas] = await pool.query(`
       SELECT c.*, 
              m.nombres as medico_nombres, m.apellidos as medico_apellidos,
@@ -195,8 +223,14 @@ app.post('/consultas', authenticateToken, getCentroFromUser, [
   body('diagnostico').optional().trim(),
   body('tratamiento').optional().trim(),
   body('estado').isIn(['pendiente', 'programada', 'completada', 'cancelada']),
-  body('fecha').isISO8601().toDate(),
-  body('duracion_minutos').optional().isInt({ min: 0 })
+  body('fecha').optional().isISO8601().toDate(),
+  body('duracion_minutos').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') {
+      return true; // Permitir valores nulos/vacíos
+    }
+    const num = parseInt(value);
+    return !isNaN(num) && num >= 0;
+  })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -205,7 +239,15 @@ app.post('/consultas', authenticateToken, getCentroFromUser, [
     }
 
     const { centroId } = req;
-    const pool = getPoolByCentroId(centroId);
+    
+    // Si es admin y no se especifica centro en header, usar el centroId del body
+    const finalCentroId = centroId || req.body.centroId;
+    
+    if (!finalCentroId) {
+      return res.status(400).json({ error: 'Centro ID requerido' });
+    }
+    
+    const pool = getPoolByCentroId(finalCentroId);
 
     const {
       id_medico,
@@ -220,14 +262,40 @@ app.post('/consultas', authenticateToken, getCentroFromUser, [
       duracion_minutos
     } = req.body;
 
+    // Obtener el ID original del paciente desde admin-service
+    let idPacienteOriginal = id_paciente;
+    try {
+      const adminResponse = await fetch('http://admin-service:3002/pacientes', {
+        headers: {
+          'Authorization': req.headers.authorization
+        }
+      });
+      
+      if (adminResponse.ok) {
+        const pacientes = await adminResponse.json();
+        const paciente = pacientes.find(p => p.id === id_paciente && p.id_centro === finalCentroId);
+        if (paciente && paciente.id_original) {
+          idPacienteOriginal = paciente.id_original;
+          logger.info(`Usando ID original del paciente: ${idPacienteOriginal} (global: ${id_paciente}) para centro ${finalCentroId}`);
+        } else {
+          logger.warn(`No se encontró paciente con ID global ${id_paciente} en centro ${finalCentroId}`);
+        }
+      }
+    } catch (error) {
+      logger.warn('No se pudo obtener ID original del paciente, usando ID global:', error.message);
+    }
+
+    // Manejar fecha opcional para consultas pendientes
+    const fechaValida = fecha ? new Date(fecha) : new Date(); // Usar fecha actual para consultas pendientes
+    
     const [result] = await pool.query(`
       INSERT INTO consultas (
         id_medico, id_paciente, paciente_nombre, paciente_apellido,
         motivo, diagnostico, tratamiento, estado, fecha, duracion_minutos, id_centro
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id_medico, id_paciente, paciente_nombre, paciente_apellido,
-      motivo, diagnostico, tratamiento, estado, fecha, duracion_minutos, centroId
+      id_medico, idPacienteOriginal, paciente_nombre, paciente_apellido,
+      motivo, diagnostico, tratamiento, estado, fechaValida, duracion_minutos, finalCentroId
     ]);
 
     const newConsulta = {
@@ -242,10 +310,10 @@ app.post('/consultas', authenticateToken, getCentroFromUser, [
       estado,
       fecha,
       duracion_minutos,
-      id_centro: centroId
+      id_centro: finalCentroId
     };
 
-    logger.info(`Consulta ${result.insertId} creada en centro ${centroId}`);
+    logger.info(`Consulta ${result.insertId} creada en centro ${finalCentroId}`);
     res.status(201).json(newConsulta);
 
   } catch (error) {
@@ -260,7 +328,13 @@ app.put('/consultas/:id', authenticateToken, getCentroFromUser, [
   body('diagnostico').optional().trim(),
   body('tratamiento').optional().trim(),
   body('estado').optional().isIn(['pendiente', 'programada', 'completada', 'cancelada']),
-  body('duracion_minutos').optional().isInt({ min: 0 })
+  body('duracion_minutos').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') {
+      return true; // Permitir valores nulos/vacíos
+    }
+    const num = parseInt(value);
+    return !isNaN(num) && num >= 0;
+  })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

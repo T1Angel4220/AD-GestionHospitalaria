@@ -365,35 +365,6 @@ app.delete('/medicos/:id', authenticateToken, requireAdmin, async (req, res) => 
 // ===== RUTAS DE PACIENTES =====
 
 // Obtener todos los pacientes de todos los centros
-app.get('/pacientes', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const pacientes = [];
-    
-    // Obtener pacientes de cada centro
-    for (const [centro, pool] of Object.entries(pools)) {
-      const [rows] = await pool.query(`
-        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad
-        FROM pacientes p
-        LEFT JOIN centros_medicos cm ON cm.id = p.id_centro
-        ORDER BY p.id
-      `);
-      
-      // Agregar información de origen
-      const pacientesConOrigen = rows.map(paciente => ({
-        ...paciente,
-        origen_bd: centro,
-        id_frontend: `${centro}-${paciente.id}`
-      }));
-      
-      pacientes.push(...pacientesConOrigen);
-    }
-    
-    res.json(pacientes);
-  } catch (error) {
-    logger.error('Error obteniendo pacientes:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
 
 // ===== RUTAS DE ESPECIALIDADES =====
 
@@ -546,8 +517,9 @@ app.delete('/especialidades/:id', authenticateToken, requireAdmin, async (req, r
 app.get('/pacientes', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const pacientes = [];
+    let idGlobal = 1;
     
-    // Obtener pacientes de cada centro
+    // Obtener pacientes de cada centro con ID único global
     for (const [centro, pool] of Object.entries(pools)) {
       const [rows] = await pool.query(`
         SELECT p.*, cm.nombre as centro_nombre, cm.ciudad
@@ -556,9 +528,11 @@ app.get('/pacientes', authenticateToken, requireAdmin, async (req, res) => {
         ORDER BY p.id
       `);
       
-      // Agregar información de origen
+      // Agregar información de origen y ID único global
       const pacientesConOrigen = rows.map(paciente => ({
         ...paciente,
+        id_original: paciente.id, // ID original de la base de datos (antes de sobrescribir)
+        id: idGlobal++, // ID único global para el frontend
         origen_bd: centro,
         id_frontend: `${centro}-${paciente.id}`
       }));
@@ -583,7 +557,7 @@ app.post('/pacientes', authenticateToken, requireAdmin, validatePaciente, async 
     const [result] = await pool.execute(`
       INSERT INTO pacientes (nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [nombres, apellidos, cedula, telefono || null, email || null, fecha_nacimiento || null, genero || null, id_centro]);
+    `, [nombres, apellidos, cedula, telefono || null, email || null, fecha_nacimiento ? new Date(fecha_nacimiento).toISOString().split('T')[0] : null, genero || null, id_centro]);
     
     res.status(201).json({
       message: 'Paciente creado exitosamente',
@@ -648,25 +622,65 @@ app.put('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) => {
     }
     if (fecha_nacimiento) {
       updateFields.push('fecha_nacimiento = ?');
-      updateValues.push(fecha_nacimiento);
+      // Formatear fecha para MySQL (YYYY-MM-DD)
+      const fechaFormateada = new Date(fecha_nacimiento).toISOString().split('T')[0];
+      updateValues.push(fechaFormateada);
     }
     if (genero) {
       updateFields.push('genero = ?');
       updateValues.push(genero);
     }
-    
-    updateValues.push(pacienteId);
-    
-    await targetPool.execute(`
-      UPDATE pacientes 
-      SET ${updateFields.join(', ')}
-      WHERE id = ?
-    `, updateValues);
-    
-    res.json({
-      message: 'Paciente actualizado exitosamente',
-      id: pacienteId
-    });
+    // Si se está cambiando el centro, necesitamos mover el paciente a otra base de datos
+    if (id_centro && id_centro !== foundPaciente.id_centro) {
+      // Obtener el pool del nuevo centro
+      const newPool = getPoolByCentro(id_centro);
+      
+      // Preparar datos para insertar en la nueva base de datos
+      const insertData = {
+        nombres: nombres || foundPaciente.nombres,
+        apellidos: apellidos || foundPaciente.apellidos,
+        cedula: cedula || foundPaciente.cedula,
+        telefono: telefono || foundPaciente.telefono,
+        email: email || foundPaciente.email,
+        fecha_nacimiento: fecha_nacimiento ? new Date(fecha_nacimiento).toISOString().split('T')[0] : foundPaciente.fecha_nacimiento,
+        genero: genero || foundPaciente.genero,
+        id_centro: id_centro
+      };
+      
+      // Insertar en la nueva base de datos
+      const [result] = await newPool.execute(`
+        INSERT INTO pacientes (nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, id_centro)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [insertData.nombres, insertData.apellidos, insertData.cedula, insertData.telefono, insertData.email, insertData.fecha_nacimiento, insertData.genero, insertData.id_centro]);
+      
+      // Eliminar de la base de datos original
+      await targetPool.execute('DELETE FROM pacientes WHERE id = ?', [pacienteId]);
+      
+      res.json({
+        message: 'Paciente movido y actualizado exitosamente',
+        id: result.insertId,
+        id_centro: id_centro
+      });
+    } else {
+      // Actualización normal sin cambio de centro
+      if (id_centro) {
+        updateFields.push('id_centro = ?');
+        updateValues.push(id_centro);
+      }
+      
+      updateValues.push(pacienteId);
+      
+      await targetPool.execute(`
+        UPDATE pacientes 
+        SET ${updateFields.join(', ')}
+        WHERE id = ?
+      `, updateValues);
+      
+      res.json({
+        message: 'Paciente actualizado exitosamente',
+        id: pacienteId
+      });
+    }
   } catch (error) {
     logger.error('Error actualizando paciente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -678,28 +692,44 @@ app.delete('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) =
   try {
     const pacienteId = parseInt(req.params.id);
     
-    // Buscar el paciente en todas las bases de datos
-    let targetPool = null;
-    let foundPaciente = null;
+    // Obtener todos los pacientes para encontrar el ID original
+    const pacientes = [];
+    let idGlobal = 1;
     
     for (const [centro, pool] of Object.entries(pools)) {
-      const [rows] = await pool.query('SELECT * FROM pacientes WHERE id = ?', [pacienteId]);
-      if (rows.length > 0) {
-        targetPool = pool;
-        foundPaciente = rows[0];
-        break;
-      }
+      const [rows] = await pool.query('SELECT * FROM pacientes ORDER BY id');
+      const pacientesConOrigen = rows.map(paciente => ({
+        ...paciente,
+        id_original: paciente.id,
+        id: idGlobal++,
+        origen_bd: centro
+      }));
+      pacientes.push(...pacientesConOrigen);
     }
     
-    if (!foundPaciente) {
+    // Buscar el paciente por ID global
+    const paciente = pacientes.find(p => p.id === pacienteId);
+    if (!paciente) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
     
-    await targetPool.execute('DELETE FROM pacientes WHERE id = ?', [pacienteId]);
+    // Obtener el pool correcto usando el nombre de la base de datos
+    const targetPool = pools[paciente.origen_bd];
+    
+    if (!targetPool) {
+      return res.status(500).json({ error: `Base de datos ${paciente.origen_bd} no encontrada` });
+    }
+    
+    // Eliminar consultas asociadas primero (eliminación en cascada)
+    await targetPool.execute('DELETE FROM consultas WHERE id_paciente = ?', [paciente.id_original]);
+    
+    // Eliminar el paciente
+    await targetPool.execute('DELETE FROM pacientes WHERE id = ?', [paciente.id_original]);
     
     res.json({
-      message: 'Paciente eliminado exitosamente',
-      id: pacienteId
+      message: 'Paciente y consultas asociadas eliminados exitosamente',
+      id: pacienteId,
+      id_original: paciente.id_original
     });
   } catch (error) {
     logger.error('Error eliminando paciente:', error);
