@@ -146,11 +146,12 @@ class ApiService {
   }
 
   // Estadísticas generales
-  async getEstadisticasGenerales(filtros: Omit<ReporteFiltros, 'q'>): Promise<ApiResponse<EstadisticasGenerales>> {
+  async getEstadisticasGenerales(filtros: ReporteFiltros): Promise<ApiResponse<EstadisticasGenerales>> {
     const params = new URLSearchParams();
     
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
+    if (filtros.q) params.append('q', filtros.q);
 
     const queryString = params.toString();
     const endpoint = `/estadisticas${queryString ? `?${queryString}` : ''}`;
@@ -160,13 +161,14 @@ class ApiService {
 
   // Pacientes más frecuentes
   async getPacientesFrecuentes(
-    filtros: Omit<ReporteFiltros, 'q'>,
+    filtros: ReporteFiltros,
     limite: number = 10
   ): Promise<ApiResponse<PacienteFrecuente[]>> {
     const params = new URLSearchParams();
     
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
+    if (filtros.q) params.append('q', filtros.q);
     params.append('limite', limite.toString());
 
     const queryString = params.toString();

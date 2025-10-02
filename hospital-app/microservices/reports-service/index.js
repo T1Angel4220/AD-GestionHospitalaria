@@ -146,22 +146,92 @@ app.get('/test', async (req, res) => {
 app.get('/estadisticas', authenticateToken, async (req, res) => {
   try {
     const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.query.centroId;
-    const centro = centroId ? parseInt(centroId) : 1;
-    const pool = getPoolByCentro(centro);
+    const { desde, hasta, q } = req.query;
     
-    const [stats] = await pool.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM medicos WHERE id_centro = ?) as total_medicos,
-        (SELECT COUNT(*) FROM pacientes WHERE id_centro = ?) as total_pacientes,
-        (SELECT COUNT(*) FROM empleados WHERE id_centro = ?) as total_empleados,
-        (SELECT COUNT(*) FROM consultas WHERE id_centro = ?) as total_consultas,
-        (SELECT COUNT(*) FROM usuarios WHERE id_centro = ?) as total_usuarios
-    `, [centro, centro, centro, centro, centro]);
+    let fechaFilter = '';
+    let searchFilter = '';
+    let params = [];
+    
+    if (desde && hasta) {
+      fechaFilter = 'AND c.fecha >= ? AND c.fecha <= ?';
+      params.push(desde, hasta);
+    } else if (desde) {
+      fechaFilter = 'AND c.fecha >= ?';
+      params.push(desde);
+    } else if (hasta) {
+      fechaFilter = 'AND c.fecha <= ?';
+      params.push(hasta);
+    }
+    
+    if (q) {
+      searchFilter = 'AND (m.nombres LIKE ? OR m.apellidos LIKE ? OR e.nombre LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ? OR p.nombres LIKE ? OR p.apellidos LIKE ?)';
+      const searchTerm = `%${q}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+    
+    let allStats = {
+      total_medicos: 0,
+      total_pacientes: 0,
+      total_empleados: 0,
+      total_consultas: 0,
+      total_usuarios: 0
+    };
+    
+    if (centroId) {
+      // Usuario con centro específico
+      const centro = parseInt(centroId);
+      const pool = getPoolByCentro(centro);
+      let centroParams = [centro, centro, centro, centro, centro, ...params];
+      
+      const [stats] = await pool.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM medicos WHERE id_centro = ?) as total_medicos,
+          (SELECT COUNT(*) FROM pacientes WHERE id_centro = ?) as total_pacientes,
+          (SELECT COUNT(*) FROM empleados WHERE id_centro = ?) as total_empleados,
+          (SELECT COUNT(DISTINCT c.id) FROM consultas c
+           LEFT JOIN medicos m ON m.id = c.id_medico
+           LEFT JOIN especialidades e ON e.id = m.id_especialidad
+           LEFT JOIN pacientes p ON p.id = c.id_paciente
+           WHERE c.id_centro = ? ${fechaFilter} ${searchFilter}) as total_consultas,
+          (SELECT COUNT(*) FROM usuarios WHERE id_centro = ?) as total_usuarios
+      `, centroParams);
+      
+      allStats = stats[0];
+    } else {
+      // Admin sin centro específico - buscar en todas las BDs
+      for (const [dbName, pool] of Object.entries(pools)) {
+        try {
+          const centro = dbName === 'central' ? 1 : dbName === 'guayaquil' ? 2 : 3;
+          let centroParams = [centro, centro, centro, centro, centro, ...params];
+          
+          const [stats] = await pool.query(`
+            SELECT 
+              (SELECT COUNT(*) FROM medicos WHERE id_centro = ?) as total_medicos,
+              (SELECT COUNT(*) FROM pacientes WHERE id_centro = ?) as total_pacientes,
+              (SELECT COUNT(*) FROM empleados WHERE id_centro = ?) as total_empleados,
+              (SELECT COUNT(DISTINCT c.id) FROM consultas c
+               LEFT JOIN medicos m ON m.id = c.id_medico
+               LEFT JOIN especialidades e ON e.id = m.id_especialidad
+               LEFT JOIN pacientes p ON p.id = c.id_paciente
+               WHERE c.id_centro = ? ${fechaFilter} ${searchFilter}) as total_consultas,
+              (SELECT COUNT(*) FROM usuarios WHERE id_centro = ?) as total_usuarios
+          `, centroParams);
+          
+          allStats.total_medicos += stats[0].total_medicos;
+          allStats.total_pacientes += stats[0].total_pacientes;
+          allStats.total_empleados += stats[0].total_empleados;
+          allStats.total_consultas += stats[0].total_consultas;
+          allStats.total_usuarios += stats[0].total_usuarios;
+        } catch (error) {
+          logger.error(`Error obteniendo estadísticas de ${dbName}:`, error.message);
+        }
+      }
+    }
     
     res.json({
-      centro_id: centro,
+      centro_id: centroId ? parseInt(centroId) : null,
       fecha_generacion: new Date().toISOString(),
-      ...stats[0]
+      ...allStats
     });
   } catch (error) {
     logger.error('Error obteniendo estadísticas:', error);
@@ -191,9 +261,9 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
     }
     
     if (q) {
-      searchFilter = 'AND (m.nombres LIKE ? OR m.apellidos LIKE ? OR e.nombre LIKE ?)';
+      searchFilter = 'AND (m.nombres LIKE ? OR m.apellidos LIKE ? OR e.nombre LIKE ? OR c.motivo LIKE ? OR c.diagnostico LIKE ? OR p.nombres LIKE ? OR p.apellidos LIKE ?)';
       const searchTerm = `%${q}%`;
-      params.push(searchTerm, searchTerm, searchTerm);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
     
     let allReports = [];
@@ -214,6 +284,7 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
         FROM medicos m
         LEFT JOIN especialidades e ON e.id = m.id_especialidad
         LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = ? ${fechaFilter}
+        LEFT JOIN pacientes p ON p.id = c.id_paciente
         WHERE m.id_centro = ? ${searchFilter}
         GROUP BY m.id, m.nombres, m.apellidos, e.nombre
         ORDER BY total_consultas DESC
@@ -237,6 +308,7 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
             FROM medicos m
             LEFT JOIN especialidades e ON e.id = m.id_especialidad
             LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = ? ${fechaFilter}
+            LEFT JOIN pacientes p ON p.id = c.id_paciente
             WHERE m.id_centro = ? ${searchFilter}
             GROUP BY m.id, m.nombres, m.apellidos, e.nombre
             ORDER BY total_consultas DESC
