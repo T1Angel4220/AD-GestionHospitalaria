@@ -345,7 +345,7 @@ app.get('/consultas/medico/:medicoId', authenticateToken, async (req, res) => {
       const [consultas] = await pool.query(`
         SELECT 
           c.id, c.fecha, c.motivo, c.diagnostico, c.tratamiento, c.estado,
-          p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
+          p.nombres as paciente_nombre, p.apellidos as paciente_apellido,
           p.cedula as paciente_cedula
         FROM consultas c
         LEFT JOIN pacientes p ON p.id = c.id_paciente
@@ -364,7 +364,7 @@ app.get('/consultas/medico/:medicoId', authenticateToken, async (req, res) => {
           const [consultas] = await pool.query(`
             SELECT 
               c.id, c.fecha, c.motivo, c.diagnostico, c.tratamiento, c.estado,
-              p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
+              p.nombres as paciente_nombre, p.apellidos as paciente_apellido,
               p.cedula as paciente_cedula
             FROM consultas c
             LEFT JOIN pacientes p ON p.id = c.id_paciente
