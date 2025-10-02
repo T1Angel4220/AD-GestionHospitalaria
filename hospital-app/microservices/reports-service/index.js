@@ -174,12 +174,10 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
   try {
     const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.query.centroId;
     const { desde, hasta, q } = req.query;
-    const centro = centroId ? parseInt(centroId) : 1;
-    const pool = getPoolByCentro(centro);
     
     let fechaFilter = '';
     let searchFilter = '';
-    let params = [centro, centro];
+    let params = [];
     
     if (desde && hasta) {
       fechaFilter = 'AND c.fecha >= ? AND c.fecha <= ?';
@@ -198,22 +196,60 @@ app.get('/consultas/resumen', authenticateToken, async (req, res) => {
       params.push(searchTerm, searchTerm, searchTerm);
     }
     
-    const [reports] = await pool.query(`
-      SELECT 
-        m.id as medico_id, m.nombres, m.apellidos, e.nombre as especialidad,
-        COUNT(c.id) as total_consultas,
-        COUNT(DISTINCT c.id_paciente) as pacientes_unicos,
-        MIN(c.fecha) as primera_consulta,
-        MAX(c.fecha) as ultima_consulta
-      FROM medicos m
-      LEFT JOIN especialidades e ON e.id = m.id_especialidad
-      LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = ? ${fechaFilter}
-      WHERE m.id_centro = ? ${searchFilter}
-      GROUP BY m.id, m.nombres, m.apellidos, e.nombre
-      ORDER BY total_consultas DESC
-    `, params);
+    let allReports = [];
     
-    res.json(reports);
+    if (centroId) {
+      // Usuario con centro específico
+      const centro = parseInt(centroId);
+      const pool = getPoolByCentro(centro);
+      let centroParams = [centro, centro, ...params];
+      
+      const [reports] = await pool.query(`
+        SELECT 
+          m.id as medico_id, m.nombres, m.apellidos, e.nombre as especialidad,
+          COUNT(c.id) as total_consultas,
+          COUNT(DISTINCT c.id_paciente) as pacientes_unicos,
+          MIN(c.fecha) as primera_consulta,
+          MAX(c.fecha) as ultima_consulta
+        FROM medicos m
+        LEFT JOIN especialidades e ON e.id = m.id_especialidad
+        LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = ? ${fechaFilter}
+        WHERE m.id_centro = ? ${searchFilter}
+        GROUP BY m.id, m.nombres, m.apellidos, e.nombre
+        ORDER BY total_consultas DESC
+      `, centroParams);
+      
+      allReports = reports;
+    } else {
+      // Admin sin centro específico - buscar en todas las BDs
+      for (const [dbName, pool] of Object.entries(pools)) {
+        try {
+          const centro = dbName === 'central' ? 1 : dbName === 'guayaquil' ? 2 : 3;
+          let centroParams = [centro, centro, ...params];
+          
+          const [reports] = await pool.query(`
+            SELECT 
+              m.id as medico_id, m.nombres, m.apellidos, e.nombre as especialidad,
+              COUNT(c.id) as total_consultas,
+              COUNT(DISTINCT c.id_paciente) as pacientes_unicos,
+              MIN(c.fecha) as primera_consulta,
+              MAX(c.fecha) as ultima_consulta
+            FROM medicos m
+            LEFT JOIN especialidades e ON e.id = m.id_especialidad
+            LEFT JOIN consultas c ON c.id_medico = m.id AND c.id_centro = ? ${fechaFilter}
+            WHERE m.id_centro = ? ${searchFilter}
+            GROUP BY m.id, m.nombres, m.apellidos, e.nombre
+            ORDER BY total_consultas DESC
+          `, centroParams);
+          
+          allReports = allReports.concat(reports);
+        } catch (error) {
+          logger.error(`Error obteniendo reportes de ${dbName}:`, error.message);
+        }
+      }
+    }
+    
+    res.json(allReports);
   } catch (error) {
     logger.error('Error obteniendo resumen de consultas:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -274,13 +310,12 @@ app.get('/pacientes/frecuentes', authenticateToken, async (req, res) => {
 app.get('/consultas/medico/:medicoId', authenticateToken, async (req, res) => {
   try {
     const { medicoId } = req.params;
-    const { centroId, desde, hasta, q } = req.query;
-    const centro = centroId ? parseInt(centroId) : 1;
-    const pool = getPoolByCentro(centro);
+    const centroId = req.headers['x-centro-id'] || req.headers['X-Centro-Id'] || req.query.centroId;
+    const { desde, hasta, q } = req.query;
     
     let fechaFilter = '';
     let searchFilter = '';
-    let params = [centro, parseInt(medicoId)];
+    let params = [];
     
     if (desde && hasta) {
       fechaFilter = 'AND c.fecha >= ? AND c.fecha <= ?';
@@ -299,18 +334,52 @@ app.get('/consultas/medico/:medicoId', authenticateToken, async (req, res) => {
       params.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
     
-    const [consultas] = await pool.query(`
-      SELECT 
-        c.id, c.fecha, c.motivo, c.diagnostico, c.tratamiento, c.estado,
-        p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
-        p.cedula as paciente_cedula
-      FROM consultas c
-      LEFT JOIN pacientes p ON p.id = c.id_paciente
-      WHERE c.id_centro = ? AND c.id_medico = ? ${fechaFilter} ${searchFilter}
-      ORDER BY c.fecha DESC
-    `, params);
+    let allConsultas = [];
     
-    res.json(consultas);
+    if (centroId) {
+      // Usuario con centro específico
+      const centro = parseInt(centroId);
+      const pool = getPoolByCentro(centro);
+      let centroParams = [centro, parseInt(medicoId), ...params];
+      
+      const [consultas] = await pool.query(`
+        SELECT 
+          c.id, c.fecha, c.motivo, c.diagnostico, c.tratamiento, c.estado,
+          p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
+          p.cedula as paciente_cedula
+        FROM consultas c
+        LEFT JOIN pacientes p ON p.id = c.id_paciente
+        WHERE c.id_centro = ? AND c.id_medico = ? ${fechaFilter} ${searchFilter}
+        ORDER BY c.fecha DESC
+      `, centroParams);
+      
+      allConsultas = consultas;
+    } else {
+      // Admin sin centro específico - buscar en todas las BDs
+      for (const [dbName, pool] of Object.entries(pools)) {
+        try {
+          const centro = dbName === 'central' ? 1 : dbName === 'guayaquil' ? 2 : 3;
+          let centroParams = [centro, parseInt(medicoId), ...params];
+          
+          const [consultas] = await pool.query(`
+            SELECT 
+              c.id, c.fecha, c.motivo, c.diagnostico, c.tratamiento, c.estado,
+              p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
+              p.cedula as paciente_cedula
+            FROM consultas c
+            LEFT JOIN pacientes p ON p.id = c.id_paciente
+            WHERE c.id_centro = ? AND c.id_medico = ? ${fechaFilter} ${searchFilter}
+            ORDER BY c.fecha DESC
+          `, centroParams);
+          
+          allConsultas = allConsultas.concat(consultas);
+        } catch (error) {
+          logger.error(`Error obteniendo consultas de ${dbName}:`, error.message);
+        }
+      }
+    }
+    
+    res.json(allConsultas);
   } catch (error) {
     logger.error('Error obteniendo detalle de consultas:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
