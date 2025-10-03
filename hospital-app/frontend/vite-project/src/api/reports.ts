@@ -29,6 +29,9 @@ export interface ConsultaDetalle {
   cedula: string | null;
   telefono: string | null;
   estado: string;
+  motivo: string | null;
+  diagnostico: string | null;
+  tratamiento: string | null;
   observaciones: string | null;
 }
 

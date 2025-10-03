@@ -71,14 +71,14 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
     const detalle = detalleData[medicoId];
     if (!detalle || detalle.length === 0) return;
 
-    const headers = ['Fecha', 'Paciente', 'Cédula', 'Observaciones', 'Estado'];
+    const headers = ['Fecha', 'Paciente', 'Motivo', 'Diagnóstico', 'Estado'];
     const csvContent = [
       headers.join(','),
       ...detalle.map(consulta => [
         `"${formatDate(consulta.fecha)}"`,
         `"${consulta.paciente_nombre} ${consulta.paciente_apellido}"`,
-        `"${consulta.cedula || 'N/A'}"`,
-        `"${consulta.observaciones || 'N/A'}"`,
+        `"${consulta.motivo || 'N/A'}"`,
+        `"${consulta.diagnostico || 'N/A'}"`,
         `"${consulta.estado}"`
       ].join(','))
     ].join('\n');
@@ -304,10 +304,10 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
                                         {consulta.paciente_nombre} {consulta.paciente_apellido}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-900">
-                                        {consulta.cedula || 'N/A'}
+                                        {consulta.motivo || 'N/A'}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-900">
-                                        {consulta.observaciones || 'N/A'}
+                                        {consulta.diagnostico || 'N/A'}
                                       </td>
                                       <td className="px-4 py-2 whitespace-nowrap">
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

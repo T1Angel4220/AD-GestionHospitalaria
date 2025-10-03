@@ -394,14 +394,13 @@ export const ReportesPage: React.FC = () => {
         const detalleTableData = consultas.map((consulta) => [
           new Date(consulta.fecha).toLocaleDateString('es-ES'),
           `${consulta.paciente_nombre} ${consulta.paciente_apellido}`,
-          consulta.cedula || 'N/A',
           consulta.motivo || 'Sin motivo',
           consulta.diagnostico || 'Sin diagnóstico',
           consulta.estado.charAt(0).toUpperCase() + consulta.estado.slice(1)
         ]);
 
         autoTable(doc, {
-          head: [['Fecha', 'Paciente', 'Cedula', 'Motivo', 'Diagnostico', 'Estado']],
+          head: [['Fecha', 'Paciente', 'Motivo', 'Diagnóstico', 'Estado']],
           body: detalleTableData,
           startY: currentY,
           styles: {
@@ -423,10 +422,9 @@ export const ReportesPage: React.FC = () => {
           columnStyles: {
             0: { cellWidth: 25, halign: 'center' }, // Fecha
             1: { cellWidth: 35 }, // Paciente
-            2: { cellWidth: 20, halign: 'center' }, // Cédula
-            3: { cellWidth: 30 }, // Motivo
-            4: { cellWidth: 30 }, // Diagnóstico
-            5: { cellWidth: 20, halign: 'center' }  // Estado
+            2: { cellWidth: 30 }, // Motivo
+            3: { cellWidth: 30 }, // Diagnóstico
+            4: { cellWidth: 20, halign: 'center' }  // Estado
           },
           margin: { left: 20, right: 20 },
           tableLineColor: [59, 130, 246],
