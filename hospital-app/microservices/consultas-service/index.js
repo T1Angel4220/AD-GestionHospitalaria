@@ -139,10 +139,12 @@ app.get('/consultas', authenticateToken, getCentroFromUser, async (req, res) => 
           const [consultas] = await dbPool.query(`
             SELECT c.*, 
                    m.nombres as medico_nombres, m.apellidos as medico_apellidos,
-                   p.nombres as paciente_nombres, p.apellidos as paciente_apellidos
+                   p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
+                   cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
             FROM consultas c
             LEFT JOIN medicos m ON c.id_medico = m.id
             LEFT JOIN pacientes p ON c.id_paciente = p.id
+            LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
             ORDER BY c.fecha DESC
           `);
           
@@ -160,10 +162,12 @@ app.get('/consultas', authenticateToken, getCentroFromUser, async (req, res) => 
     const [consultas] = await pool.query(`
       SELECT c.*, 
              m.nombres as medico_nombres, m.apellidos as medico_apellidos,
-             p.nombres as paciente_nombres, p.apellidos as paciente_apellidos
+             p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
+             cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
       FROM consultas c
       LEFT JOIN medicos m ON c.id_medico = m.id
       LEFT JOIN pacientes p ON c.id_paciente = p.id
+      LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
       WHERE c.id_medico = ?
       ORDER BY c.fecha DESC
     `, [req.user.id_medico]);
@@ -361,9 +365,13 @@ app.get('/medicos-por-centro/:centroId', authenticateToken, async (req, res) => 
     const pool = getPoolByCentroId(parseInt(centroId));
 
     const [medicos] = await pool.query(`
-      SELECT m.*, e.nombre as especialidad_nombre
+      SELECT m.*, 
+             e.nombre as especialidad_nombre,
+             cm.nombre as centro_nombre,
+             cm.ciudad as centro_ciudad
       FROM medicos m
       LEFT JOIN especialidades e ON m.id_especialidad = e.id
+      LEFT JOIN centros_medicos cm ON m.id_centro = cm.id
       WHERE m.id_centro = ?
       ORDER BY m.apellidos, m.nombres
     `, [centroId]);

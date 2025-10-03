@@ -6,7 +6,7 @@ import { apiInterceptor } from './api/apiInterceptor'
 import './utils/securityTest'
 
 // Inicializar el interceptor de API
-apiInterceptor.intercept();
+// apiInterceptor.intercept(); // Deshabilitado para debugging
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

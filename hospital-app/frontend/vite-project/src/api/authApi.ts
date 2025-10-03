@@ -18,21 +18,30 @@ export class AuthApi {
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${AUTH_BASE_URL}${endpoint}`;
     
-    // Agregar token a las cabeceras si existe
+    // Construir headers correctamente
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Agregar token si existe
     const token = this.getToken();
     if (token) {
-      options.headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
-      };
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Agregar headers adicionales si existen
+    if (options.headers) {
+      Object.assign(headers, options.headers);
     }
 
+    console.log('🌐 [AUTH API REQUEST] URL:', url);
+    console.log('🌐 [AUTH API REQUEST] Headers:', headers);
+    console.log('🌐 [AUTH API REQUEST] Body:', options.body);
+    console.log('🌐 [AUTH API REQUEST] Method:', options.method);
+
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
       ...options,
+      headers: headers,
     });
 
     // Si el token expiró, limpiar datos y redirigir
@@ -193,10 +202,18 @@ export class AuthApi {
     id_centro?: number;
     id_medico?: number;
   }): Promise<{ message: string; id: number }> {
-    return this.request<{ message: string; id: number }>('/usuarios', {
+    console.log('🔄 [AUTH API] Enviando datos al backend:', usuario)
+    console.log('🔄 [AUTH API] JSON stringificado:', JSON.stringify(usuario))
+    console.log('🔄 [AUTH API] URL completa:', `${AUTH_BASE_URL}/usuarios`)
+    
+    const requestOptions = {
       method: 'POST',
       body: JSON.stringify(usuario),
-    });
+    };
+    
+    console.log('🔄 [AUTH API] Opciones de request:', requestOptions)
+    
+    return this.request<{ message: string; id: number }>('/usuarios', requestOptions);
   }
 
   static async updateUsuario(id: number, usuario: {

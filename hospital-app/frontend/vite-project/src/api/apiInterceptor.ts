@@ -24,13 +24,23 @@ export class ApiInterceptor {
     window.fetch = async (...args) => {
       const [, options] = args;
       
-      // Agregar token a las cabeceras si existe
+      // Solo agregar token si no hay cabeceras de autorización ya presentes
       const token = AuthApi.getToken();
       if (token && options) {
-        options.headers = {
-          ...options.headers,
-          'Authorization': `Bearer ${token}`,
-        };
+        const existingHeaders = options.headers || {};
+        const hasAuth = existingHeaders['Authorization'] || existingHeaders['authorization'];
+        
+        // Solo agregar token si no está presente Y si no es una petición al auth-service
+        const url = args[0];
+        const isAuthService = typeof url === 'string' && url.includes('localhost:3001');
+        
+        if (!hasAuth && !isAuthService) {
+          options.headers = {
+            'Content-Type': 'application/json',
+            ...existingHeaders,
+            'Authorization': `Bearer ${token}`,
+          };
+        }
       }
 
       try {

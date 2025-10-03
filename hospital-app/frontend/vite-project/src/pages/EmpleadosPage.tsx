@@ -741,8 +741,9 @@ export default function EmpleadosPage() {
                 <select
                   value={empleadoForm.id_centro}
                   onChange={(e) => setEmpleadoForm({...empleadoForm, id_centro: Number(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-100 cursor-not-allowed"
                   required
+                  disabled
                 >
                   {centros.map((centro) => (
                     <option key={centro.id} value={centro.id}>
@@ -750,6 +751,9 @@ export default function EmpleadosPage() {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  El centro médico no se puede modificar al editar un empleado
+                </p>
               </div>
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button

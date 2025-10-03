@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS pacientes (
     email VARCHAR(255),
     fecha_nacimiento DATE,
     genero ENUM('M', 'F', 'O'),
+    direccion TEXT,
     id_centro INT NOT NULL DEFAULT 3,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

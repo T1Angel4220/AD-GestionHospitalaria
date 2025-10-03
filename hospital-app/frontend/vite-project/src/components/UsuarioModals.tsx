@@ -1,5 +1,7 @@
 import { X, Users, Trash2 } from 'lucide-react'
-import type { AdminUsuario, AdminUsuarioCreate, AdminCentro, AdminMedico } from '../api/adminApi'
+import type { AdminCentro, AdminMedico } from '../api/adminApi'
+import type { RegisterRequest } from '../types/auth'
+import type { UsuarioAdmin } from '../types/usuarios'
 
 interface UsuarioModalsProps {
   isCreateModalOpen: boolean
@@ -8,9 +10,9 @@ interface UsuarioModalsProps {
   setIsEditModalOpen: (open: boolean) => void
   isDeleteModalOpen: boolean
   setIsDeleteModalOpen: (open: boolean) => void
-  selectedUsuario: AdminUsuario | null
-  usuarioForm: AdminUsuarioCreate
-  setUsuarioForm: (form: AdminUsuarioCreate) => void
+  selectedUsuario: UsuarioAdmin | null
+  usuarioForm: RegisterRequest
+  setUsuarioForm: (form: RegisterRequest) => void
   centros: AdminCentro[]
   medicos: AdminMedico[]
   handleCreateUsuario: (e: React.FormEvent) => void

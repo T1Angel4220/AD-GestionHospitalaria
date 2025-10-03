@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { AuthApi } from '../api/authApi'
 import { AdminApi, type AdminCentro, type AdminMedico } from '../api/adminApi'
-import type { User } from '../types/auth'
+import type { RegisterRequest } from '../types/auth'
+import type { UsuarioAdmin } from '../types/usuarios'
 import { 
   Activity, 
   Users, 
@@ -33,7 +34,7 @@ import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, g
 
 export default function UsuariosPage() {
   const { user, logout } = useAuth()
-  const [usuarios, setUsuarios] = useState<User[]>([])
+  const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([])
   const [centros, setCentros] = useState<AdminCentro[]>([])
   const [medicosDisponibles, setMedicosDisponibles] = useState<AdminMedico[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +54,7 @@ export default function UsuariosPage() {
   }
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [selectedUsuario, setSelectedUsuario] = useState<AdminUsuario | null>(null)
+  const [selectedUsuario, setSelectedUsuario] = useState<UsuarioAdmin | null>(null)
   
   // Determinar el elemento activo del sidebar y obtener colores
   const activeItem = getActiveSidebarItem(window.location.pathname);
@@ -61,7 +62,7 @@ export default function UsuariosPage() {
 
 
   // Estados para formularios
-  const [userForm, setUserForm] = useState<AdminUsuarioCreate>({
+  const [userForm, setUserForm] = useState<RegisterRequest>({
     email: '',
     password: '',
     rol: 'medico',
@@ -191,6 +192,39 @@ export default function UsuariosPage() {
     e.preventDefault()
     setError(null)
 
+    console.log('🔄 [CREATE] Estado del formulario antes de validar:', userForm)
+    console.log('🔄 [CREATE] Valores individuales:', {
+      email: userForm.email,
+      password: userForm.password,
+      rol: userForm.rol,
+      id_centro: userForm.id_centro,
+      id_medico: userForm.id_medico
+    })
+
+    // Validar campos requeridos antes de enviar
+    if (!userForm.email || !userForm.password || !userForm.rol || !userForm.id_centro) {
+      console.log('❌ [CREATE] Validación fallida:', {
+        email: !userForm.email,
+        password: !userForm.password,
+        rol: !userForm.rol,
+        id_centro: !userForm.id_centro
+      })
+      setError("Todos los campos requeridos deben ser completados")
+      return
+    }
+
+    // Validar que los usuarios médicos tengan un médico asociado
+    if (userForm.rol === 'medico' && !userForm.id_medico) {
+      setError("Los usuarios médicos deben tener un médico asociado")
+      return
+    }
+
+    // Validar que los usuarios admin no tengan médico asociado
+    if (userForm.rol === 'admin' && userForm.id_medico) {
+      setError("Los usuarios administradores no pueden tener médico asociado")
+      return
+    }
+
     // Validar que no se cree múltiples cuentas para el mismo médico
     if (userForm.rol === 'medico' && userForm.id_medico) {
       const medicoYaAsociado = usuarios.find(u => 
@@ -206,14 +240,39 @@ export default function UsuariosPage() {
     }
 
     try {
-      await AdminApi.createUsuario(userForm)
+      // Preparar datos para envío asegurando tipos correctos
+      const userData = {
+        email: userForm.email.trim(),
+        password: userForm.password,
+        rol: userForm.rol,
+        id_centro: Number(userForm.id_centro),
+        id_medico: userForm.rol === 'medico' ? Number(userForm.id_medico) : undefined
+      }
+
+      console.log('🔄 [CREATE] Formulario original:', userForm)
+      console.log('🔄 [CREATE] Datos procesados:', userData)
+      console.log('🔄 [CREATE] Enviando datos del usuario:', userData)
+      console.log('🔄 [CREATE] Validación de campos:', {
+        email: userData.email,
+        password: userData.password,
+        rol: userData.rol,
+        id_centro: userData.id_centro,
+        id_medico: userData.id_medico,
+        emailValido: !!userData.email,
+        passwordValido: !!userData.password,
+        rolValido: !!userData.rol,
+        centroValido: !!userData.id_centro && userData.id_centro > 0,
+        medicoValido: userData.rol === 'medico' ? !!userData.id_medico : true
+      })
+      
+      await AuthApi.createUsuario(userData)
       setIsCreateModalOpen(false)
       setUserForm({ email: '', password: '', rol: 'medico', id_centro: 1, id_medico: undefined })
       // Recargar datos después de crear usuario
       await loadData()
     } catch (error) {
       setError("Error al crear el usuario")
-      console.error(error)
+      console.error('❌ [CREATE] Error completo:', error)
     }
   }
 
@@ -260,12 +319,12 @@ export default function UsuariosPage() {
         console.log('🔄 [UPDATE] Centro para petición:', centroIdParaPeticion);
         
         console.log('🔄 [UPDATE] Enviando petición al backend...');
-        const resultado = await AdminApi.updateUsuario(selectedUsuario.id, userForm, centroIdParaPeticion)
+        const resultado = await AuthApi.updateUsuario(selectedUsuario.id, userForm)
         console.log('✅ [UPDATE] Respuesta del backend:', resultado);
         console.log('✅ [UPDATE] Usuario actualizado exitosamente');
         
         // Actualizar solo la lista de usuarios, no recargar todo
-        const usuariosActualizados = await AdminApi.getUsuarios()
+        const usuariosActualizados = await AuthApi.getUsuarios()
         setUsuarios(usuariosActualizados)
         console.log('✅ [UPDATE] Lista de usuarios actualizada');
         
@@ -282,7 +341,7 @@ export default function UsuariosPage() {
   const handleDeleteUsuario = async () => {
     if (selectedUsuario) {
       try {
-        await AdminApi.deleteUsuario(selectedUsuario.id)
+        await AuthApi.deleteUsuario(selectedUsuario.id)
         setIsDeleteModalOpen(false)
         setSelectedUsuario(null)
         await loadData()
@@ -306,7 +365,7 @@ export default function UsuariosPage() {
     setShowLogoutModal(false)
   }
 
-  const openEditModal = (usuario: AdminUsuario) => {
+  const openEditModal = (usuario: UsuarioAdmin) => {
     console.log('📝 [EDIT] Abriendo modal de edición para usuario:', usuario);
     setSelectedUsuario(usuario)
     
@@ -338,7 +397,7 @@ export default function UsuariosPage() {
     setIsEditModalOpen(true)
   }
 
-  const openDeleteModal = (usuario: AdminUsuario) => {
+  const openDeleteModal = (usuario: UsuarioAdmin) => {
     setSelectedUsuario(usuario)
     setIsDeleteModalOpen(true)
   }

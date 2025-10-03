@@ -690,6 +690,16 @@ app.delete('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) =
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
     
+    // Verificar si el paciente tiene consultas asociadas
+    const [consultas] = await targetPool.query('SELECT COUNT(*) as count FROM consultas WHERE id_paciente = ?', [pacienteId]);
+    const tieneConsultas = consultas[0].count > 0;
+    
+    if (tieneConsultas) {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar el paciente porque tiene consultas asociadas. Primero elimine las consultas del paciente.' 
+      });
+    }
+    
     await targetPool.execute('DELETE FROM pacientes WHERE id = ?', [pacienteId]);
     
     res.json({

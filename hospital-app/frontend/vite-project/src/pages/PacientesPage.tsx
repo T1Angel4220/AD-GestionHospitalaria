@@ -64,6 +64,27 @@ export default function PacientesPage() {
   const headerColors = getHeaderColors(activeItem);
   const buttonColors = getButtonColors(activeItem);
 
+  // Función auxiliar para extraer mensajes de error del servidor
+  const extractServerErrorMessage = (err: unknown, defaultMessage: string): string => {
+    if (err instanceof Error && err.message.includes('message:')) {
+      try {
+        const messageMatch = err.message.match(/message:\s*(.+)$/)
+        if (messageMatch) {
+          const serverMessage = messageMatch[1]
+          // Intentar parsear el JSON del mensaje del servidor
+          const parsedMessage = JSON.parse(serverMessage)
+          if (parsedMessage.error) {
+            return parsedMessage.error
+          }
+        }
+      } catch (parseError) {
+        // Si no se puede parsear, usar el mensaje original
+        console.warn('No se pudo parsear el mensaje del servidor:', parseError)
+      }
+    }
+    return defaultMessage
+  }
+
   // Estados para modales
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingPaciente, setEditingPaciente] = useState<Paciente | null>(null)
@@ -185,7 +206,7 @@ export default function PacientesPage() {
       }
     } catch (error) {
       console.error('Error guardando paciente:', error)
-      setError("Error al guardar el paciente")
+      setError(extractServerErrorMessage(error, "Error al guardar el paciente"))
     }
   }
 
@@ -318,7 +339,7 @@ export default function PacientesPage() {
       setPacienteToDelete(null)
     } catch (error) {
       console.error('Error eliminando paciente:', error)
-      setError("Error al eliminar el paciente")
+      setError(extractServerErrorMessage(error, "Error al eliminar el paciente"))
     }
   }
 
@@ -338,7 +359,7 @@ export default function PacientesPage() {
       resetForm()
     } catch (error) {
       console.error('Error actualizando paciente:', error)
-      setError("Error al actualizar el paciente")
+      setError(extractServerErrorMessage(error, "Error al actualizar el paciente"))
     }
   }
 

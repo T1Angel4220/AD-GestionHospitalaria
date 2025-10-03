@@ -307,8 +307,9 @@ export function MedicoModals({
                 <select
                   value={medicoForm.id_especialidad}
                   onChange={(e) => setMedicoForm({...medicoForm, id_especialidad: Number(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all bg-gray-100 cursor-not-allowed"
                   required
+                  disabled
                 >
                   {especialidades.map((especialidad) => (
                     <option key={especialidad.id} value={especialidad.id}>
@@ -316,6 +317,9 @@ export function MedicoModals({
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  La especialidad no se puede modificar al editar un médico
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
