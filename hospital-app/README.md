@@ -1,5 +1,9 @@
 # 🏥 Sistema de Gestión Hospitalaria - HospitalApp
 
+# 🏥 Link del repositorio
+https://github.com/T1Angel4220/AD-GestionHospitalaria
+
+
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19.1.1-blue.svg)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)](https://www.typescriptlang.org/)
@@ -611,26 +615,12 @@ JWT_SECRET=secret_muy_seguro_produccion
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia ISC. Ver el archivo [LICENSE](LICENSE) para más detalles.
-
 ## 👥 Autores
 
-- **Tu Nombre** - *Desarrollo completo* - [@tuusuario](https://github.com/tuusuario)
-
-## 🙏 Agradecimientos
-
-- Universidad Técnica de Ambato
-- Facultad de Ingeniería en Sistemas, Electrónica e Industrial
-- Ing. Jose Caiza, Mg - Profesor de Aplicaciones Distribuidas
-
-## 📞 Contacto
-
-- **Email**: tu.email@ejemplo.com
-- **Proyecto**: [https://github.com/tuusuario/hospital-app](https://github.com/tuusuario/hospital-app)
-
----
+- **Johan Rodríguez**
+- **Angel Ayuquina**
+- **Sebastian Ortíz**
+- **José Manzano**
 
 <div align="center">
 
