@@ -2,29 +2,35 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19.1.1-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)](https://www.typescriptlang.org/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange.svg)](https://www.mysql.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docker.com/)
 [![License](https://img.shields.io/badge/License-ISC-yellow.svg)](LICENSE)
 
 ## 📋 Descripción del Proyecto
 
-**HospitalApp** es un sistema integral de gestión hospitalaria desarrollado con arquitectura de microservicios que permite la administración de múltiples centros médicos, personal, pacientes y consultas médicas. El sistema implementa bases de datos distribuidas, replicación de datos y servicios web para garantizar la escalabilidad y disponibilidad del servicio.
+**HospitalApp** es un sistema integral de gestión hospitalaria desarrollado con **arquitectura de microservicios** que permite la administración de múltiples centros médicos distribuidos geográficamente. El sistema implementa bases de datos distribuidas, replicación de datos y servicios web para garantizar la escalabilidad, disponibilidad y mantenibilidad del servicio.
 
 ### 🎯 Objetivos Cumplidos
 
 - ✅ **Arquitectura de Microservicios** con Node.js y Express
-- ✅ **Bases de Datos Distribuidas** con MySQL
+- ✅ **Bases de Datos Distribuidas** con MySQL (Central, Guayaquil, Cuenca)
 - ✅ **APIs RESTful** para administración y consultas médicas
 - ✅ **Interfaces de Usuario** diferenciadas por roles (Admin/Hospital)
 - ✅ **Sistema de Autenticación** con JWT y roles
 - ✅ **Reportes Avanzados** con exportación a PDF
 - ✅ **Gestión de Consultas** independiente por centro médico
+- ✅ **Containerización** con Docker y Docker Compose
+- ✅ **Logging y Monitoreo** con Winston
+- ✅ **Validaciones Robustas** en frontend y backend
 
 ## 🏗️ Arquitectura del Sistema
 
+### Diagrama de Arquitectura
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    FRONTEND (React)                        │
+│                    FRONTEND (React + Vite)                 │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
 │  │   Admin Panel   │  │  Hospital UI    │  │  Dashboard  │ │
@@ -34,36 +40,55 @@
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    API GATEWAY                             │
+│                    API GATEWAY (Puerto 3000)               │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
 │  │  Auth Service   │  │  Admin Service  │  │  Reports    │ │
-│  │  (JWT)          │  │  (CRUD)         │  │  Service    │ │
+│  │  (Puerto 3001)  │  │  (Puerto 3002)  │  │  Service    │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────┘ │
+│  ┌─────────────────┐  ┌─────────────────┐                  │
+│  │ Consultas Svc   │  │  Users Service  │                  │
+│  │  (Puerto 3003)  │  │  (Puerto 3004)  │                  │
+│  └─────────────────┘  └─────────────────┘                  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                DATABASES DISTRIBUTED                       │
+│                DATABASES DISTRIBUTED                        │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
 │  │  Central DB     │  │  Guayaquil DB   │  │  Cuenca DB  │ │
-│  │  (Quito)        │  │  (Local)        │  │  (Local)    │ │
+│  │  (Puerto 3307)  │  │  (Puerto 3308)  │  │  (Puerto 3309) │
+│  │  Quito          │  │  Guayaquil      │  │  Cuenca     │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Microservicios
+
+| Servicio | Puerto | Responsabilidad | Base de Datos |
+|----------|--------|-----------------|---------------|
+| **API Gateway** | 3000 | Enrutamiento, autenticación, proxy | - |
+| **Auth Service** | 3001 | Autenticación, usuarios, JWT | Todas las BD |
+| **Admin Service** | 3002 | Gestión de médicos, centros, especialidades | Todas las BD |
+| **Consultas Service** | 3003 | Consultas médicas, pacientes | Todas las BD |
+| **Users Service** | 3004 | Gestión de usuarios del sistema | Todas las BD |
+| **Reports Service** | 3005 | Reportes y estadísticas | Todas las BD |
+
 ## 🚀 Tecnologías Utilizadas
 
-### Backend
+### Backend (Microservicios)
 - **Node.js** (v18+) - Runtime de JavaScript
 - **Express.js** (v5.1.0) - Framework web
 - **TypeScript** (v5.9.2) - Tipado estático
 - **MySQL2** (v3.15.0) - Driver de base de datos
 - **JWT** (v9.0.2) - Autenticación
-- **bcrypt** (v6.0.0) - Encriptación de contraseñas
+- **bcryptjs** (v3.0.2) - Encriptación de contraseñas
 - **CORS** (v2.8.5) - Cross-Origin Resource Sharing
-- **Nodemailer** (v6.10.1) - Envío de emails
+- **Winston** (v3.11.0) - Logging
+- **Express-validator** (v7.0.1) - Validaciones
+- **Express-rate-limit** (v7.1.5) - Rate limiting
+- **Helmet** (v7.1.0) - Seguridad HTTP
 
 ### Frontend
 - **React** (v19.1.1) - Biblioteca de UI
@@ -76,30 +101,63 @@
 - **React Big Calendar** (v1.19.4) - Componente de calendario
 - **jsPDF** (v3.0.3) - Generación de PDFs
 - **Lucide React** (v0.542.0) - Iconos
+- **Moment.js** (v2.30.1) - Manipulación de fechas
 
-### Base de Datos
+### Base de Datos y DevOps
 - **MySQL** (v8.0+) - Sistema de gestión de base de datos
+- **Docker** (v24+) - Containerización
+- **Docker Compose** (v2.0+) - Orquestación de contenedores
 - **Arquitectura Distribuida** - Múltiples instancias por región
 
 ## 📁 Estructura del Proyecto
 
 ```
 hospital-app/
-├── 📁 backend/                    # Servidor Node.js
-│   ├── 📁 src/
-│   │   ├── 📁 config/            # Configuración de BD y variables
-│   │   ├── 📁 controllers/       # Lógica de negocio
-│   │   ├── 📁 middlewares/       # Middlewares de autenticación y validación
-│   │   ├── 📁 routes/            # Definición de rutas API
-│   │   └── 📁 docs/              # Documentación API (Postman)
-│   ├── 📄 package.json           # Dependencias del backend
-│   ├── 📄 sql.txt               # Scripts de base de datos
-│   └── 📄 README.md             # Documentación del backend
+├── 📁 microservices/              # Arquitectura de Microservicios
+│   ├── 📁 api-gateway/           # Gateway principal (Puerto 3000)
+│   │   ├── 📄 index.js           # Servidor principal
+│   │   ├── 📄 package.json       # Dependencias
+│   │   └── 📄 env.local          # Variables de entorno
+│   ├── 📁 auth-service/           # Servicio de autenticación (Puerto 3001)
+│   │   ├── 📄 index.js           # Servidor de autenticación
+│   │   ├── 📄 package.json       # Dependencias
+│   │   └── 📄 env.local          # Variables de entorno
+│   ├── 📁 admin-service/          # Servicio administrativo (Puerto 3002)
+│   │   ├── 📄 index.js           # Servidor administrativo
+│   │   ├── 📄 package.json       # Dependencias
+│   │   └── 📄 env.local          # Variables de entorno
+│   ├── 📁 consultas-service/      # Servicio de consultas (Puerto 3003)
+│   │   ├── 📄 index.js           # Servidor de consultas
+│   │   ├── 📄 package.json       # Dependencias
+│   │   └── 📄 env.local          # Variables de entorno
+│   ├── 📁 users-service/          # Servicio de usuarios (Puerto 3004)
+│   │   ├── 📄 index.js           # Servidor de usuarios
+│   │   ├── 📄 package.json       # Dependencias
+│   │   └── 📄 env.local          # Variables de entorno
+│   ├── 📁 reports-service/        # Servicio de reportes (Puerto 3005)
+│   │   ├── 📄 index.js           # Servidor de reportes
+│   │   ├── 📄 package.json       # Dependencias
+│   │   ├── 📄 env.local          # Variables de entorno
+│   │   └── 📁 logs/              # Archivos de log
+│   ├── 📁 sql/                   # Scripts de base de datos
+│   │   ├── 📄 setup-central.sql  # Configuración BD Central
+│   │   ├── 📄 setup-guayaquil.sql # Configuración BD Guayaquil
+│   │   ├── 📄 setup-cuenca.sql   # Configuración BD Cuenca
+│   │   └── 📄 setup-users.sql    # Configuración usuarios
+│   ├── 📄 docker-compose.yml     # Orquestación de contenedores
+│   ├── 📄 insert-sample-data.js  # Datos de prueba
+│   └── 📄 reset-databases.js     # Reset de bases de datos
 │
 ├── 📁 frontend/                   # Cliente React
 │   └── 📁 vite-project/
 │       ├── 📁 src/
 │       │   ├── 📁 api/           # Servicios de API
+│       │   │   ├── 📄 authApi.ts # API de autenticación
+│       │   │   ├── 📄 adminApi.ts # API administrativa
+│       │   │   ├── 📄 consultasApi.ts # API de consultas
+│       │   │   ├── 📄 pacientesApi.ts # API de pacientes
+│       │   │   ├── 📄 reportsApi.ts # API de reportes
+│       │   │   └── 📄 usersApi.ts # API de usuarios
 │       │   ├── 📁 components/    # Componentes reutilizables
 │       │   ├── 📁 contexts/      # Contextos de React
 │       │   ├── 📁 hooks/         # Custom hooks
@@ -110,9 +168,14 @@ hospital-app/
 │       │   ├── 📁 types/         # Definiciones de TypeScript
 │       │   └── 📁 utils/         # Utilidades y helpers
 │       ├── 📄 package.json       # Dependencias del frontend
-│       └── 📄 vite.config.ts     # Configuración de Vite
+│       ├── 📄 vite.config.ts     # Configuración de Vite
+│       ├── 📄 Dockerfile         # Containerización frontend
+│       └── 📄 nginx.conf         # Configuración Nginx
 │
-└── 📄 README.md                   # Este archivo
+├── 📄 README.md                   # Documentación principal
+├── 📄 README_SEGURIDAD.md         # Documentación de seguridad
+├── 📄 README_VALIDACIONES.md      # Documentación de validaciones
+└── 📄 FRONTEND_DOCUMENTATION.md  # Documentación del frontend
 ```
 
 ## 🛠️ Instalación y Configuración
@@ -121,6 +184,7 @@ hospital-app/
 
 - **Node.js** v18 o superior
 - **MySQL** v8.0 o superior
+- **Docker** v24+ y **Docker Compose** v2.0+
 - **npm** o **yarn**
 
 ### 1. Clonar el Repositorio
@@ -130,22 +194,39 @@ git clone <repository-url>
 cd hospital-app
 ```
 
-### 2. Configurar Base de Datos
+### 2. Configuración con Docker (Recomendado)
 
-#### Crear Bases de Datos Distribuidas
+#### Opción A: Ejecución Completa con Docker
+
+```bash
+# Navegar al directorio de microservicios
+cd microservices
+
+# Ejecutar todos los servicios con Docker Compose
+docker-compose up -d
+
+# Verificar que todos los contenedores estén ejecutándose
+docker-compose ps
+```
+
+#### Opción B: Configuración Manual
+
+### 3. Configurar Bases de Datos Distribuidas
+
+#### Crear Bases de Datos y Usuarios
 
 ```sql
--- Servidor Central (Quito)
+-- Servidor Central (Puerto 3307)
 CREATE DATABASE hospital_central;
 CREATE USER 'admin_central'@'%' IDENTIFIED BY 'SuperPasswordCentral123!';
 GRANT ALL PRIVILEGES ON hospital_central.* TO 'admin_central'@'%';
 
--- Servidor Guayaquil
+-- Servidor Guayaquil (Puerto 3308)
 CREATE DATABASE hospital_guayaquil;
 CREATE USER 'admin_guayaquil'@'%' IDENTIFIED BY 'SuperPasswordGye123!';
 GRANT ALL PRIVILEGES ON hospital_guayaquil.* TO 'admin_guayaquil'@'%';
 
--- Servidor Cuenca
+-- Servidor Cuenca (Puerto 3309)
 CREATE DATABASE hospital_cuenca;
 CREATE USER 'admin_cuenca'@'%' IDENTIFIED BY 'SuperPasswordCuenca123!';
 GRANT ALL PRIVILEGES ON hospital_cuenca.* TO 'admin_cuenca'@'%';
@@ -153,36 +234,48 @@ GRANT ALL PRIVILEGES ON hospital_cuenca.* TO 'admin_cuenca'@'%';
 FLUSH PRIVILEGES;
 ```
 
-#### Ejecutar Scripts de Base de Datos
+#### Ejecutar Scripts de Configuración
 
 ```bash
-# Ejecutar el archivo sql.txt en cada base de datos
-mysql -u admin_central -p hospital_central < backend/sql.txt
-mysql -u admin_guayaquil -p hospital_guayaquil < backend/sql.txt
-mysql -u admin_cuenca -p hospital_cuenca < backend/sql.txt
+# Configurar bases de datos
+cd microservices/sql
+
+# Central (Puerto 3307)
+mysql -u admin_central -p -P 3307 hospital_central < setup-central.sql
+
+# Guayaquil (Puerto 3308)
+mysql -u admin_guayaquil -p -P 3308 hospital_guayaquil < setup-guayaquil.sql
+
+# Cuenca (Puerto 3309)
+mysql -u admin_cuenca -p -P 3309 hospital_cuenca < setup-cuenca.sql
+
+# Configurar usuarios del sistema
+mysql -u admin_central -p -P 3307 hospital_central < setup-users.sql
 ```
 
-### 3. Configurar Backend
+### 4. Configurar Microservicios
+
+#### Variables de Entorno por Servicio
+
+Cada microservicio requiere su archivo `env.local`:
 
 ```bash
-cd backend
-
-# Instalar dependencias
-npm install
-
-# Configurar variables de entorno
-cp env.example .env
-
-# Editar archivo .env con tus configuraciones
-nano .env
+# Copiar archivos de ejemplo
+cd microservices
+cp api-gateway/env.example api-gateway/env.local
+cp auth-service/env.example auth-service/env.local
+cp admin-service/env.example admin-service/env.local
+cp consultas-service/env.example consultas-service/env.local
+cp users-service/env.example users-service/env.local
+cp reports-service/env.example reports-service/env.local
 ```
 
-#### Variables de Entorno (.env)
+#### Ejemplo de Variables de Entorno (auth-service/env.local)
 
 ```env
 # Base de Datos
 DB_HOST=localhost
-DB_PORT=3306
+DB_PORT=3307
 DB_USER=admin_central
 DB_PASS=SuperPasswordCentral123!
 DB_NAME=hospital_central
@@ -192,57 +285,95 @@ JWT_SECRET=tu_jwt_secret_muy_seguro_aqui
 JWT_EXPIRES_IN=24h
 
 # Servidor
-PORT=3000
+PORT=3001
 NODE_ENV=development
 
-# Email (opcional)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=tu_email@gmail.com
-EMAIL_PASS=tu_password_de_aplicacion
+# Otros servicios
+ADMIN_SERVICE_URL=http://localhost:3002
+CONSULTAS_SERVICE_URL=http://localhost:3003
+USERS_SERVICE_URL=http://localhost:3004
+REPORTS_SERVICE_URL=http://localhost:3005
 ```
 
-### 4. Configurar Frontend
+### 5. Instalar Dependencias
 
 ```bash
-cd frontend/vite-project
-
-# Instalar dependencias
+# Instalar dependencias de todos los microservicios
+cd microservices
 npm install
 
-# Configurar variables de entorno
-cp .env.example .env.local
-
-# Editar archivo .env.local
-nano .env.local
+# Instalar dependencias del frontend
+cd ../frontend/vite-project
+npm install
 ```
 
-#### Variables de Entorno Frontend (.env.local)
+### 6. Ejecutar la Aplicación
 
-```env
-VITE_API_URL=http://localhost:3000/api
-VITE_APP_NAME=Sistema de Gestión Hospitalaria
-VITE_APP_VERSION=1.0.0
-VITE_DEBUG=true
-```
+#### Opción A: Con Docker Compose (Recomendado)
 
-### 5. Ejecutar la Aplicación
-
-#### Terminal 1 - Backend
 ```bash
-cd backend
+cd microservices
+docker-compose up -d
+
+# En otra terminal, ejecutar frontend
+cd ../frontend/vite-project
+npm run dev
+```
+
+#### Opción B: Ejecución Manual
+
+```bash
+# Terminal 1 - API Gateway
+cd microservices/api-gateway
 npm start
-```
 
-#### Terminal 2 - Frontend
-```bash
+# Terminal 2 - Auth Service
+cd microservices/auth-service
+npm start
+
+# Terminal 3 - Admin Service
+cd microservices/admin-service
+npm start
+
+# Terminal 4 - Consultas Service
+cd microservices/consultas-service
+npm start
+
+# Terminal 5 - Users Service
+cd microservices/users-service
+npm start
+
+# Terminal 6 - Reports Service
+cd microservices/reports-service
+npm start
+
+# Terminal 7 - Frontend
 cd frontend/vite-project
 npm run dev
 ```
 
+### 7. Verificar Instalación
+
 La aplicación estará disponible en:
 - **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3000/api
+- **API Gateway**: http://localhost:3000
+- **Auth Service**: http://localhost:3001
+- **Admin Service**: http://localhost:3002
+- **Consultas Service**: http://localhost:3003
+- **Users Service**: http://localhost:3004
+- **Reports Service**: http://localhost:3005
+
+#### Verificar Servicios
+
+```bash
+# Verificar que todos los servicios estén ejecutándose
+curl http://localhost:3000/health
+curl http://localhost:3001/health
+curl http://localhost:3002/health
+curl http://localhost:3003/health
+curl http://localhost:3004/health
+curl http://localhost:3005/health
+```
 
 ## 🔐 Sistema de Autenticación
 

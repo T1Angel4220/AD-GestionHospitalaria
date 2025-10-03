@@ -1,17 +1,19 @@
 # 📋 README - Validaciones del Sistema Hospitalario
 
-## 🏥 HospitalApp - Sistema de Gestión Hospitalaria
+## 🏥 HospitalApp - Sistema de Gestión Hospitalaria con Microservicios
 
-Este documento detalla todas las validaciones implementadas y recomendadas para el sistema hospitalario, tanto en el backend como en el frontend.
+Este documento detalla todas las validaciones implementadas y recomendadas para el sistema hospitalario con **arquitectura de microservicios**, tanto en el frontend como en los múltiples servicios backend distribuidos.
 
 ---
 
 ## 📊 Resumen Ejecutivo
 
 ### ✅ Validaciones Implementadas
-- **Backend**: Validaciones básicas de campos obligatorios, tipos de datos y relaciones
+- **Microservicios**: Validaciones básicas de campos obligatorios, tipos de datos y relaciones
+- **API Gateway**: Validación centralizada de tokens y rutas
 - **Frontend**: Validaciones HTML5 básicas y controles de formulario
-- **Base de Datos**: Restricciones de integridad referencial
+- **Base de Datos**: Restricciones de integridad referencial distribuidas
+- **Docker**: Validaciones de configuración de contenedores
 
 ### ⚠️ Validaciones Faltantes Críticas
 - **Validaciones de longitud mínima/máxima** para nombres y textos
@@ -19,15 +21,16 @@ Este documento detalla todas las validaciones implementadas y recomendadas para 
 - **Validaciones de negocio** específicas del dominio hospitalario
 - **Sanitización de datos** para prevenir inyecciones
 - **Validaciones de seguridad** adicionales
+- **Validaciones de comunicación** entre microservicios
 
 ---
 
-## 🔧 Backend - Validaciones Actuales
+## 🔧 Backend - Validaciones Actuales (Microservicios)
 
-### 1. Controlador de Consultas (`/routes/consultas.ts`)
+### 1. Consultas Service (`microservices/consultas-service/index.js`)
 
 #### ✅ Implementadas:
-```typescript
+```javascript
 // Campos obligatorios
 if (!id_medico || !paciente_nombre || !paciente_apellido || !fecha) {
   return res.status(400).json({ error: "Campos obligatorios faltantes" });
@@ -47,6 +50,11 @@ if (estado === 'programada' || estado === 'completada') {
 if (isNaN(id) || id <= 0) {
   return res.status(400).json({ error: "ID inválido" });
 }
+
+// Validación de centro médico
+if (!id_centro || isNaN(id_centro)) {
+  return res.status(400).json({ error: "Centro médico inválido" });
+}
 ```
 
 #### ❌ Faltantes:
@@ -54,11 +62,12 @@ if (isNaN(id) || id <= 0) {
 - Validación de formato de fecha
 - Validación de caracteres especiales en nombres
 - Sanitización de texto para prevenir XSS
+- Validación de comunicación con otros servicios
 
-### 2. Controlador de Médicos (`/controllers/medicos.controller.ts`)
+### 2. Admin Service (`microservices/admin-service/index.js`)
 
 #### ✅ Implementadas:
-```typescript
+```javascript
 // Campos obligatorios
 if (!nombres?.trim() || !apellidos?.trim() || !id_especialidad || !id_centro) {
   return res.status(400).json({ error: "Campos obligatorios faltantes" });
@@ -71,17 +80,23 @@ if (centros.length === 0) return res.status(400).json({ error: "Centro no existe
 // Validación de existencia de especialidad
 const especialidades = await query("SELECT id FROM especialidades WHERE id = ?", [Number(id_especialidad)]);
 if (especialidades.length === 0) return res.status(400).json({ error: "Especialidad no existe" });
+
+// Validación de rol de usuario
+if (req.user.rol !== 'admin') {
+  return res.status(403).json({ error: "Acceso denegado" });
+}
 ```
 
 #### ❌ Faltantes:
 - Validación de longitud de nombres (2-50 caracteres)
 - Validación de caracteres permitidos (solo letras y espacios)
 - Validación de nombres duplicados
+- Validación de comunicación con otros servicios
 
-### 3. Controlador de Usuarios (`/controllers/usuarios.controller.ts`)
+### 3. Auth Service (`microservices/auth-service/index.js`)
 
 #### ✅ Implementadas:
-```typescript
+```javascript
 // Campos obligatorios
 if (!email?.trim() || !password?.trim() || !rol || !id_centro) {
   return res.status(400).json({ error: "Campos obligatorios faltantes" });
@@ -97,12 +112,19 @@ const existingUsers = await query("SELECT id FROM usuarios WHERE email = ?", [em
 if (existingUsers.length > 0) {
   return res.status(409).json({ error: "Email ya registrado" });
 }
+
+// Validación de token JWT
+const token = req.headers.authorization?.split(' ')[1];
+if (!token) {
+  return res.status(401).json({ error: "Token no proporcionado" });
+}
 ```
 
 #### ❌ Faltantes:
 - Validación de formato de email
 - Validación de fortaleza de contraseña
 - Validación de longitud de contraseña (mínimo 8 caracteres)
+- Validación de comunicación con otros servicios
 
 ---
 

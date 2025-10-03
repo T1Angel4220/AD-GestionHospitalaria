@@ -1,8 +1,8 @@
-# Documentación de Seguridad - Sistema Hospitalario
+# 🔐 Documentación de Seguridad - Sistema Hospitalario
 
-## Resumen de Seguridad Implementada
+## 📋 Resumen de Seguridad Implementada
 
-Este documento describe las medidas de seguridad implementadas en el sistema hospitalario para proteger tanto el frontend como el backend.
+Este documento describe las medidas de seguridad implementadas en el sistema hospitalario con **arquitectura de microservicios** para proteger tanto el frontend como los múltiples servicios backend distribuidos.
 
 ## 🔐 Autenticación y Autorización
 
@@ -54,59 +54,88 @@ Este documento describe las medidas de seguridad implementadas en el sistema hos
   - Manejo automático de respuestas 401/403
   - Limpieza automática de datos y redirección en caso de token expirado
 
-### Backend
+### Backend (Microservicios)
 
-#### 1. **Middleware de Autenticación Mejorado**
-- **Archivo**: `backend/src/middlewares/auth.js`
+#### 1. **API Gateway - Punto de Entrada Seguro**
+- **Archivo**: `microservices/api-gateway/index.js`
 - **Funcionalidad**:
-  - Verificación de tokens JWT
-  - Verificación de expiración de tokens
-  - Códigos de error específicos para diferentes tipos de fallos
-  - Extracción de información del usuario del token
+  - Enrutamiento seguro a microservicios
+  - Validación de tokens JWT centralizada
+  - Rate limiting y protección DDoS
+  - Logging de todas las peticiones
+  - Proxy seguro a servicios internos
 
-#### 2. **Middleware de Seguridad Avanzado**
-- **Archivo**: `backend/src/middlewares/security.ts`
+#### 2. **Auth Service - Autenticación Centralizada**
+- **Archivo**: `microservices/auth-service/index.js`
 - **Funcionalidad**:
-  - Verificación de roles específicos
+  - Generación y validación de tokens JWT
+  - Encriptación de contraseñas con bcryptjs
+  - Gestión de sesiones de usuario
+  - Validación de credenciales
+  - Middleware de autenticación distribuido
+
+#### 3. **Middleware de Seguridad por Servicio**
+- **Archivos**: `microservices/*/index.js`
+- **Funcionalidad**:
+  - Verificación de tokens JWT en cada servicio
+  - Verificación de roles específicos por servicio
   - Verificación de acceso a centros médicos
-  - Verificación de acceso a médicos específicos
-  - Verificación de acceso a consultas específicas
-  - Verificación de acceso a usuarios específicos
+  - Validación de permisos por entidad
+  - Logging de accesos y acciones
 
-#### 3. **Protección por Roles**
-- **ADMIN**: Acceso completo a todas las funcionalidades
-- **MÉDICO**: Acceso limitado a sus propios datos y centro
+#### 4. **Protección por Roles y Servicios**
+- **ADMIN**: Acceso completo a todos los servicios
+- **MÉDICO**: Acceso limitado según servicio:
+  - Auth Service: Login/logout
+  - Consultas Service: Solo sus consultas
+  - Reports Service: Solo reportes de su centro
+  - Admin Service: Sin acceso
+  - Users Service: Sin acceso
 
 ## 🛡️ Medidas de Seguridad Implementadas
 
-### 1. **Validación de Tokens**
-- Verificación de firma JWT
-- Verificación de expiración
+### 1. **Arquitectura de Microservicios Segura**
+- **API Gateway** como punto de entrada único
+- **Servicios independientes** con sus propias validaciones
+- **Comunicación interna** entre servicios protegida
+- **Aislamiento de fallos** por servicio
+- **Escalabilidad independiente** por servicio
+
+### 2. **Validación de Tokens Distribuida**
+- Verificación de firma JWT en cada servicio
+- Verificación de expiración centralizada
 - Limpieza automática de datos expirados
 - Redirección automática al login
+- Tokens compartidos entre servicios
 
-### 2. **Protección de Rutas**
-- Verificación de autenticación antes de acceder a rutas
-- Verificación de roles específicos
+### 3. **Protección de Rutas y Servicios**
+- Verificación de autenticación en API Gateway
+- Verificación de roles específicos por servicio
 - Redirección automática según el estado de autenticación
 - Pantallas de carga durante la verificación
+- Protección de endpoints internos
 
-### 3. **Interceptación de API**
+### 4. **Interceptación de API Mejorada**
 - Agregado automático de tokens de autorización
 - Manejo automático de respuestas de error
 - Limpieza automática de datos en caso de error
+- Retry automático en fallos de red
+- Circuit breaker para servicios no disponibles
 
-### 4. **Verificación de Permisos**
-- Verificación de roles específicos
+### 5. **Verificación de Permisos por Servicio**
+- Verificación de roles específicos por microservicio
 - Verificación de acceso a entidades específicas
 - Verificación de permisos de gestión
+- Validación de centro médico por servicio
+- Logging de accesos por servicio
 
-### 5. **Códigos de Error Específicos**
+### 6. **Códigos de Error Específicos**
 - `NO_TOKEN`: Token no proporcionado
 - `TOKEN_EXPIRED`: Token expirado
 - `INVALID_TOKEN`: Token inválido
 - `NOT_AUTHENTICATED`: Usuario no autenticado
 - `INSUFFICIENT_PERMISSIONS`: Permisos insuficientes
+- `SERVICE_UNAVAILABLE`: Servicio no disponible
 - `MISSING_CENTRO_ID`: ID de centro faltante
 - `CENTRO_ACCESS_DENIED`: Acceso denegado al centro
 - `MEDICO_ACCESS_DENIED`: Acceso denegado al médico

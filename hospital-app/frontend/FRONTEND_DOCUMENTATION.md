@@ -2,7 +2,7 @@
 
 ## 📋 Descripción General
 
-El frontend del sistema HospitalApp está desarrollado con **React 19**, **TypeScript** y **Vite**, implementando dos interfaces diferenciadas: una **interfaz administrativa** para la gestión global del sistema y una **interfaz de hospital** para la gestión de consultas médicas por centro.
+El frontend del sistema HospitalApp está desarrollado con **React 19**, **TypeScript** y **Vite**, implementando una **arquitectura de microservicios** con dos interfaces diferenciadas: una **interfaz administrativa** para la gestión global del sistema y una **interfaz de hospital** para la gestión de consultas médicas por centro. El sistema se comunica con múltiples microservicios a través de un API Gateway centralizado.
 
 ## 🏗️ Arquitectura del Frontend
 
@@ -11,16 +11,27 @@ El frontend del sistema HospitalApp está desarrollado con **React 19**, **TypeS
 ```
 frontend/vite-project/
 ├── src/
-│   ├── components/       # Componentes reutilizables
-│   ├── pages/           # Páginas principales
-│   ├── hooks/           # Custom hooks
-│   ├── services/        # Servicios de API
-│   ├── context/         # Context API
-│   ├── types/           # Definiciones de tipos
-│   ├── utils/           # Utilidades
-│   └── config/          # Configuración
-├── public/              # Archivos estáticos
-└── dist/               # Build de producción
+│   ├── api/             # Servicios de API por microservicio
+│   │   ├── authApi.ts   # API de autenticación
+│   │   ├── adminApi.ts  # API administrativa
+│   │   ├── consultasApi.ts # API de consultas
+│   │   ├── pacientesApi.ts # API de pacientes
+│   │   ├── reportsApi.ts # API de reportes
+│   │   ├── usersApi.ts  # API de usuarios
+│   │   └── apiInterceptor.ts # Interceptor HTTP
+│   ├── components/      # Componentes reutilizables
+│   ├── pages/          # Páginas principales
+│   ├── hooks/          # Custom hooks
+│   ├── contexts/       # Context API
+│   ├── layouts/        # Layouts de páginas
+│   ├── routes/         # Configuración de rutas
+│   ├── store/          # Estado global (Zustand)
+│   ├── types/          # Definiciones de tipos
+│   └── utils/          # Utilidades
+├── public/             # Archivos estáticos
+├── dist/              # Build de producción
+├── Dockerfile         # Containerización
+└── nginx.conf         # Configuración Nginx
 ```
 
 ### Tecnologías Utilizadas
@@ -28,15 +39,17 @@ frontend/vite-project/
 | Tecnología | Versión | Propósito |
 |------------|---------|-----------|
 | **React** | 19.1.1 | Framework de UI |
-| **TypeScript** | 5.9.2 | Tipado estático |
-| **Vite** | 6.0.1 | Build tool y dev server |
-| **Tailwind CSS** | 3.4+ | Framework de estilos |
-| **React Router** | 6.26+ | Enrutamiento |
+| **TypeScript** | 5.8.3 | Tipado estático |
+| **Vite** | 7.1.2 | Build tool y dev server |
+| **Tailwind CSS** | 4.1.13 | Framework de estilos |
+| **React Router** | 7.8.2 | Enrutamiento |
 | **Axios** | 1.7+ | Cliente HTTP |
-| **React Query** | 5.0+ | Gestión de estado del servidor |
-| **Chart.js** | 4.4+ | Gráficos y visualizaciones |
-| **React Hook Form** | 7.0+ | Formularios |
-| **React Hot Toast** | 2.4+ | Notificaciones |
+| **Zustand** | 5.0.8 | Estado global |
+| **Recharts** | 3.2.1 | Gráficos y visualizaciones |
+| **React Big Calendar** | 1.19.4 | Componente de calendario |
+| **jsPDF** | 3.0.3 | Generación de PDFs |
+| **Lucide React** | 0.542.0 | Iconos |
+| **Moment.js** | 2.30.1 | Manipulación de fechas |
 
 ## 🎨 Interfaces del Sistema
 
