@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS empleados (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombres VARCHAR(255) NOT NULL,
     apellidos VARCHAR(255) NOT NULL,
-    cedula VARCHAR(20) UNIQUE NOT NULL,
+    cedula VARCHAR(20) UNIQUE,
     telefono VARCHAR(20),
     email VARCHAR(255),
     cargo VARCHAR(100) NOT NULL,

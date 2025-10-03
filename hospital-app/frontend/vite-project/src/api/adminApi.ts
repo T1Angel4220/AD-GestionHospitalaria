@@ -7,6 +7,9 @@ export interface AdminMedico {
   id: number;
   nombres: string;
   apellidos: string;
+  cedula: string;
+  telefono?: string;
+  email?: string;
   id_especialidad: number;
   id_centro: number;
   especialidad_nombre?: string;

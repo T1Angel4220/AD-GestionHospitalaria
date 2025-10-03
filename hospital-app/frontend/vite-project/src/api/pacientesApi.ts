@@ -55,7 +55,9 @@ export class PacientesApi {
     console.log('📡 PacientesApi Response:', {
       status: response.status,
       statusText: response.statusText,
-      url: response.url
+      url: response.url,
+      contentType: response.headers.get('content-type'),
+      contentLength: response.headers.get('content-length')
     });
 
     if (!response.ok) {
@@ -73,9 +75,17 @@ export class PacientesApi {
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log('✅ PacientesApi Response data:', data);
-    return data;
+    // Verificar si la respuesta tiene contenido antes de parsear JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      console.log('✅ PacientesApi Response data:', data);
+      return data;
+    } else {
+      // Si no es JSON, devolver undefined para métodos que no esperan respuesta
+      console.log('✅ PacientesApi Response: No JSON content');
+      return undefined as T;
+    }
   }
 
   static async getPacientes(): Promise<Paciente[]> {
@@ -100,8 +110,8 @@ export class PacientesApi {
     });
   }
 
-  static async deletePaciente(id: number): Promise<void> {
-    return this.request<void>(`/pacientes/${id}`, {
+  static async deletePaciente(id: number): Promise<{ message: string; id: number }> {
+    return this.request<{ message: string; id: number }>(`/pacientes/${id}`, {
       method: 'DELETE',
     });
   }

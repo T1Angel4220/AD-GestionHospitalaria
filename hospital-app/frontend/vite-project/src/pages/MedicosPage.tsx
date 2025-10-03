@@ -200,6 +200,9 @@ export default function MedicosPage() {
     setMedicoForm({
       nombres: medico.nombres,
       apellidos: medico.apellidos,
+      cedula: medico.cedula,
+      telefono: medico.telefono || '',
+      email: medico.email || '',
       id_especialidad: medico.id_especialidad,
       id_centro: medico.id_centro
     })

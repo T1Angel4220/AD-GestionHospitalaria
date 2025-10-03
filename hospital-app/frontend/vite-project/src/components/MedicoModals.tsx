@@ -270,11 +270,13 @@ export function MedicoModals({
                 <input
                   type="text"
                   value={medicoForm.cedula}
-                  onChange={(e) => setMedicoForm({...medicoForm, cedula: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
                   placeholder="1234567890"
-                  required
+                  readOnly
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  La cédula no se puede modificar al editar un médico
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -295,10 +297,13 @@ export function MedicoModals({
                 <input
                   type="email"
                   value={medicoForm.email || ''}
-                  onChange={(e) => setMedicoForm({...medicoForm, email: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
                   placeholder="medico@hospital.com"
+                  readOnly
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  El email no se puede modificar al editar un médico
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -327,9 +332,9 @@ export function MedicoModals({
                 </label>
                 <select
                   value={medicoForm.id_centro}
-                  onChange={(e) => setMedicoForm({...medicoForm, id_centro: Number(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
                   required
+                  disabled
                 >
                   {centros.map((centro) => (
                     <option key={centro.id} value={centro.id}>
@@ -337,6 +342,9 @@ export function MedicoModals({
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  El centro médico no se puede modificar al editar un médico
+                </p>
               </div>
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button

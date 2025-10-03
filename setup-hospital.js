@@ -419,8 +419,8 @@ async function insertSampleData(dbName, config) {
       { motivo: 'Control de rutina', diagnostico: 'Cancelada por lluvia', tratamiento: 'Reagendar', estado: 'cancelada', duracion: 0 }
     ];
 
-    // Insertar más consultas (hasta 25 por centro)
-    const numConsultas = Math.min(25, consultasEjemplo.length);
+    // Insertar consultas de ejemplo (hasta 10 por centro)
+    const numConsultas = Math.min(10, consultasEjemplo.length);
     for (let i = 0; i < numConsultas; i++) {
       const consulta = consultasEjemplo[i];
       const paciente = pacientes[i % pacientes.length];

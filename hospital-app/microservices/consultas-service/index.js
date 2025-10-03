@@ -716,7 +716,10 @@ app.delete('/pacientes/:id', authenticateToken, async (req, res) => {
         try {
           const [result] = await dbPool.query('DELETE FROM pacientes WHERE id = ?', [id]);
           if (result.affectedRows > 0) {
-            return res.status(204).send();
+            return res.status(200).json({
+              message: 'Paciente eliminado exitosamente',
+              id: parseInt(id)
+            });
           }
         } catch (error) {
           logger.error(`Error eliminando paciente de ${dbName}:`, error.message);
@@ -742,7 +745,10 @@ app.delete('/pacientes/:id', authenticateToken, async (req, res) => {
         return res.status(404).json({ error: 'Paciente no encontrado' });
       }
 
-      res.status(204).send();
+      res.status(200).json({
+        message: 'Paciente eliminado exitosamente',
+        id: parseInt(id)
+      });
     } else {
       return res.status(403).json({ error: 'Rol no autorizado para eliminar pacientes' });
     }
