@@ -28,21 +28,20 @@ export interface ConsultaDetalle {
   id_paciente: number | null;
   cedula: string | null;
   telefono: string | null;
-  email: string | null;
-  fecha_nacimiento: string | null;
-  genero: 'M' | 'F' | 'O' | null;
-  motivo: string | null;
-  diagnostico: string | null;
-  tratamiento: string | null;
-  estado: 'pendiente' | 'programada' | 'completada' | 'cancelada';
-  duracion_minutos: number;
+  estado: string;
+  observaciones: string | null;
 }
 
-export interface ReporteFiltros {
-  desde?: string;
-  hasta?: string;
-  q?: string;
-  centroId?: number;
+export interface PacienteFrecuente {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  cedula: string;
+  telefono: string | null;
+  email: string | null;
+  total_consultas: number;
+  primera_consulta: string;
+  ultima_consulta: string;
 }
 
 export interface EstadisticasGenerales {
@@ -55,134 +54,100 @@ export interface EstadisticasGenerales {
   consultas_programadas: number;
   consultas_completadas: number;
   consultas_canceladas: number;
-  duracion_promedio_minutos: number | null;
+  duracion_promedio_minutos: number;
 }
 
-export interface PacienteFrecuente {
-  id: number;
-  nombres: string;
-  apellidos: string;
-  cedula: string | null;
-  telefono: string | null;
-  email: string | null;
-  fecha_nacimiento: string | null;
-  genero: 'M' | 'F' | 'O' | null;
-  total_consultas: number;
-  primera_consulta: string;
-  ultima_consulta: string;
-  medicos_atendidos: string | null;
+export interface ReporteFiltros {
+  centroId?: number;
+  desde?: string;
+  hasta?: string;
+  q?: string;
 }
 
-class ApiService {
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-    centroId?: number
-  ): Promise<ApiResponse<T>> {
-    try {
-      const token = localStorage.getItem('token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      };
-
-      if (token) {
-        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-      }
-
-      if (centroId) {
-        (headers as Record<string, string>)["X-Centro-Id"] = centroId.toString();
-      }
-
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      return { data };
-    } catch (error) {
-      console.error('API Error:', error);
-      return { 
-        error: error instanceof Error ? error.message : 'Error desconocido' 
-      };
+class ReportsService {
+  private static getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+    
+    if (user?.rol !== 'admin') {
+      headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
     }
+    
+    return headers;
   }
 
-  // Reportes
-  async getResumenConsultas(filtros: ReporteFiltros): Promise<ApiResponse<ConsultaResumen[]>> {
-    const params = new URLSearchParams();
+  private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const headers = {
+      ...this.getAuthHeaders(),
+      ...options.headers,
+    };
     
+    const response = await fetch(url, {
+      headers,
+      ...options,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    return await response.json();
+  }
+
+  static async getResumenConsultas(filtros: ReporteFiltros): Promise<ConsultaResumen[]> {
+    const params = new URLSearchParams();
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
     if (filtros.q) params.append('q', filtros.q);
-
+    
     const queryString = params.toString();
-    const endpoint = `/consultas/resumen${queryString ? `?${queryString}` : ''}`;
-
-    return this.request<ConsultaResumen[]>(endpoint, { method: 'GET' }, filtros.centroId || 1);
+    const endpoint = queryString ? `/consultas?${queryString}` : '/consultas';
+    
+    return this.request<ConsultaResumen[]>(endpoint);
   }
 
-  async getDetalleConsultasMedico(
-    medicoId: number,
-    filtros: Omit<ReporteFiltros, 'centroId'>,
-    centroId: number = 1
-  ): Promise<ApiResponse<ConsultaDetalle[]>> {
+  static async getEstadisticasGenerales(filtros: ReporteFiltros): Promise<EstadisticasGenerales> {
     const params = new URLSearchParams();
+    if (filtros.desde) params.append('desde', filtros.desde);
+    if (filtros.hasta) params.append('hasta', filtros.hasta);
     
+    const queryString = params.toString();
+    const endpoint = queryString ? `/estadisticas?${queryString}` : '/estadisticas';
+    
+    return this.request<EstadisticasGenerales>(endpoint);
+  }
+
+  static async getPacientesFrecuentes(filtros: ReporteFiltros, limit: number = 10): Promise<PacienteFrecuente[]> {
+    const params = new URLSearchParams();
+    if (filtros.desde) params.append('desde', filtros.desde);
+    if (filtros.hasta) params.append('hasta', filtros.hasta);
+    params.append('limit', limit.toString());
+    
+    const queryString = params.toString();
+    const endpoint = queryString ? `/pacientes-frecuentes?${queryString}` : `/pacientes-frecuentes?limit=${limit}`;
+    
+    return this.request<PacienteFrecuente[]>(endpoint);
+  }
+
+  static async getDetalleConsultasMedico(medicoId: number, filtros: ReporteFiltros): Promise<ConsultaDetalle[]> {
+    const params = new URLSearchParams();
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
     if (filtros.q) params.append('q', filtros.q);
-
-    const queryString = params.toString();
-    const endpoint = `/consultas/medico/${medicoId}${queryString ? `?${queryString}` : ''}`;
-
-    return this.request<ConsultaDetalle[]>(endpoint, { method: 'GET' }, centroId);
-  }
-
-  // Estadísticas generales
-  async getEstadisticasGenerales(filtros: Omit<ReporteFiltros, 'q'>): Promise<ApiResponse<EstadisticasGenerales>> {
-    const params = new URLSearchParams();
     
-    if (filtros.desde) params.append('desde', filtros.desde);
-    if (filtros.hasta) params.append('hasta', filtros.hasta);
-
     const queryString = params.toString();
-    const endpoint = `/estadisticas${queryString ? `?${queryString}` : ''}`;
-
-    return this.request<EstadisticasGenerales>(endpoint, { method: 'GET' }, filtros.centroId || 1);
-  }
-
-  // Pacientes más frecuentes
-  async getPacientesFrecuentes(
-    filtros: Omit<ReporteFiltros, 'q'>,
-    limite: number = 10
-  ): Promise<ApiResponse<PacienteFrecuente[]>> {
-    const params = new URLSearchParams();
+    const endpoint = queryString ? `/consultas/${medicoId}/detalle?${queryString}` : `/consultas/${medicoId}/detalle`;
     
-    if (filtros.desde) params.append('desde', filtros.desde);
-    if (filtros.hasta) params.append('hasta', filtros.hasta);
-    params.append('limite', limite.toString());
-
-    const queryString = params.toString();
-    const endpoint = `/pacientes/frecuentes${queryString ? `?${queryString}` : ''}`;
-
-    return this.request<PacienteFrecuente[]>(endpoint, { method: 'GET' }, filtros.centroId || 1);
-  }
-
-  // Health check
-  async healthCheck(): Promise<ApiResponse<{ ok: boolean; module: string }>> {
-    return this.request<{ ok: boolean; module: string }>('/health', { method: 'GET' });
+    return this.request<ConsultaDetalle[]>(endpoint);
   }
 }
 
-export const apiService = new ApiService();
-
-
-
-
+export const apiService = ReportsService;

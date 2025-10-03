@@ -173,8 +173,7 @@ export const ReportesPage: React.FC = () => {
           console.log(`🔍 [FRONTEND] Obteniendo detalles para médico ${medico.medico_id} con centroId: ${filtros.centroId}`);
           const response = await apiService.getDetalleConsultasMedico(
             medico.medico_id, 
-            { desde: filtros.desde, hasta: filtros.hasta, q: filtros.q },
-            filtros.centroId
+            { desde: filtros.desde, hasta: filtros.hasta, q: filtros.q }
           );
           if (response.data) {
             detallesConsultas[medico.medico_id] = response.data;

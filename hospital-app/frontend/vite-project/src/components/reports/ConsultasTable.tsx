@@ -45,7 +45,7 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
         
         try {
           console.log(`🔍 [CONSULTAS_TABLE] Obteniendo detalles para médico ${medicoId} con centroId: ${centroId}`);
-          const response = await apiService.getDetalleConsultasMedico(medicoId, { desde: undefined, hasta: undefined, q: undefined }, centroId);
+          const response = await apiService.getDetalleConsultasMedico(medicoId, { desde: undefined, hasta: undefined, q: undefined });
           
           if (response.error) {
             onError?.(response.error);
