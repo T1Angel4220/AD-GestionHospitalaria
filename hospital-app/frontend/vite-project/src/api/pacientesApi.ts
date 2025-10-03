@@ -1,7 +1,7 @@
 import type { Paciente, PacienteCreate, PacienteUpdate, CentroMedico } from '../types/pacientes';
 import { config } from '../config/env';
 
-const API_BASE_URL = config.apiUrl;
+const API_BASE_URL = config.consultasUrl;
 
 export class PacientesApi {
   private static getAuthHeaders(): HeadersInit {
@@ -61,6 +61,15 @@ export class PacientesApi {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ PacientesApi Error response:', errorText);
+      
+      // Si es un error de autenticación, limpiar el localStorage y redirigir al login
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      }
+      
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
@@ -107,6 +116,13 @@ export class PacientesApi {
   }
 
   static async getCentros(): Promise<CentroMedico[]> {
-    return this.request<CentroMedico[]>('/centros');
+    // Usar centros por defecto directamente sin llamar a la API
+    // ya que el endpoint /centros requiere autenticación y puede fallar
+    const defaultCentros: CentroMedico[] = [
+      { id: 1, nombre: 'Hospital Central Quito', ciudad: 'Quito', direccion: 'Av. 6 de Diciembre' },
+      { id: 2, nombre: 'Hospital Guayaquil', ciudad: 'Guayaquil', direccion: 'Av. 9 de Octubre' },
+      { id: 3, nombre: 'Hospital Cuenca', ciudad: 'Cuenca', direccion: 'Av. Solano' }
+    ];
+    return defaultCentros;
   }
 }

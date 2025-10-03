@@ -145,19 +145,8 @@ app.get('/estadisticas', authenticateToken, async (req, res) => {
     // Usar centroId de query string o header, priorizando query string
     const finalCentroId = centroId || centroIdHeader;
     
-    // Log para depuración
-    logger.info(`🔍 [ESTADISTICAS] Parámetros recibidos:`, {
-      centroId,
-      centroIdHeader,
-      finalCentroId,
-      tipoFinalCentroId: typeof finalCentroId,
-      queryParams: req.query,
-      headers: req.headers
-    });
-    
     // Si no se especifica centroId o es 'all', obtener estadísticas de todos los centros
     if (!finalCentroId || finalCentroId === 'all') {
-      logger.info(`🔍 [ESTADISTICAS] Usando consulta de TODOS los centros`);
       const allStats = {
         total_medicos: 0,
         total_pacientes: 0,
@@ -197,9 +186,6 @@ app.get('/estadisticas', authenticateToken, async (req, res) => {
             (SELECT COUNT(*) FROM consultas WHERE id_centro = ? AND duracion_minutos IS NOT NULL AND duracion_minutos > 0) as consultas_con_duracion
         `, [centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId, centroId]);
         
-        // Log para depuración
-        logger.info(`Estadísticas para centro ${centroId}:`, stats[0]);
-        
         // Sumar estadísticas (excepto duración promedio)
         Object.keys(allStats).forEach(key => {
           if (key !== 'duracion_promedio_minutos' && stats[0][key] !== null) {
@@ -225,7 +211,6 @@ app.get('/estadisticas', authenticateToken, async (req, res) => {
         ...allStats
       });
     } else {
-      logger.info(`🔍 [ESTADISTICAS] Usando consulta de centro ESPECÍFICO: ${finalCentroId}`);
       // Estadísticas de un centro específico
       const centro = parseInt(finalCentroId);
       const pool = getPoolByCentro(centro);
@@ -244,10 +229,6 @@ app.get('/estadisticas', authenticateToken, async (req, res) => {
           (SELECT COUNT(*) FROM consultas WHERE id_centro = ? AND estado = 'cancelada') as consultas_canceladas,
           (SELECT AVG(duracion_minutos) FROM consultas WHERE id_centro = ? AND duracion_minutos IS NOT NULL AND duracion_minutos > 0) as duracion_promedio_minutos
       `, [centro, centro, centro, centro, centro, centro, centro, centro, centro, centro, centro]);
-      
-      // Log para depuración
-      logger.info(`Estadísticas para centro específico ${centro}:`, stats[0]);
-      logger.info(`Campos en stats[0]:`, Object.keys(stats[0]));
       
       res.json({
         centro_id: centro,

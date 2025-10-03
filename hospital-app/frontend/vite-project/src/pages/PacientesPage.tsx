@@ -43,6 +43,7 @@ export default function PacientesPage() {
     errors, 
     clearAllErrors, 
     sanitizeText,
+    sanitizeName,
     validatePaciente,
     validateName,
     validateCedula,
@@ -157,12 +158,12 @@ export default function PacientesPage() {
     // Sanitizar datos antes de validar
     const sanitizedFormData = {
       ...formData,
-      nombres: sanitizeText(formData.nombres || ''),
-      apellidos: sanitizeText(formData.apellidos || ''),
-      cedula: sanitizeText(formData.cedula || ''),
-      telefono: sanitizeText(formData.telefono || ''),
-      email: sanitizeText(formData.email || ''),
-      direccion: sanitizeText(formData.direccion || '')
+      nombres: sanitizeName(formData.nombres || ''), // Usar sanitizeName para nombres
+      apellidos: sanitizeName(formData.apellidos || ''), // Usar sanitizeName para apellidos
+      cedula: sanitizeText(formData.cedula || ''), // Usar sanitizeText para cédula
+      telefono: sanitizeText(formData.telefono || ''), // Usar sanitizeText para teléfono
+      email: sanitizeText(formData.email || ''), // Usar sanitizeText para email
+      direccion: sanitizeText(formData.direccion || '') // Usar sanitizeText para dirección
     }
 
     // Validar formulario completo

@@ -205,19 +205,6 @@ app.post('/usuarios', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { email, password, rol, id_medico, id_centro } = req.body;
     
-    // Logging detallado para debugging
-    logger.info('📝 [CREATE] Datos recibidos:', {
-      email: email,
-      password: password ? '[PROVIDED]' : '[MISSING]',
-      rol: rol,
-      id_centro: id_centro,
-      id_medico: id_medico,
-      emailValido: !!email,
-      passwordValido: !!password,
-      rolValido: !!rol,
-      centroValido: !!id_centro && id_centro > 0
-    });
-    
     // Validación más específica
     if (!email || !password || !rol || !id_centro) {
       const camposFaltantes = [];
@@ -226,7 +213,6 @@ app.post('/usuarios', authenticateToken, requireAdmin, async (req, res) => {
       if (!rol) camposFaltantes.push('rol');
       if (!id_centro) camposFaltantes.push('id_centro');
       
-      logger.error('❌ [CREATE] Campos faltantes:', camposFaltantes);
       return res.status(400).json({ 
         error: `Faltan campos requeridos: ${camposFaltantes.join(', ')}` 
       });
@@ -268,14 +254,6 @@ app.post('/usuarios', authenticateToken, requireAdmin, async (req, res) => {
       INSERT INTO usuarios (email, password_hash, rol, id_medico, id_centro)
       VALUES (?, ?, ?, ?, ?)
     `, [email, hashedPassword, rol, id_medico || null, id_centro]);
-    
-    logger.info('✅ [CREATE] Usuario creado exitosamente:', {
-      id: result.insertId,
-      email: email,
-      rol: rol,
-      id_centro: id_centro,
-      id_medico: id_medico || null
-    });
     
     res.status(201).json({
       message: 'Usuario creado exitosamente',

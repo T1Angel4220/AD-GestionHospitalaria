@@ -33,8 +33,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         // Redirigir según el rol del usuario
         if (user?.rol === 'admin') {
           navigate('/reportes')
-        } else {
+        } else if (user?.rol === 'medico') {
           navigate('/consultas')
+        } else {
+          navigate('/login')
         }
         return
       }

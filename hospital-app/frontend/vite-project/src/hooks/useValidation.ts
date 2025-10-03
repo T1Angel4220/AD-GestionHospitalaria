@@ -163,20 +163,22 @@ export const useValidation = () => {
     return true;
   }, [setError, clearError]);
 
-  // Validar texto médico (motivo, diagnóstico, tratamiento)
+  // Validar texto médico (motivo, diagnóstico, tratamiento) - optimizado
   const validateMedicalText = useCallback((text: string, fieldName: string, maxLength: number = 1000): boolean => {
-    if (text && typeof text === 'string') {
-      if (text.length > maxLength) {
-        setError(fieldName, `${fieldName} no puede exceder ${maxLength} caracteres`);
-        return false;
-      }
-      
-      // Sanitizar texto para prevenir XSS
-      const sanitized = text.replace(/[<>]/g, '').replace(/javascript:/gi, '');
-      if (sanitized !== text) {
-        setError(fieldName, `${fieldName} contiene caracteres no permitidos`);
-        return false;
-      }
+    if (!text || typeof text !== 'string') {
+      clearError(fieldName);
+      return true;
+    }
+    
+    if (text.length > maxLength) {
+      setError(fieldName, `${fieldName} no puede exceder ${maxLength} caracteres`);
+      return false;
+    }
+    
+    // Solo verificar caracteres peligrosos si el texto los contiene
+    if (/[<>]|javascript:/i.test(text)) {
+      setError(fieldName, `${fieldName} contiene caracteres no permitidos`);
+      return false;
     }
     
     clearError(fieldName);
@@ -298,14 +300,36 @@ export const useValidation = () => {
     return true;
   }, [setError, clearError]);
 
-  // Sanitizar texto
+  // Sanitizar texto libre (motivo, diagnóstico, tratamiento) - preserva espacios
   const sanitizeText = useCallback((text: string): string => {
     if (!text || typeof text !== 'string') return '';
+    
+    // Solo sanitizar si contiene caracteres peligrosos
+    if (!/[<>]|javascript:|on\w+=/i.test(text)) {
+      return text; // NO usar trim() para preservar espacios
+    }
+    
+    return text
+      .replace(/[<>]/g, '') // Remover < y >
+      .replace(/javascript:/gi, '') // Remover javascript:
+      .replace(/on\w+=/gi, ''); // Remover event handlers
+      // NO usar trim() para preservar espacios
+  }, []);
+
+  // Sanitizar nombres (nombres, apellidos) - elimina espacios extra
+  const sanitizeName = useCallback((text: string): string => {
+    if (!text || typeof text !== 'string') return '';
+    
+    // Solo sanitizar si contiene caracteres peligrosos
+    if (!/[<>]|javascript:|on\w+=/i.test(text)) {
+      return text.trim(); // Usar trim() para nombres
+    }
+    
     return text
       .replace(/[<>]/g, '') // Remover < y >
       .replace(/javascript:/gi, '') // Remover javascript:
       .replace(/on\w+=/gi, '') // Remover event handlers
-      .trim();
+      .trim(); // Usar trim() para nombres
   }, []);
 
   // Validar formulario completo de consulta
@@ -585,6 +609,7 @@ export const useValidation = () => {
     validateGenero,
     validateDireccion,
     sanitizeText,
+    sanitizeName,
     validateConsulta,
     validateMedico,
     validateUsuario,

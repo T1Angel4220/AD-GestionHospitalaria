@@ -66,9 +66,9 @@ export const useRouteSecurity = () => {
     // Si está en login y ya está autenticado, redirigir según rol
     if (location.pathname === '/login' && isAuthenticated && user) {
       if (user.rol === 'admin') {
-        navigate('/admin', { replace: true });
+        navigate('/reportes', { replace: true });
       } else if (user.rol === 'medico') {
-        navigate('/medico', { replace: true });
+        navigate('/consultas', { replace: true });
       }
     }
 

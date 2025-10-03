@@ -1,10 +1,12 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from '../contexts/AuthContext'
 import { ConsultasApi } from '../api/consultasApi'
 import type { Consulta, ConsultaCreate, ConsultaUpdate, Medico, Paciente } from '../types/consultas'
 import { useValidation } from '../hooks/useValidation'
+import { OptimizedTextArea } from '../components/OptimizedTextArea'
+import { OptimizedInput } from '../components/OptimizedInput'
 import { getStatusColor, getStatusText } from '../utils/statusUtils'
 import { getActiveSidebarItem, getSidebarItemClasses, getIconContainerClasses, getIconClasses, getTextClasses } from '../utils/sidebarUtils'
 import { 
@@ -39,7 +41,7 @@ import { getRoleText } from '../utils/roleUtils'
 
 export default function MedicalConsultationsPage() {
   const { user, logout } = useAuth()
-  const { errors, validateConsulta, clearAllErrors, sanitizeText } = useValidation()
+  const { errors, validateConsulta, clearAllErrors, sanitizeText, sanitizeName } = useValidation()
   const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +84,26 @@ export default function MedicalConsultationsPage() {
     duracion_minutos: 0,
   })
 
+
+  // Memoizar listas filtradas para evitar recálculos innecesarios
+  const filteredConsultas = useMemo(() => {
+    return consultas.filter(consulta => {
+      const matchesSearch = !searchTerm || 
+        consulta.paciente_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consulta.paciente_apellido?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consulta.motivo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consulta.diagnostico?.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesStatus = filterStatus === 'all' || consulta.estado === filterStatus
+      
+      return matchesSearch && matchesStatus
+    })
+  }, [consultas, searchTerm, filterStatus])
+
+  const medicosParaMostrar = useMemo(() => {
+    return user?.rol === 'admin' ? medicosFiltrados : medicos
+  }, [user?.rol, medicosFiltrados, medicos])
+
   // Estado para la especialidad seleccionada
   const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>("")
   // Estado para el centro seleccionado
@@ -99,7 +121,6 @@ export default function MedicalConsultationsPage() {
   const isReadOnly = Boolean(editingConsulta && (editingConsulta.estado === 'completada' || editingConsulta.estado === 'cancelada'))
 
   useEffect(() => {
-    console.log('🚀 Iniciando carga de datos...')
     loadConsultas()
     loadRelatedData()
     loadMedicoActual()
@@ -109,68 +130,101 @@ export default function MedicalConsultationsPage() {
   useEffect(() => {
     if (user?.rol === 'admin' && medicos.length > 0) {
       setMedicosFiltrados(medicos)
-      console.log('✅ Médicos filtrados inicializados para admin:', medicos.length)
     } else if (user?.rol === 'medico' && medicos.length > 0) {
       // Para médicos, usar los médicos ya filtrados por su centro
       setMedicosFiltrados(medicos)
-      console.log('✅ Médicos filtrados inicializados para médico:', medicos.length)
     }
   }, [medicos, user?.rol])
 
-  // Efecto para debuggear cambios en medicosFiltrados
+  // Efecto para manejar cambios en medicosFiltrados (optimizado)
   useEffect(() => {
-    console.log('🔄 Estado medicosFiltrados cambió:', {
-      cantidad: medicosFiltrados.length,
-      medicos: medicosFiltrados.map(m => ({ 
-        id: m.id, 
-        id_frontend: m.id_frontend,
-        nombre: `${m.nombres} ${m.apellidos}`, 
-        centro: m.centro_nombre,
-        origen_bd: m.origen_bd
-      }))
-    });
-    
-    // Forzar re-render del select incrementando la key
-    if (user?.rol === 'admin') {
-      console.log('🔄 Forzando re-render para admin con', medicosFiltrados.length, 'médicos filtrados')
+    // Solo forzar re-render si realmente cambió la cantidad de médicos
+    if (user?.rol === 'admin' && medicosFiltrados.length !== medicos.length) {
       setSelectKey(prev => prev + 1)
     }
-  }, [medicosFiltrados, user?.rol])
+  }, [medicosFiltrados.length, medicos.length, user?.rol])
 
-  // Efecto para manejar cambios de estado y duración
+  // Efecto para manejar cambios de estado y duración (optimizado)
   useEffect(() => {
-    if (formData.estado === 'cancelada') {
-      // Si se cancela, duración = 0
+    const currentDuracion = formData.duracion_minutos || 0;
+    
+    if (formData.estado === 'cancelada' && currentDuracion !== 0) {
       setFormData(prev => ({ ...prev, duracion_minutos: 0 }))
-    } else if (formData.estado === 'pendiente') {
-      // Si es pendiente, duración = 0
+    } else if (formData.estado === 'pendiente' && currentDuracion !== 0) {
       setFormData(prev => ({ ...prev, duracion_minutos: 0 }))
     }
     // Para 'programada' y 'completada' no cambiamos el valor automáticamente
-  }, [formData.estado])
+  }, [formData.estado, formData.duracion_minutos])
 
   const loadMedicoActual = async () => {
-    if (user?.rol === 'medico' && user.medico) {
+    if (user?.rol === 'medico') {
       try {
-        // Usar la información del médico que ya está en el contexto de usuario
-        const medicoData: Medico = {
-          id: user.medico.id,
-          nombres: user.medico.nombres,
-          apellidos: user.medico.apellidos,
-          especialidad_nombre: user.medico.especialidad,
-          centro_nombre: user.centro.nombre,
-          id_centro: user.centro.id,
-          id_especialidad: 0 // No disponible en el contexto actual
+        // Si el usuario ya tiene información del médico, usarla directamente
+        if (user.medico) {
+          const medicoData: Medico = {
+            id: user.medico.id,
+            nombres: user.medico.nombres,
+            apellidos: user.medico.apellidos,
+            especialidad_nombre: user.medico.especialidad,
+            centro_nombre: user.centro.nombre,
+            id_centro: user.centro.id,
+            id_especialidad: 0 // No disponible en el contexto actual
+          }
+          
+          setMedicoActual(medicoData)
+          setSelectedEspecialidad(user.medico.especialidad || 'Sin especialidad')
+          setSelectedCentro(user.centro.nombre || 'Sin centro')
+        } else if (user.id_medico) {
+          // Fallback: buscar médico por ID si no está en el contexto
+          const medicos = await ConsultasApi.getMedicos()
+          const medico = medicos.find(m => m.id === user.id_medico)
+          if (medico) {
+            setMedicoActual(medico)
+            setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
+            setSelectedCentro(medico.centro_nombre || 'Sin centro')
+          }
         }
-        
-        setMedicoActual(medicoData)
-        setSelectedEspecialidad(user.medico.especialidad || 'Sin especialidad')
-        setSelectedCentro(user.centro.nombre || 'Sin centro')
       } catch (error) {
         console.error('Error cargando médico actual:', error)
       }
     }
   }
+
+  // Funciones optimizadas para cambios de formulario
+  const handleFormChange = useCallback((field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }, [])
+
+  const handleTextChange = useCallback((field: string, value: string) => {
+    // Sanitizar texto solo cuando sea necesario
+    const sanitizedValue = sanitizeText(value)
+    setFormData(prev => ({ ...prev, [field]: sanitizedValue }))
+  }, [sanitizeText])
+
+  // Funciones memoizadas para campos específicos
+  const handleMotivoChange = useCallback((value: string) => {
+    handleTextChange('motivo', value)
+  }, [handleTextChange])
+
+  const handleDiagnosticoChange = useCallback((value: string) => {
+    handleTextChange('diagnostico', value)
+  }, [handleTextChange])
+
+  const handleTratamientoChange = useCallback((value: string) => {
+    handleTextChange('tratamiento', value)
+  }, [handleTextChange])
+
+  const handleDuracionChange = useCallback((value: number) => {
+    handleFormChange('duracion_minutos', value)
+  }, [handleFormChange])
+
+  const handleEstadoChange = useCallback((value: string) => {
+    handleFormChange('estado', value)
+  }, [handleFormChange])
+
+  const handleFechaChange = useCallback((value: string) => {
+    handleFormChange('fecha', value)
+  }, [handleFormChange])
 
   const handleLogout = () => {
     setShowLogoutModal(true)
@@ -195,18 +249,14 @@ export default function MedicalConsultationsPage() {
   const loadConsultas = async () => {
     try {
       setLoading(true)
-      console.log('📋 Cargando consultas...')
       const data = await ConsultasApi.getConsultas()
-      console.log('📋 Datos de consultas cargados:', data.length, 'consultas')
       
       // Si es médico, filtrar solo sus consultas
       if (user?.rol === 'medico' && user.id_medico) {
         const consultasMedico = data.filter(consulta => consulta.id_medico === user.id_medico)
         setConsultas(consultasMedico)
-        console.log('👨‍⚕️ Consultas filtradas para médico:', consultasMedico.length)
       } else {
-      setConsultas(data)
-        console.log('👑 Consultas cargadas para admin:', data.length)
+        setConsultas(data)
       }
     } catch (error) {
       setError("Error al cargar las consultas")
@@ -224,28 +274,6 @@ export default function MedicalConsultationsPage() {
       ])
       setMedicos(medicosData)
       setPacientes(pacientesData)
-      
-      console.log('📊 Datos cargados:', {
-        medicos: medicosData.length,
-        pacientes: pacientesData.length,
-        userRol: user?.rol
-      })
-      
-      // Debuggear pacientes para verificar IDs únicos
-      console.log('🔍 Análisis de pacientes:', {
-        total: pacientesData.length,
-        ids: pacientesData.map(p => ({ id: p.id, nombre: `${p.nombres} ${p.apellidos}`, centro: p.id_centro })),
-        idsUnicos: [...new Set(pacientesData.map(p => p.id))].length,
-        hayDuplicados: [...new Set(pacientesData.map(p => p.id))].length !== pacientesData.length
-      })
-      
-      // Debuggear médicos para verificar IDs únicos
-      console.log('🔍 Análisis de médicos:', {
-        total: medicosData.length,
-        ids: medicosData.map(m => ({ id: m.id, nombre: `${m.nombres} ${m.apellidos}`, centro: m.id_centro })),
-        idsUnicos: [...new Set(medicosData.map(m => m.id))].length,
-        hayDuplicados: [...new Set(medicosData.map(m => m.id))].length !== medicosData.length
-      })
     } catch (err) {
       console.error("Error al cargar datos relacionados:", err)
     }
@@ -265,31 +293,16 @@ export default function MedicalConsultationsPage() {
         return
       }
 
-      console.log('🔍 Filtrando médicos para paciente:', paciente.nombres, paciente.apellidos, 'Centro:', paciente.id_centro)
-      console.log('📊 Estado actual - medicosFiltrados:', medicosFiltrados.length, 'medicos:', medicos.length)
-      
       if (paciente.id_centro) {
         // Obtener médicos del centro específico del paciente usando su origen de BD
         const medicosDelCentro = await ConsultasApi.getMedicosPorCentroEspecifico(paciente.id_centro, paciente.origen_bd || 'central')
-        console.log('👨‍⚕️ Médicos del centro', paciente.id_centro, 'en BD', paciente.origen_bd, ':', medicosDelCentro.length)
-        console.log('👨‍⚕️ Médicos recibidos:', medicosDelCentro.map(m => ({
-          id: m.id,
-          id_frontend: m.id_frontend,
-          nombre: `${m.nombres} ${m.apellidos}`,
-          centro: m.id_centro,
-          centro_nombre: m.centro_nombre,
-          origen_bd: m.origen_bd
-        })))
-        
         setMedicosFiltrados(medicosDelCentro)
-        console.log('✅ Estado actualizado - medicosFiltrados ahora:', medicosFiltrados.length)
       } else {
         // Si el paciente no tiene centro asignado, mostrar todos los médicos
         setMedicosFiltrados(medicos)
-        console.log('👨‍⚕️ Paciente sin centro, mostrando todos los médicos:', medicos.length)
       }
     } catch (error) {
-      console.error('❌ Error filtrando médicos por centro:', error)
+      console.error('Error filtrando médicos por centro:', error)
       // En caso de error, mostrar todos los médicos
       setMedicosFiltrados(medicos)
     }
@@ -317,7 +330,6 @@ export default function MedicalConsultationsPage() {
     // Resetear filtrado de médicos (mostrar todos si es admin)
     if (user?.rol === 'admin' && medicos.length > 0) {
       setMedicosFiltrados(medicos)
-      console.log('🔄 Formulario reseteado, mostrando todos los médicos:', medicos.length)
     }
     
     setIsDialogOpen(false)
@@ -331,11 +343,11 @@ export default function MedicalConsultationsPage() {
     // Sanitizar datos antes de validar
     const sanitizedFormData = {
       ...formData,
-      paciente_nombre: sanitizeText(formData.paciente_nombre || ''),
-      paciente_apellido: sanitizeText(formData.paciente_apellido || ''),
-      motivo: sanitizeText(formData.motivo || ''),
-      diagnostico: sanitizeText(formData.diagnostico || ''),
-      tratamiento: sanitizeText(formData.tratamiento || '')
+      paciente_nombre: sanitizeName(formData.paciente_nombre || ''), // Usar sanitizeName para nombres
+      paciente_apellido: sanitizeName(formData.paciente_apellido || ''), // Usar sanitizeName para apellidos
+      motivo: sanitizeText(formData.motivo || ''), // Usar sanitizeText para texto libre
+      diagnostico: sanitizeText(formData.diagnostico || ''), // Usar sanitizeText para texto libre
+      tratamiento: sanitizeText(formData.tratamiento || '') // Usar sanitizeText para texto libre
     }
 
     // Validar formulario
@@ -362,6 +374,18 @@ export default function MedicalConsultationsPage() {
         setPendingUpdateData(updateData)
         setShowEditConfirmModal(true)
       } else {
+        // Verificar que id_medico sea válido
+        if (!sanitizedFormData.id_medico) {
+          console.error('❌ Error: id_medico es undefined o null:', {
+            formDataIdMedico: formData.id_medico,
+            sanitizedIdMedico: sanitizedFormData.id_medico,
+            medicoActual,
+            userRol: user?.rol
+          })
+          setError("Error: No se pudo determinar el médico. Por favor, recarga la página e intenta nuevamente.")
+          return
+        }
+
         const newData: ConsultaCreate = {
           paciente_nombre: sanitizedFormData.paciente_nombre!,
           paciente_apellido: sanitizedFormData.paciente_apellido!,
@@ -374,6 +398,12 @@ export default function MedicalConsultationsPage() {
           estado: sanitizedFormData.estado!,
           duracion_minutos: sanitizedFormData.duracion_minutos,
         }
+
+        console.log('📋 Datos de consulta a crear:', {
+          id_medico: newData.id_medico,
+          tipo_id_medico: typeof newData.id_medico,
+          esValido: Number.isInteger(newData.id_medico) && newData.id_medico > 0
+        })
         // Obtener el centro del médico seleccionado para enviarlo en el header
         const medicoSeleccionado = user?.rol === 'admin' 
           ? medicosFiltrados.find(m => m.id === newData.id_medico)
@@ -381,23 +411,12 @@ export default function MedicalConsultationsPage() {
         
         const centroIdDelMedico = medicoSeleccionado?.id_centro
         
-        console.log('💾 Creando consulta:', {
-          centroIdDelMedico,
-          medicoSeleccionado: medicoSeleccionado ? {
-            id: medicoSeleccionado.id,
-            nombre: `${medicoSeleccionado.nombres} ${medicoSeleccionado.apellidos}`,
-            centro: medicoSeleccionado.id_centro,
-            centro_nombre: medicoSeleccionado.centro_nombre,
-            origen_bd: medicoSeleccionado.origen_bd
-          } : null
-        })
+        const response = await ConsultasApi.createConsulta(newData, centroIdDelMedico)
         
-        await ConsultasApi.createConsulta(newData, centroIdDelMedico)
-        
-        // Actualizar el estado local inmediatamente sin recargar desde el servidor
+        // Usar el ID real que devuelve el servidor
         const nuevaConsulta: Consulta = {
           ...newData,
-          id: Date.now(), // ID temporal hasta que el servidor responda
+          id: response.id, // ID real del servidor
           id_centro: centroIdDelMedico || 1,
           estado: newData.estado || 'pendiente',
           created_at: new Date().toISOString(),
@@ -424,23 +443,11 @@ export default function MedicalConsultationsPage() {
     const listaMedicos = user?.rol === 'admin' ? medicosFiltrados : medicos
     const medico = listaMedicos.find(m => m.id === medicoId)
     
-    console.log('🔄 Médico seleccionado:', {
-      medicoId,
-      medicoEncontrado: medico,
-      listaUsada: user?.rol === 'admin' ? 'medicosFiltrados' : 'medicos',
-      cantidadEnLista: listaMedicos.length
-    })
-    
     if (medico) {
       setSelectedEspecialidad(medico.especialidad_nombre || 'Sin especialidad')
       setSelectedCentro(medico.centro_nombre || 'Sin centro')
       // Actualizar también el id_centro en el formulario
       setFormData((prev) => ({ ...prev, id_centro: medico.id_centro }))
-      console.log('✅ Centro asignado correctamente:', {
-        id_centro: medico.id_centro,
-        centro_nombre: medico.centro_nombre,
-        origen_bd: medico.origen_bd
-      })
     } else {
       setSelectedEspecialidad("")
       setSelectedCentro("")
@@ -457,12 +464,14 @@ export default function MedicalConsultationsPage() {
         id_frontend: paciente.id_frontend,
         paciente_nombre: paciente.nombres,
         paciente_apellido: paciente.apellidos,
-        // Limpiar médico seleccionado cuando cambia el paciente
-        id_medico: undefined
+        // Solo limpiar médico seleccionado si es admin (los médicos mantienen su ID)
+        ...(user?.rol === 'admin' ? { id_medico: undefined } : {})
       }))
       
       // Filtrar médicos por centro del paciente (solo para admin)
-      await filtrarMedicosPorCentro(paciente.id)
+      if (user?.rol === 'admin') {
+        await filtrarMedicosPorCentro(paciente.id)
+      }
     } else {
       setFormData((prev) => ({ 
         ...prev, 
@@ -470,13 +479,13 @@ export default function MedicalConsultationsPage() {
         id_frontend: undefined,
         paciente_nombre: "",
         paciente_apellido: "",
-        id_medico: undefined
+        // Solo limpiar médico seleccionado si es admin
+        ...(user?.rol === 'admin' ? { id_medico: undefined } : {})
       }))
       
       // Si no hay paciente seleccionado, mostrar todos los médicos (solo para admin)
       if (user?.rol === 'admin' && medicos.length > 0) {
         setMedicosFiltrados(medicos)
-        console.log('🔄 Paciente deseleccionado, mostrando todos los médicos:', medicos.length)
       }
     }
   }
@@ -611,61 +620,62 @@ export default function MedicalConsultationsPage() {
   }
 
   const handleNewConsulta = () => {
+    console.log('🆕 Creando nueva consulta:', { 
+      userRol: user?.rol, 
+      medicoActual, 
+      hasMedicoData: !!medicoActual 
+    })
+    
     resetForm()
     
     // Si el usuario es médico, pre-llenar con su información
-    if (user?.rol === 'medico' && medicoActual) {
-      setFormData(prev => ({
-        ...prev,
-        id_medico: medicoActual.id,
-        id_centro: medicoActual.id_centro
-      }))
-      // Cargar especialidad y centro del médico actual
-      setSelectedEspecialidad(medicoActual.especialidad_nombre || 'Sin especialidad')
-      setSelectedCentro(medicoActual.centro_nombre || 'Sin centro')
+    if (user?.rol === 'medico') {
+      if (medicoActual) {
+        console.log('👨‍⚕️ Pre-llenando formulario para médico:', medicoActual)
+        setFormData(prev => ({
+          ...prev,
+          id_medico: medicoActual.id,
+          id_centro: medicoActual.id_centro
+        }))
+        // Cargar especialidad y centro del médico actual
+        setSelectedEspecialidad(medicoActual.especialidad_nombre || 'Sin especialidad')
+        setSelectedCentro(medicoActual.centro_nombre || 'Sin centro')
+      } else if (user.id_medico) {
+        console.log('⚠️ Usuario es médico pero no hay datos de médico actual, usando ID del token:', user.id_medico)
+        // Usar el ID del médico del token como fallback
+        setFormData(prev => ({
+          ...prev,
+          id_medico: user.id_medico,
+          id_centro: user.id_centro
+        }))
+        setSelectedEspecialidad('Sin especialidad')
+        setSelectedCentro('Sin centro')
+        // Intentar cargar el médico actual nuevamente
+        loadMedicoActual()
+      } else {
+        console.error('❌ Usuario médico sin ID de médico en token')
+        setError("Error: No se pudo determinar el médico. Por favor, contacta al administrador.")
+        return
+      }
     }
     
     setIsDialogOpen(true)
   }
 
-  const filteredConsultas = consultas.filter((consulta) => {
-    // Verificar que la consulta tenga los datos necesarios
-    if (!consulta || typeof consulta !== 'object') {
-      return false
-    }
 
-    const matchesSearch =
-      consulta.paciente_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.paciente_apellido?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.motivo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.diagnostico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.medico_nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.medico_apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.especialidad_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.centro_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      consulta.centro_ciudad?.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus =
-      filterStatus === "all" || consulta.estado === filterStatus
-
-    return matchesSearch && matchesStatus
-  })
-
-  const calculateStats = () => {
-    const stats = {
-      total: consultas.length,
+  const stats = useMemo(() => {
+    const statsData = {
+      total: filteredConsultas.length,
       pendiente: 0,
       programada: 0,
       completada: 0,
       cancelada: 0,
     }
-    consultas.forEach((c) => {
-      stats[c.estado]++
+    filteredConsultas.forEach((c) => {
+      statsData[c.estado]++
     })
-    return stats
-  }
-
-  const stats = calculateStats()
+    return statsData
+  }, [filteredConsultas])
 
   if (loading) {
     return (
@@ -1224,11 +1234,6 @@ export default function MedicalConsultationsPage() {
                       value={formData.id_frontend || ''}
                       onChange={(e) => {
                         const pacienteIdFrontend = e.target.value
-                        console.log('🔄 Paciente seleccionado:', {
-                          pacienteIdFrontend,
-                          pacienteSeleccionado: pacientes.find(p => p.id_frontend === pacienteIdFrontend),
-                          todosLosPacientes: pacientes.map(p => ({ id: p.id, id_frontend: p.id_frontend, nombre: `${p.nombres} ${p.apellidos}`, centro: p.id_centro }))
-                        })
                         handlePacienteChange(pacienteIdFrontend)
                       }}
                       required
@@ -1312,12 +1317,19 @@ export default function MedicalConsultationsPage() {
                       Médico
                     </label>
                     {user?.rol === 'medico' ? (
-                      <input
-                        type="text"
-                        value={medicoActual ? `DR. ${medicoActual.nombres.toUpperCase()} ${medicoActual.apellidos.toUpperCase()}` : ''}
-                        readOnly
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700 cursor-not-allowed"
-                      />
+                      <div>
+                        <input
+                          type="text"
+                          value={medicoActual ? `DR. ${medicoActual.nombres.toUpperCase()} ${medicoActual.apellidos.toUpperCase()}` : 'Cargando información del médico...'}
+                          readOnly
+                          className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700 cursor-not-allowed"
+                        />
+                        {!medicoActual && (
+                          <p className="mt-1 text-xs text-amber-600">
+                            ⚠️ No se pudo cargar la información del médico. Verifica tu sesión.
+                          </p>
+                        )}
+                      </div>
                     ) : (
                     <select
                       key={`medico-select-${selectKey}`}
@@ -1333,21 +1345,11 @@ export default function MedicalConsultationsPage() {
                         className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
                     >
                       <option value="">Seleccionar médico</option>
-                      {(() => {
-                        const medicosParaMostrar = user?.rol === 'admin' ? medicosFiltrados : medicos;
-                        console.log('🎯 Renderizando select de médicos:', {
-                          userRol: user?.rol,
-                          medicosFiltrados: medicosFiltrados.length,
-                          medicos: medicos.length,
-                          medicosParaMostrar: medicosParaMostrar.length,
-                          medicosParaMostrarData: medicosParaMostrar
-                        });
-                        return medicosParaMostrar.map((medico) => (
+                      {medicosParaMostrar.map((medico) => (
                           <option key={medico.id_frontend || `${medico.id}-${medico.centro_nombre}`} value={medico.id}>
                             Dr. {medico.nombres} {medico.apellidos}
                         </option>
-                        ));
-                      })()}
+                        ))}
                     </select>
                     )}
                     {user?.rol === 'medico' && (
@@ -1415,7 +1417,7 @@ export default function MedicalConsultationsPage() {
                     <select
                       id="estado"
                       value={formData.estado || 'pendiente'}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value as 'pendiente' | 'programada' | 'completada' | 'cancelada' }))}
+                      onChange={(e) => handleEstadoChange(e.target.value)}
                       disabled={isReadOnly}
                       className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     >
@@ -1448,11 +1450,11 @@ export default function MedicalConsultationsPage() {
                         formData.estado === 'completada' ? '(Requerida)' : '(Opcional)'
                       }
                     </label>
-                    <input
-                      type="number"
+                    <OptimizedInput
                       id="duracion_minutos"
+                      type="number"
                       value={formData.duracion_minutos || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, duracion_minutos: parseInt(e.target.value) || 0 }))}
+                      onChange={handleDuracionChange}
                       min="0"
                       max="480"
                       step="15"
@@ -1497,11 +1499,11 @@ export default function MedicalConsultationsPage() {
                       Fecha y Hora {formData.estado === 'pendiente' ? '(Opcional)' : '(Requerida)'}
                     </label>
                     <div className="relative">
-                      <input
-                        type="datetime-local"
+                      <OptimizedInput
                         id="fecha"
+                        type="datetime-local"
                         value={formData.fecha || ''}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, fecha: e.target.value }))}
+                        onChange={handleFechaChange}
                         required={formData.estado === 'programada'}
                         disabled={isReadOnly}
                         className={`block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''} ${errors.fecha ? 'border-red-500' : 'border-gray-300'}`}
@@ -1533,10 +1535,10 @@ export default function MedicalConsultationsPage() {
                   <label htmlFor="motivo" className="block text-base font-medium text-gray-700 mb-1">
                     Motivo de la Consulta
                   </label>
-                  <textarea
+                  <OptimizedTextArea
                     id="motivo"
                     value={formData.motivo || ''}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, motivo: e.target.value }))}
+                    onChange={handleMotivoChange}
                     placeholder="Describe el motivo de la consulta..."
                     rows={3}
                     disabled={isReadOnly}
@@ -1548,10 +1550,10 @@ export default function MedicalConsultationsPage() {
                   <label htmlFor="diagnostico" className="block text-base font-medium text-gray-700 mb-1">
                     Diagnóstico
                   </label>
-                  <textarea
+                  <OptimizedTextArea
                     id="diagnostico"
                     value={formData.diagnostico || ''}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, diagnostico: e.target.value }))}
+                    onChange={handleDiagnosticoChange}
                     placeholder="Diagnóstico médico (opcional para consultas programadas)"
                     rows={3}
                     disabled={isReadOnly}
@@ -1563,10 +1565,10 @@ export default function MedicalConsultationsPage() {
                   <label htmlFor="tratamiento" className="block text-base font-medium text-gray-700 mb-1">
                     Tratamiento
                   </label>
-                  <textarea
+                  <OptimizedTextArea
                     id="tratamiento"
                     value={formData.tratamiento || ''}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, tratamiento: e.target.value }))}
+                    onChange={handleTratamientoChange}
                     placeholder="Tratamiento prescrito (opcional para consultas programadas)"
                     rows={3}
                     disabled={isReadOnly}

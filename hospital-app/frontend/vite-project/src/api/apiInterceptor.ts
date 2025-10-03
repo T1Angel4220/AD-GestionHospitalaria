@@ -28,7 +28,7 @@ export class ApiInterceptor {
       const token = AuthApi.getToken();
       if (token && options) {
         const existingHeaders = options.headers || {};
-        const hasAuth = existingHeaders['Authorization'] || existingHeaders['authorization'];
+        const hasAuth = (existingHeaders as any)['Authorization'] || (existingHeaders as any)['authorization'];
         
         // Solo agregar token si no está presente Y si no es una petición al auth-service
         const url = args[0];
@@ -46,11 +46,32 @@ export class ApiInterceptor {
       try {
         const response = await originalFetch(...args);
         
-        // Si el token expiró, limpiar datos y redirigir
-        if (response.status === 401 || response.status === 403) {
+        // Solo redirigir en casos específicos de autenticación/autorización
+        if (response.status === 401) {
+          // 401 siempre significa token inválido o expirado
           AuthApi.logout();
           window.location.href = '/login';
           throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+        }
+        
+        if (response.status === 403) {
+          // Para 403, verificar si es un problema de autenticación o permisos
+          const url = args[0];
+          const isAuthEndpoint = typeof url === 'string' && (
+            url.includes('/login') || 
+            url.includes('/auth') ||
+            url.includes('/register')
+          );
+          
+          // Solo redirigir si es un endpoint de autenticación
+          if (isAuthEndpoint) {
+            AuthApi.logout();
+            window.location.href = '/login';
+            throw new Error('Acceso denegado. Por favor, inicia sesión nuevamente.');
+          }
+          
+          // Para otros endpoints 403, dejar que la aplicación maneje el error
+          console.warn('Error 403 en endpoint:', url, '- Dejando que la aplicación maneje el error');
         }
 
         return response;

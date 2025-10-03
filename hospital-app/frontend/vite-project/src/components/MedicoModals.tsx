@@ -35,7 +35,7 @@ export function MedicoModals({
   handleEditMedico,
   handleDeleteMedico
 }: MedicoModalsProps) {
-  const { errors, validateMedico, clearAllErrors, sanitizeText } = useValidation()
+  const { errors, validateMedico, clearAllErrors, sanitizeName } = useValidation()
   return (
     <>
       {/* Modal para crear médico */}
@@ -73,8 +73,8 @@ export function MedicoModals({
               // Sanitizar datos
               const sanitizedForm = {
                 ...medicoForm,
-                nombres: sanitizeText(medicoForm.nombres),
-                apellidos: sanitizeText(medicoForm.apellidos)
+                nombres: sanitizeName(medicoForm.nombres),
+                apellidos: sanitizeName(medicoForm.apellidos)
               }
               
               // Validar formulario

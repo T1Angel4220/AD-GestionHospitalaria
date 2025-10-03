@@ -8,7 +8,7 @@ const winston = require('winston');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3004;
+const PORT = process.env.PORT || 3003;
 
 // Configuración de logging
 const logger = winston.createLogger({
@@ -114,6 +114,15 @@ const getPoolByCentroId = (centroId) => {
   }
 };
 
+const getDbNameByCentroId = (centroId) => {
+  switch (centroId) {
+    case 1: return 'central';
+    case 2: return 'guayaquil';
+    case 3: return 'cuenca';
+    default: throw new Error(`Centro ID ${centroId} no válido`);
+  }
+};
+
 const addFrontendId = (items, origenBd) => {
   return items.map((item, index) => ({
     ...item,
@@ -143,9 +152,11 @@ app.get('/consultas', authenticateToken, getCentroFromUser, async (req, res) => 
             SELECT c.*, 
                    m.nombres as medico_nombres, m.apellidos as medico_apellidos,
                    p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
-                   cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+                   cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
+                   e.nombre as especialidad_nombre
             FROM consultas c
             LEFT JOIN medicos m ON c.id_medico = m.id
+            LEFT JOIN especialidades e ON m.id_especialidad = e.id
             LEFT JOIN pacientes p ON c.id_paciente = p.id
             LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
             ORDER BY c.fecha DESC
@@ -166,9 +177,11 @@ app.get('/consultas', authenticateToken, getCentroFromUser, async (req, res) => 
       SELECT c.*, 
              m.nombres as medico_nombres, m.apellidos as medico_apellidos,
              p.nombres as paciente_nombres, p.apellidos as paciente_apellidos,
-             cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+             cm.nombre as centro_nombre, cm.ciudad as centro_ciudad,
+             e.nombre as especialidad_nombre
       FROM consultas c
       LEFT JOIN medicos m ON c.id_medico = m.id
+      LEFT JOIN especialidades e ON m.id_especialidad = e.id
       LEFT JOIN pacientes p ON c.id_paciente = p.id
       LEFT JOIN centros_medicos cm ON c.id_centro = cm.id
       WHERE c.id_medico = ?
@@ -405,35 +418,368 @@ app.get('/pacientes-por-centro/:centroId', authenticateToken, async (req, res) =
   }
 });
 
-// Obtener todos los pacientes (solo admin)
+// Obtener pacientes según el rol del usuario
 app.get('/pacientes', authenticateToken, async (req, res) => {
   try {
-    // Solo admin puede obtener pacientes de todos los centros
-    if (req.user.rol !== 'admin') {
-      return res.status(403).json({ error: 'Solo administradores pueden obtener todos los pacientes' });
+    const user = req.user;
+    
+    if (user.rol === 'admin') {
+      // Admin puede obtener pacientes de todos los centros
+      const allPacientes = [];
+
+      for (const [dbName, dbPool] of Object.entries(pools)) {
+        try {
+          const [pacientes] = await dbPool.query(`
+            SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+            FROM pacientes p
+            LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+            ORDER BY p.apellidos, p.nombres
+          `);
+          
+          const pacientesWithFrontendId = addFrontendId(pacientes, dbName);
+          allPacientes.push(...pacientesWithFrontendId);
+        } catch (error) {
+          logger.error(`Error obteniendo pacientes de ${dbName}:`, error.message);
+        }
+      }
+
+      res.json(allPacientes);
+    } else if (user.rol === 'medico') {
+      // Médico solo puede obtener pacientes de su centro
+      const centroId = user.id_centro;
+      const dbName = getDbNameByCentroId(centroId);
+      const dbPool = pools[dbName];
+
+      if (!dbPool) {
+        return res.status(404).json({ error: 'Centro médico no encontrado' });
+      }
+
+      const [pacientes] = await dbPool.query(`
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+        FROM pacientes p
+        LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        WHERE p.id_centro = ?
+        ORDER BY p.apellidos, p.nombres
+      `, [centroId]);
+      
+      const pacientesWithFrontendId = addFrontendId(pacientes, dbName);
+      res.json(pacientesWithFrontendId);
+    } else {
+      return res.status(403).json({ error: 'Rol no autorizado para acceder a pacientes' });
+    }
+  } catch (error) {
+    logger.error('Error obteniendo pacientes:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener paciente por ID
+app.get('/pacientes/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    
+    if (user.rol === 'admin') {
+      // Admin puede obtener paciente de cualquier centro
+      for (const [dbName, dbPool] of Object.entries(pools)) {
+        try {
+          const [pacientes] = await dbPool.query(`
+            SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+            FROM pacientes p
+            LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+            WHERE p.id = ?
+          `, [id]);
+          
+          if (pacientes.length > 0) {
+            const pacientesWithFrontendId = addFrontendId(pacientes, dbName);
+            return res.json(pacientesWithFrontendId[0]);
+          }
+        } catch (error) {
+          logger.error(`Error obteniendo paciente de ${dbName}:`, error.message);
+        }
+      }
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    } else if (user.rol === 'medico') {
+      // Médico solo puede obtener pacientes de su centro
+      const centroId = user.id_centro;
+      const dbName = getDbNameByCentroId(centroId);
+      const dbPool = pools[dbName];
+
+      if (!dbPool) {
+        return res.status(404).json({ error: 'Centro médico no encontrado' });
+      }
+
+      const [pacientes] = await dbPool.query(`
+        SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+        FROM pacientes p
+        LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+        WHERE p.id = ? AND p.id_centro = ?
+      `, [id, centroId]);
+      
+      if (pacientes.length === 0) {
+        return res.status(404).json({ error: 'Paciente no encontrado' });
+      }
+      
+      const pacientesWithFrontendId = addFrontendId(pacientes, dbName);
+      res.json(pacientesWithFrontendId[0]);
+    } else {
+      return res.status(403).json({ error: 'Rol no autorizado para acceder a pacientes' });
+    }
+  } catch (error) {
+    logger.error('Error obteniendo paciente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Crear paciente
+app.post('/pacientes', authenticateToken, [
+  body('nombres').trim().isLength({ min: 1 }).withMessage('Nombres son requeridos'),
+  body('apellidos').trim().isLength({ min: 1 }).withMessage('Apellidos son requeridos'),
+  body('cedula').trim().isLength({ min: 1 }).withMessage('Cédula es requerida'),
+  body('telefono').trim().isLength({ min: 1 }).withMessage('Teléfono es requerido'),
+  body('email').isEmail().withMessage('Email válido es requerido'),
+  body('fecha_nacimiento').isISO8601().withMessage('Fecha de nacimiento válida es requerida'),
+  body('genero').isIn(['M', 'F', 'O']).withMessage('Género debe ser M, F u O'),
+  body('direccion').trim().isLength({ min: 1 }).withMessage('Dirección es requerida'),
+  body('id_centro').isInt({ min: 1 }).withMessage('ID de centro válido es requerido')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    const allPacientes = [];
+    const user = req.user;
+    const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro } = req.body;
+    
+    // Determinar el centro según el rol
+    let centroId = id_centro;
+    if (user.rol === 'medico') {
+      centroId = user.id_centro; // Los médicos solo pueden crear pacientes en su centro
+    }
+    
+    const dbName = getDbNameByCentroId(centroId);
+    const dbPool = pools[dbName];
 
-    for (const [dbName, dbPool] of Object.entries(pools)) {
-      try {
-        const [pacientes] = await dbPool.query(`
-          SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
-          FROM pacientes p
-          LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
-          ORDER BY p.apellidos, p.nombres
-        `);
-        
-        const pacientesWithFrontendId = addFrontendId(pacientes, dbName);
-        allPacientes.push(...pacientesWithFrontendId);
-      } catch (error) {
-        logger.error(`Error obteniendo pacientes de ${dbName}:`, error.message);
+    if (!dbPool) {
+      return res.status(404).json({ error: 'Centro médico no encontrado' });
+    }
+
+    // Verificar si ya existe un paciente con la misma cédula en este centro
+    const [existingPacientes] = await dbPool.query(
+      'SELECT id FROM pacientes WHERE cedula = ? AND id_centro = ?',
+      [cedula, centroId]
+    );
+
+    if (existingPacientes.length > 0) {
+      return res.status(400).json({ error: 'Ya existe un paciente con esta cédula en este centro' });
+    }
+
+    const [result] = await dbPool.query(`
+      INSERT INTO pacientes (nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, centroId]);
+
+    const pacientesWithFrontendId = addFrontendId([{
+      id: result.insertId,
+      nombres,
+      apellidos,
+      cedula,
+      telefono,
+      email,
+      fecha_nacimiento,
+      genero,
+      direccion,
+      id_centro: centroId,
+      created_at: new Date(),
+      updated_at: new Date()
+    }], dbName);
+
+    res.status(201).json(pacientesWithFrontendId[0]);
+  } catch (error) {
+    logger.error('Error creando paciente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Actualizar paciente
+app.put('/pacientes/:id', authenticateToken, [
+  body('nombres').optional().trim().isLength({ min: 1 }),
+  body('apellidos').optional().trim().isLength({ min: 1 }),
+  body('cedula').optional().trim().isLength({ min: 1 }),
+  body('telefono').optional().trim().isLength({ min: 1 }),
+  body('email').optional().isEmail(),
+  body('fecha_nacimiento').optional().isISO8601(),
+  body('genero').optional().isIn(['M', 'F', 'O']),
+  body('direccion').optional().trim().isLength({ min: 1 }),
+  body('id_centro').optional().isInt({ min: 1 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { id } = req.params;
+    const user = req.user;
+    const updateData = req.body;
+    
+    // Determinar el centro según el rol
+    let centroId = updateData.id_centro;
+    if (user.rol === 'medico') {
+      centroId = user.id_centro; // Los médicos solo pueden actualizar pacientes de su centro
+    }
+    
+    const dbName = getDbNameByCentroId(centroId);
+    const dbPool = pools[dbName];
+
+    if (!dbPool) {
+      return res.status(404).json({ error: 'Centro médico no encontrado' });
+    }
+
+    // Verificar que el paciente existe y pertenece al centro correcto
+    const [existingPacientes] = await dbPool.query(
+      'SELECT * FROM pacientes WHERE id = ? AND id_centro = ?',
+      [id, centroId]
+    );
+
+    if (existingPacientes.length === 0) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
+
+    // Si se está actualizando la cédula, verificar que no exista otra con la misma cédula
+    if (updateData.cedula && updateData.cedula !== existingPacientes[0].cedula) {
+      const [duplicatePacientes] = await dbPool.query(
+        'SELECT id FROM pacientes WHERE cedula = ? AND id_centro = ? AND id != ?',
+        [updateData.cedula, centroId, id]
+      );
+
+      if (duplicatePacientes.length > 0) {
+        return res.status(400).json({ error: 'Ya existe otro paciente con esta cédula en este centro' });
       }
     }
 
-    res.json(allPacientes);
+    // Construir la consulta de actualización dinámicamente
+    const updateFields = [];
+    const updateValues = [];
+
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined && updateData[key] !== null && updateData[key] !== '') {
+        updateFields.push(`${key} = ?`);
+        updateValues.push(updateData[key]);
+      }
+    });
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    updateFields.push('updated_at = ?');
+    updateValues.push(new Date());
+    updateValues.push(id);
+
+    const [result] = await dbPool.query(`
+      UPDATE pacientes 
+      SET ${updateFields.join(', ')}
+      WHERE id = ?
+    `, updateValues);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
+
+    // Obtener el paciente actualizado
+    const [updatedPacientes] = await dbPool.query(`
+      SELECT p.*, cm.nombre as centro_nombre, cm.ciudad as centro_ciudad
+      FROM pacientes p
+      LEFT JOIN centros_medicos cm ON p.id_centro = cm.id
+      WHERE p.id = ?
+    `, [id]);
+
+    const pacientesWithFrontendId = addFrontendId(updatedPacientes, dbName);
+    res.json(pacientesWithFrontendId[0]);
   } catch (error) {
-    logger.error('Error obteniendo todos los pacientes:', error);
+    logger.error('Error actualizando paciente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Eliminar paciente
+app.delete('/pacientes/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    
+    if (user.rol === 'admin') {
+      // Admin puede eliminar pacientes de cualquier centro
+      for (const [dbName, dbPool] of Object.entries(pools)) {
+        try {
+          const [result] = await dbPool.query('DELETE FROM pacientes WHERE id = ?', [id]);
+          if (result.affectedRows > 0) {
+            return res.status(204).send();
+          }
+        } catch (error) {
+          logger.error(`Error eliminando paciente de ${dbName}:`, error.message);
+        }
+      }
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    } else if (user.rol === 'medico') {
+      // Médico solo puede eliminar pacientes de su centro
+      const centroId = user.id_centro;
+      const dbName = getDbNameByCentroId(centroId);
+      const dbPool = pools[dbName];
+
+      if (!dbPool) {
+        return res.status(404).json({ error: 'Centro médico no encontrado' });
+      }
+
+      const [result] = await dbPool.query(
+        'DELETE FROM pacientes WHERE id = ? AND id_centro = ?',
+        [id, centroId]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Paciente no encontrado' });
+      }
+
+      res.status(204).send();
+    } else {
+      return res.status(403).json({ error: 'Rol no autorizado para eliminar pacientes' });
+    }
+  } catch (error) {
+    logger.error('Error eliminando paciente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener centros médicos
+app.get('/centros', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    if (user.rol === 'admin') {
+      // Admin puede ver todos los centros
+      const centros = [
+        { id: 1, nombre: 'Hospital Central Quito', ciudad: 'Quito', direccion: 'Av. 6 de Diciembre', telefono: '02-2345678' },
+        { id: 2, nombre: 'Hospital Guayaquil', ciudad: 'Guayaquil', direccion: 'Av. 9 de Octubre', telefono: '04-2345678' },
+        { id: 3, nombre: 'Hospital Cuenca', ciudad: 'Cuenca', direccion: 'Av. Solano', telefono: '07-2345678' }
+      ];
+      res.json(centros);
+    } else if (user.rol === 'medico') {
+      // Médico solo puede ver su centro
+      const centroId = user.id_centro;
+      const centros = [
+        { id: 1, nombre: 'Hospital Central Quito', ciudad: 'Quito', direccion: 'Av. 6 de Diciembre', telefono: '02-2345678' },
+        { id: 2, nombre: 'Hospital Guayaquil', ciudad: 'Guayaquil', direccion: 'Av. 9 de Octubre', telefono: '04-2345678' },
+        { id: 3, nombre: 'Hospital Cuenca', ciudad: 'Cuenca', direccion: 'Av. Solano', telefono: '07-2345678' }
+      ];
+      const userCentro = centros.find(c => c.id === centroId);
+      res.json(userCentro ? [userCentro] : []);
+    } else {
+      return res.status(403).json({ error: 'Rol no autorizado para acceder a centros' });
+    }
+  } catch (error) {
+    logger.error('Error obteniendo centros:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

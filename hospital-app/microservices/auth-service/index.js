@@ -455,21 +455,6 @@ app.post('/usuarios', authenticateToken, async (req, res) => {
   try {
     const { email, password, rol, id_centro, id_medico } = req.body;
     
-    console.log('🔄 [CREATE USER] Datos recibidos:', {
-      email,
-      password: password ? '[PROVIDED]' : '[MISSING]',
-      rol,
-      id_centro,
-      id_medico,
-      emailValido: !!email,
-      passwordValido: !!password,
-      rolValido: !!rol,
-      centroValido: !!id_centro
-    });
-    
-    console.log('🔄 [CREATE USER] Request body completo:', req.body);
-    console.log('🔄 [CREATE USER] Request headers:', req.headers);
-    console.log('🔄 [CREATE USER] Content-Type:', req.headers['content-type']);
     
     if (!email || !password || !rol || !id_centro) {
       return res.status(400).json({ error: 'Email, password, rol e id_centro son obligatorios' });
@@ -487,13 +472,11 @@ app.post('/usuarios', authenticateToken, async (req, res) => {
     
     // Para usuarios médicos, id_medico es requerido
     if (rol === 'medico' && !id_medico) {
-      console.log('❌ [CREATE USER] Médico sin id_medico');
       return res.status(400).json({ error: 'Los usuarios médicos deben tener un médico asociado' });
     }
     
     // Para usuarios admin, id_medico debe ser null
     if (rol === 'admin' && id_medico) {
-      console.log('❌ [CREATE USER] Admin con id_medico (no permitido)');
       return res.status(400).json({ error: 'Los usuarios administradores no pueden tener médico asociado' });
     }
     
@@ -512,7 +495,6 @@ app.post('/usuarios', authenticateToken, async (req, res) => {
         );
 
         if (existingUsers.length > 0) {
-          console.log(`❌ [CREATE USER] Email ya existe en BD ${db.name}`);
           return res.status(400).json({ error: 'El email ya está registrado' });
         }
       } catch (error) {
@@ -530,7 +512,6 @@ app.post('/usuarios', authenticateToken, async (req, res) => {
           [id_medico, id_centro]
         );
         if (medico.length === 0) {
-          console.log('❌ [CREATE USER] Médico no existe en el centro');
           return res.status(400).json({ error: 'El médico especificado no existe en el centro seleccionado' });
         }
       } catch (error) {
@@ -547,7 +528,6 @@ app.post('/usuarios', authenticateToken, async (req, res) => {
       [email, passwordHash, rol, id_centro, rol === 'medico' ? id_medico : null]
     );
     
-    console.log('✅ [CREATE USER] Usuario creado exitosamente:', result.insertId);
     
     res.status(201).json({
       message: 'Usuario creado exitosamente',
