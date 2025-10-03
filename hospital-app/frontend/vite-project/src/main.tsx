@@ -5,8 +5,7 @@ import App from './App.tsx'
 import { apiInterceptor } from './api/apiInterceptor'
 import './utils/securityTest'
 
-// Inicializar el interceptor de API
-// apiInterceptor.intercept(); // Deshabilitado para debugging
+apiInterceptor.intercept();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

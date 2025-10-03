@@ -1,0 +1,30 @@
+{
+  "name": "hospital-setup",
+  "version": "1.0.0",
+  "description": "Script unificado para configurar el sistema hospitalario completo",
+  "main": "setup-hospital.js",
+  "scripts": {
+    "setup": "node setup-hospital.js",
+    "start": "node setup-hospital.js"
+  },
+  "keywords": [
+    "hospital",
+    "docker",
+    "mysql",
+    "setup",
+    "database"
+  ],
+  "author": "Sistema Hospitalario",
+  "license": "MIT",
+  "dependencies": {
+    "mysql2": "^3.6.5",
+    "bcryptjs": "^2.4.3",
+    "colors": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "bin": {
+    "setup-hospital": "./setup-hospital.js"
+  }
+}
