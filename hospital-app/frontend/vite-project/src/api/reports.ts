@@ -57,8 +57,17 @@ export interface EstadisticasGenerales {
   duracion_promedio_minutos: number;
 }
 
+export interface CentroMedico {
+  id: number;
+  nombre: string;
+  ciudad: string;
+  direccion: string;
+  telefono: string;
+  email: string;
+}
+
 export interface ReporteFiltros {
-  centroId?: number;
+  centroId?: number | 'all';
   desde?: string;
   hasta?: string;
   q?: string;
@@ -77,6 +86,19 @@ class ReportsService {
     
     if (user?.rol !== 'admin') {
       headers['X-Centro-Id'] = user?.id_centro?.toString() || '1';
+    } else {
+      // Para admin, enviar el centroId del filtro si está disponible
+      const filtrosStr = localStorage.getItem('currentFilters');
+      if (filtrosStr) {
+        try {
+          const filtros = JSON.parse(filtrosStr);
+          if (filtros.centroId && filtros.centroId !== 'all') {
+            headers['X-Centro-Id'] = filtros.centroId.toString();
+          }
+        } catch (e) {
+          // Ignorar error de parsing
+        }
+      }
     }
     
     return headers;
@@ -93,17 +115,25 @@ class ReportsService {
       headers,
       ...options,
     });
-
+    
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`❌ [REPORTS_API] Error response:`, errorText);
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data;
   }
 
   static async getResumenConsultas(filtros: ReporteFiltros): Promise<ConsultaResumen[]> {
     const params = new URLSearchParams();
+    
+    // Manejar centroId - siempre enviar el parámetro
+    if (filtros.centroId) {
+      params.append('centroId', filtros.centroId.toString());
+    }
+    
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
     if (filtros.q) params.append('q', filtros.q);
@@ -116,17 +146,39 @@ class ReportsService {
 
   static async getEstadisticasGenerales(filtros: ReporteFiltros): Promise<EstadisticasGenerales> {
     const params = new URLSearchParams();
+    
+    // Manejar centroId - siempre enviar el parámetro
+    if (filtros.centroId) {
+      params.append('centroId', filtros.centroId.toString());
+    }
+    
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
     
     const queryString = params.toString();
     const endpoint = queryString ? `/estadisticas?${queryString}` : '/estadisticas';
     
-    return this.request<EstadisticasGenerales>(endpoint);
+    console.log('🔍 [REPORTS_API] Llamando a estadísticas:', {
+      filtros,
+      endpoint,
+      queryString
+    });
+    
+    const result = await this.request<EstadisticasGenerales>(endpoint);
+    
+    console.log('📊 [REPORTS_API] Respuesta de estadísticas:', result);
+    
+    return result;
   }
 
   static async getPacientesFrecuentes(filtros: ReporteFiltros, limit: number = 10): Promise<PacienteFrecuente[]> {
     const params = new URLSearchParams();
+    
+    // Manejar centroId - siempre enviar el parámetro
+    if (filtros.centroId) {
+      params.append('centroId', filtros.centroId.toString());
+    }
+    
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
     params.append('limit', limit.toString());
@@ -137,8 +189,33 @@ class ReportsService {
     return this.request<PacienteFrecuente[]>(endpoint);
   }
 
+  static async getCentrosMedicos(): Promise<CentroMedico[]> {
+    // Obtener centros del admin-service
+    const adminUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+    const token = localStorage.getItem('token');
+    
+    const response = await fetch(`${adminUrl}/centros`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
   static async getDetalleConsultasMedico(medicoId: number, filtros: ReporteFiltros): Promise<ConsultaDetalle[]> {
     const params = new URLSearchParams();
+    
+    // Manejar centroId - siempre enviar el parámetro
+    if (filtros.centroId) {
+      params.append('centroId', filtros.centroId.toString());
+    }
+    
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
     if (filtros.q) params.append('q', filtros.q);

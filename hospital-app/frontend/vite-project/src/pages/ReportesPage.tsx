@@ -40,7 +40,7 @@ export const ReportesPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [filtros, setFiltros] = useState<ReporteFiltros>({
-    centroId: user?.rol === 'admin' ? 1 : centroId, // Admin empieza con centro 1, médico con su centro
+    centroId: user?.rol === 'admin' ? 'all' : centroId, // Admin empieza con 'all', médico con su centro
     desde: undefined,
     hasta: undefined,
     q: undefined
@@ -62,22 +62,45 @@ export const ReportesPage: React.FC = () => {
 
   // Cargar datos iniciales
   useEffect(() => {
-    console.log('ReportesPage cargada correctamente');
     loadCentros();
-    // generarReporte(); // Comentado para evitar error 404
   }, []);
+
+  // Cargar datos automáticamente cuando el usuario esté disponible
+  useEffect(() => {
+    if (user) {
+      const filtrosPorDefecto: ReporteFiltros = {
+        centroId: user.rol === 'admin' ? 'all' : centroId,
+        desde: undefined,
+        hasta: undefined,
+        q: undefined
+      };
+      setFiltros(filtrosPorDefecto);
+      generarReporte(filtrosPorDefecto);
+    }
+  }, [user]); // Removí centroId de las dependencias
 
   const loadCentros = async () => {
     try {
       const centrosData = await AdminApi.getCentros();
       setCentros(centrosData);
-      console.log('✅ Centros cargados:', centrosData);
     } catch (error) {
       console.error('❌ Error cargando centros:', error);
     }
   };
 
-  const generarReporte = async () => {
+  const generarReporte = async (filtrosParaUsar?: ReporteFiltros) => {
+    const filtrosActuales = filtrosParaUsar || filtros;
+    
+    // Guardar filtros actuales en localStorage para que estén disponibles en los headers
+    // Crear una copia limpia de los filtros para evitar referencias circulares
+    const filtrosLimpios = {
+      centroId: filtrosActuales.centroId,
+      desde: filtrosActuales.desde,
+      hasta: filtrosActuales.hasta,
+      q: filtrosActuales.q
+    };
+    localStorage.setItem('currentFilters', JSON.stringify(filtrosLimpios));
+    
     setLoading(true);
     setLoadingEstadisticas(true);
     setLoadingPacientes(true);
@@ -85,43 +108,23 @@ export const ReportesPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      console.log(`🔍 [FRONTEND] Generando reporte con filtros:`, filtros);
-      console.log(`🔍 [FRONTEND] CentroId para estadísticas:`, filtros.centroId);
-      
       // Cargar datos en paralelo
       const [consultasResponse, estadisticasResponse, pacientesResponse] = await Promise.all([
-        apiService.getResumenConsultas(filtros),
-        apiService.getEstadisticasGenerales(filtros),
-        apiService.getPacientesFrecuentes(filtros, 10)
+        apiService.getResumenConsultas(filtrosActuales),
+        apiService.getEstadisticasGenerales(filtrosActuales),
+        apiService.getPacientesFrecuentes(filtrosActuales, 10)
       ]);
       
-      // Procesar respuesta de consultas
-      if (consultasResponse.error) {
-        setError(consultasResponse.error);
-        setData([]);
-      } else if (consultasResponse.data) {
-        setData(consultasResponse.data);
-      }
+      // Procesar respuesta de consultas (datos directos)
+      setData(consultasResponse);
 
-      // Procesar respuesta de estadísticas
-      if (estadisticasResponse.error) {
-        console.error('Error cargando estadísticas:', estadisticasResponse.error);
-        setEstadisticas(null);
-      } else if (estadisticasResponse.data) {
-        setEstadisticas(estadisticasResponse.data);
-      }
+      // Procesar respuesta de estadísticas (datos directos)
+      setEstadisticas(estadisticasResponse);
 
-      // Procesar respuesta de pacientes frecuentes
-      if (pacientesResponse.error) {
-        console.error('Error cargando pacientes frecuentes:', pacientesResponse.error);
-        setPacientesFrecuentes([]);
-      } else if (pacientesResponse.data) {
-        setPacientesFrecuentes(pacientesResponse.data);
-      }
+      // Procesar respuesta de pacientes frecuentes (datos directos)
+      setPacientesFrecuentes(pacientesResponse);
 
-      if (!consultasResponse.error) {
-        setSuccess(`Reporte generado exitosamente. ${consultasResponse.data?.length || 0} médico${(consultasResponse.data?.length || 0) !== 1 ? 's' : ''} encontrado${(consultasResponse.data?.length || 0) !== 1 ? 's' : ''}.`);
-      }
+      setSuccess(`Reporte generado exitosamente. ${consultasResponse.length} médico${consultasResponse.length !== 1 ? 's' : ''} encontrado${consultasResponse.length !== 1 ? 's' : ''}.`);
     } catch (error) {
       console.error('Error generando reporte:', error)
       setError('Error inesperado al generar el reporte');
@@ -170,14 +173,11 @@ export const ReportesPage: React.FC = () => {
         try {
           setSuccess(`Obteniendo detalles del medico ${i + 1}/${data.length}: Dr. ${medico.nombres} ${medico.apellidos}...`);
           
-          console.log(`🔍 [FRONTEND] Obteniendo detalles para médico ${medico.medico_id} con centroId: ${filtros.centroId}`);
-          const response = await apiService.getDetalleConsultasMedico(
+          const detalleData = await apiService.getDetalleConsultasMedico(
             medico.medico_id, 
             { desde: filtros.desde, hasta: filtros.hasta, q: filtros.q }
           );
-          if (response.data) {
-            detallesConsultas[medico.medico_id] = response.data;
-          }
+          detallesConsultas[medico.medico_id] = detalleData;
         } catch (err) {
           console.warn(`Error al obtener detalles para médico ${medico.medico_id}:`, err);
         }
@@ -509,18 +509,12 @@ export const ReportesPage: React.FC = () => {
           const pageHeight = doc.internal.pageSize.height;
           const availableSpace = pageHeight - currentY - 50; // 50px para el pie de página
           
-          console.log('Posición actual Y:', currentY);
-          console.log('Altura de página:', pageHeight);
-          console.log('Espacio disponible:', availableSpace);
-          
           if (availableSpace < 100) { // Si hay menos de 100px disponibles
-            console.log('Agregando nueva página');
             doc.addPage();
             currentY = 20;
           }
           
           // Crear gráfico de especialidades simplificado
-          console.log('Creando gráfico de especialidades en Y:', currentY);
           addText('Distribución por Especialidades:', 20, currentY, { fontSize: 12, color: textColor });
           currentY += 10;
           
@@ -547,13 +541,10 @@ export const ReportesPage: React.FC = () => {
           const barHeight = 8;
           const barSpacing = 12;
           
-          console.log('Procesando especialidades:', sortedEspecialidades.length);
           sortedEspecialidades.forEach((item, index) => {
             const barLength = (item.total / maxEspecialidad) * horizontalBarWidth;
             const color = colors[index % colors.length];
             const percentage = ((item.total / totalConsultas) * 100).toFixed(1);
-            
-            console.log(`Dibujando especialidad ${index + 1}: ${item.especialidad} en Y: ${currentY}`);
             
             // Dibujar barra horizontal
             doc.setFillColor(color[0], color[1], color[2]);
@@ -819,12 +810,9 @@ export const ReportesPage: React.FC = () => {
       <ReportFilters
         filtros={filtros}
         onFiltrosChange={(newFiltros) => {
-          console.log(`🔍 [FRONTEND] Filtros actualizados:`, newFiltros);
-          console.log(`🔍 [FRONTEND] CentroId anterior:`, filtros.centroId);
-          console.log(`🔍 [FRONTEND] CentroId nuevo:`, newFiltros.centroId);
           setFiltros(newFiltros);
         }}
-        onGenerarReporte={generarReporte}
+        onGenerarReporte={(filtrosParaUsar) => generarReporte(filtrosParaUsar)}
         onExportarReporte={exportarReporte}
         loading={loading}
         centros={centros}
@@ -853,7 +841,8 @@ export const ReportesPage: React.FC = () => {
               data={data}
               loading={loading}
               onError={handleError}
-              centroId={filtros.centroId}
+              centroId={typeof filtros.centroId === 'number' ? filtros.centroId : 1}
+              filtros={filtros}
             />
           </div>
 

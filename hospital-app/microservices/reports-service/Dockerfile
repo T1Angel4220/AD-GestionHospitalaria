@@ -15,7 +15,7 @@ COPY . .
 RUN mkdir -p logs
 
 # Exponer puerto
-EXPOSE 3006
+EXPOSE 3005
 
 # Comando de inicio
 CMD ["node", "index.js"]

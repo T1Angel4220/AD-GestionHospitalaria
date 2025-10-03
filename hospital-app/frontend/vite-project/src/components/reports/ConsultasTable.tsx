@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, ChevronDown, ChevronRight, FileText, Download } from 'lucide-react';
-import type { ConsultaResumen, ConsultaDetalle } from '../../api/reports';
+import type { ConsultaResumen, ConsultaDetalle, ReporteFiltros } from '../../api/reports';
 import { formatDate, getInitials } from '../../lib/utils';
 import { apiService } from '../../api/reports';
 
@@ -9,6 +9,7 @@ interface ConsultasTableProps {
   loading?: boolean;
   onError?: (error: string) => void;
   centroId?: number;
+  filtros?: ReporteFiltros;
 }
 
 export const ConsultasTable: React.FC<ConsultasTableProps> = ({
@@ -16,6 +17,7 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
   loading = false,
   onError,
   centroId = 1,
+  filtros = { centroId: centroId, desde: undefined, hasta: undefined, q: undefined },
 }) => {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [detalleData, setDetalleData] = useState<Record<number, ConsultaDetalle[]>>({});
@@ -45,16 +47,12 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
         
         try {
           console.log(`🔍 [CONSULTAS_TABLE] Obteniendo detalles para médico ${medicoId} con centroId: ${centroId}`);
-          const response = await apiService.getDetalleConsultasMedico(medicoId, { desde: undefined, hasta: undefined, q: undefined });
+          const detalleData = await apiService.getDetalleConsultasMedico(medicoId, filtros);
           
-          if (response.error) {
-            onError?.(response.error);
-          } else if (response.data) {
-            setDetalleData(prev => ({
-              ...prev,
-              [medicoId]: response.data!
-            }));
-          }
+          setDetalleData(prev => ({
+            ...prev,
+            [medicoId]: detalleData
+          }));
         } catch (error) {
           console.error('Error al cargar el detalle de consultas:', error);
           onError?.('Error al cargar el detalle de consultas');
@@ -73,15 +71,14 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
     const detalle = detalleData[medicoId];
     if (!detalle || detalle.length === 0) return;
 
-    const headers = ['Fecha', 'Paciente', 'Motivo', 'Diagnóstico', 'Tratamiento', 'Estado'];
+    const headers = ['Fecha', 'Paciente', 'Cédula', 'Observaciones', 'Estado'];
     const csvContent = [
       headers.join(','),
       ...detalle.map(consulta => [
         `"${formatDate(consulta.fecha)}"`,
         `"${consulta.paciente_nombre} ${consulta.paciente_apellido}"`,
-        `"${consulta.motivo || 'N/A'}"`,
-        `"${consulta.diagnostico || 'N/A'}"`,
-        `"${consulta.tratamiento || 'N/A'}"`,
+        `"${consulta.cedula || 'N/A'}"`,
+        `"${consulta.observaciones || 'N/A'}"`,
         `"${consulta.estado}"`
       ].join(','))
     ].join('\n');
@@ -307,10 +304,10 @@ export const ConsultasTable: React.FC<ConsultasTableProps> = ({
                                         {consulta.paciente_nombre} {consulta.paciente_apellido}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-900">
-                                        {consulta.motivo || 'N/A'}
+                                        {consulta.cedula || 'N/A'}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-900">
-                                        {consulta.diagnostico || 'N/A'}
+                                        {consulta.observaciones || 'N/A'}
                                       </td>
                                       <td className="px-4 py-2 whitespace-nowrap">
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

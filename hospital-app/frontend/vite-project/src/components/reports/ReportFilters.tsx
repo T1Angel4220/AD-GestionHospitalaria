@@ -1,14 +1,14 @@
 import React from 'react';
 import { Search, Calendar, Filter, Download, X } from 'lucide-react';
-import type { ReporteFiltros } from '../../api/reports';
+import type { ReporteFiltros, CentroMedico } from '../../api/reports';
 
 interface ReportFiltersProps {
   filtros: ReporteFiltros;
   onFiltrosChange: (filtros: ReporteFiltros) => void;
-  onGenerarReporte: () => void;
+  onGenerarReporte: (filtros: ReporteFiltros) => void;
   onExportarReporte: () => void;
   loading?: boolean;
-  centros?: Array<{id: number, nombre: string, ciudad: string}>;
+  centros?: CentroMedico[];
   isAdmin?: boolean;
 }
 
@@ -21,10 +21,10 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   centros = [],
   isAdmin = false
 }) => {
-  const handleInputChange = (field: keyof ReporteFiltros, value: string) => {
+  const handleInputChange = (field: keyof ReporteFiltros, value: string | number | 'all') => {
     onFiltrosChange({
       ...filtros,
-      [field]: value || undefined
+      [field]: value === '' ? undefined : value
     });
   };
 
@@ -93,10 +93,11 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
           </label>
           {isAdmin && centros.length > 0 ? (
             <select
-              value={filtros.centroId || 1}
-              onChange={(e) => handleInputChange('centroId', e.target.value)}
+              value={filtros.centroId || 'all'}
+              onChange={(e) => handleInputChange('centroId', e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
             >
+              <option value="all">Todos los centros</option>
               {centros.map((centro) => (
                 <option key={centro.id} value={centro.id}>
                   {centro.nombre} - {centro.ciudad} (ID: {centro.id})
@@ -108,7 +109,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
               type="number"
               placeholder="ID del Centro"
               value={filtros.centroId || ''}
-              onChange={(e) => handleInputChange('centroId', (parseInt(e.target.value) || 1).toString())}
+              onChange={(e) => handleInputChange('centroId', (parseInt(e.target.value) || 1))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
             />
           )}
@@ -118,7 +119,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
       {/* Botones de acción */}
       <div className="flex flex-wrap gap-3">
         <button
-          onClick={onGenerarReporte}
+          onClick={() => onGenerarReporte(filtros)}
           disabled={loading}
           className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg hover:from-amber-600 hover:to-orange-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
         >
@@ -175,9 +176,11 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             <div className="flex items-center gap-2">
               <span className="font-medium text-amber-700">Centro:</span>
               <span className="text-amber-900">
-                {isAdmin && centros.length > 0 
-                  ? centros.find(c => c.id === filtros.centroId)?.nombre || `ID ${filtros.centroId}`
-                  : `ID ${filtros.centroId}`
+                {filtros.centroId === 'all' 
+                  ? 'Todos los centros'
+                  : isAdmin && centros.length > 0 
+                    ? centros.find(c => c.id === filtros.centroId)?.nombre || `ID ${filtros.centroId}`
+                    : `ID ${filtros.centroId}`
                 }
               </span>
             </div>
