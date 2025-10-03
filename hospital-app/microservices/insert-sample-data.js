@@ -198,7 +198,7 @@ async function insertSampleData(dbName, config) {
     console.log(`👨‍⚕️ ${medicos.length} usuarios médicos insertados`.success);
 
     // 8. Insertar consultas de ejemplo (más consultas y variedad)
-    const [pacientes] = await connection.execute('SELECT id FROM pacientes WHERE id_centro = ?', [centroInfo.centroId]);
+    const [pacientes] = await connection.execute('SELECT id, nombres, apellidos FROM pacientes WHERE id_centro = ?', [centroInfo.centroId]);
     const [medicosConsultas] = await connection.execute('SELECT id FROM medicos WHERE id_centro = ?', [centroInfo.centroId]);
     
     const consultasEjemplo = [
@@ -258,8 +258,8 @@ async function insertSampleData(dbName, config) {
       fecha.setHours(hora, minutos, 0, 0);
 
       await connection.execute(
-        `INSERT INTO consultas (fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos, id_medico, id_paciente, id_centro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [fecha, consulta.motivo, consulta.diagnostico, consulta.tratamiento, consulta.estado, consulta.duracion, medico.id, paciente.id, centroInfo.centroId]
+        `INSERT INTO consultas (fecha, motivo, diagnostico, tratamiento, estado, duracion_minutos, id_medico, id_paciente, paciente_nombre, paciente_apellido, id_centro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [fecha, consulta.motivo, consulta.diagnostico, consulta.tratamiento, consulta.estado, consulta.duracion, medico.id, paciente.id, paciente.nombres, paciente.apellidos, centroInfo.centroId]
       );
     }
     console.log(`📋 ${numConsultas} consultas insertadas`.success);
