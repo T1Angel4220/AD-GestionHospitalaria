@@ -15,6 +15,8 @@ services:
     volumes:
       - mysql_central_data:/var/lib/mysql
       - ./sql/central.sql:/docker-entrypoint-initdb.d/01-central.sql
+      - ./sql/configure-utf8.sql:/docker-entrypoint-initdb.d/02-configure-utf8.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect="SET NAMES utf8mb4"
     networks:
       - hospital-network
     restart: unless-stopped
@@ -32,6 +34,8 @@ services:
     volumes:
       - mysql_guayaquil_data:/var/lib/mysql
       - ./sql/guayaquil.sql:/docker-entrypoint-initdb.d/01-guayaquil.sql
+      - ./sql/configure-utf8.sql:/docker-entrypoint-initdb.d/02-configure-utf8.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect="SET NAMES utf8mb4"
     networks:
       - hospital-network
     restart: unless-stopped
@@ -49,6 +53,8 @@ services:
     volumes:
       - mysql_cuenca_data:/var/lib/mysql
       - ./sql/cuenca.sql:/docker-entrypoint-initdb.d/01-cuenca.sql
+      - ./sql/configure-utf8.sql:/docker-entrypoint-initdb.d/02-configure-utf8.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect="SET NAMES utf8mb4"
     networks:
       - hospital-network
     restart: unless-stopped

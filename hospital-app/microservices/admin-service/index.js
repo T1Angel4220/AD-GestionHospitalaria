@@ -51,21 +51,24 @@ const dbConfigs = {
     user: process.env.DB_USER || 'admin_central',
     password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
     database: process.env.DB_NAME || 'hospital_central',
-    port: process.env.DB_PORT || 3306
+    port: process.env.DB_PORT || 3306,
+    charset: 'utf8mb4'
   },
   guayaquil: {
     host: process.env.DB_GUAYAQUIL_HOST || 'mysql-guayaquil',
     user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
     password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
     database: process.env.DB_GUAYAQUIL_NAME || 'hospital_guayaquil',
-    port: process.env.DB_GUAYAQUIL_PORT || 3306
+    port: process.env.DB_GUAYAQUIL_PORT || 3306,
+    charset: 'utf8mb4'
   },
   cuenca: {
     host: process.env.DB_CUENCA_HOST || 'mysql-cuenca',
     user: process.env.DB_CUENCA_USER || 'admin_cuenca',
     password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
     database: process.env.DB_CUENCA_NAME || 'hospital_cuenca',
-    port: process.env.DB_CUENCA_PORT || 3306
+    port: process.env.DB_CUENCA_PORT || 3306,
+    charset: 'utf8mb4'
   }
 };
 
@@ -593,8 +596,13 @@ app.put('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) => {
     const pacienteId = parseInt(req.params.id);
     const { nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion, id_centro } = req.body;
     
-    if (!nombres && !apellidos && !cedula && !telefono && !email && !fecha_nacimiento && !genero && !direccion) {
-      return res.status(400).json({ error: 'Debe proporcionar al menos un campo para actualizar' });
+    // Validar que al menos un campo válido esté presente (ignorar campos vacíos o undefined)
+    const hasValidFields = [nombres, apellidos, cedula, telefono, email, fecha_nacimiento, genero, direccion].some(field => 
+      field !== undefined && field !== null && field !== ''
+    );
+    
+    if (!hasValidFields) {
+      return res.status(400).json({ error: 'Debe proporcionar al menos un campo válido para actualizar' });
     }
     
     // Buscar el paciente en todas las bases de datos
@@ -617,37 +625,43 @@ app.put('/pacientes/:id', authenticateToken, requireAdmin, async (req, res) => {
     const updateFields = [];
     const updateValues = [];
     
-    if (nombres) {
+    // Solo agregar campos que tienen valores válidos
+    if (nombres !== undefined && nombres !== null && nombres !== '') {
       updateFields.push('nombres = ?');
       updateValues.push(nombres);
     }
-    if (apellidos) {
+    if (apellidos !== undefined && apellidos !== null && apellidos !== '') {
       updateFields.push('apellidos = ?');
       updateValues.push(apellidos);
     }
-    if (cedula) {
+    if (cedula !== undefined && cedula !== null && cedula !== '') {
       updateFields.push('cedula = ?');
       updateValues.push(cedula);
     }
-    if (telefono) {
+    if (telefono !== undefined && telefono !== null && telefono !== '') {
       updateFields.push('telefono = ?');
       updateValues.push(telefono);
     }
-    if (email) {
+    if (email !== undefined && email !== null && email !== '') {
       updateFields.push('email = ?');
       updateValues.push(email);
     }
-    if (fecha_nacimiento) {
+    if (fecha_nacimiento !== undefined && fecha_nacimiento !== null && fecha_nacimiento !== '') {
       updateFields.push('fecha_nacimiento = ?');
       updateValues.push(fecha_nacimiento);
     }
-    if (genero) {
+    if (genero !== undefined && genero !== null && genero !== '') {
       updateFields.push('genero = ?');
       updateValues.push(genero);
     }
-    if (direccion) {
+    if (direccion !== undefined && direccion !== null && direccion !== '') {
       updateFields.push('direccion = ?');
       updateValues.push(direccion);
+    }
+    
+    // Verificar que hay campos para actualizar después del filtrado
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
     }
     
     updateValues.push(pacienteId);

@@ -173,17 +173,43 @@ export default function PacientesPage() {
 
     try {
       if (editingPaciente) {
-        const updateData: PacienteUpdate = {
-          nombres: sanitizedFormData.nombres,
-          apellidos: sanitizedFormData.apellidos,
-          cedula: sanitizedFormData.cedula,
-          telefono: sanitizedFormData.telefono,
-          email: sanitizedFormData.email,
-          fecha_nacimiento: sanitizedFormData.fecha_nacimiento,
-          genero: sanitizedFormData.genero,
-          direccion: sanitizedFormData.direccion,
-          id_centro: sanitizedFormData.id_centro,
+        // Filtrar campos vacíos antes de enviar
+        const updateData: PacienteUpdate = {}
+        
+        if (sanitizedFormData.nombres && sanitizedFormData.nombres.trim() !== '') {
+          updateData.nombres = sanitizedFormData.nombres
         }
+        if (sanitizedFormData.apellidos && sanitizedFormData.apellidos.trim() !== '') {
+          updateData.apellidos = sanitizedFormData.apellidos
+        }
+        if (sanitizedFormData.cedula && sanitizedFormData.cedula.trim() !== '') {
+          updateData.cedula = sanitizedFormData.cedula
+        }
+        if (sanitizedFormData.telefono && sanitizedFormData.telefono.trim() !== '') {
+          updateData.telefono = sanitizedFormData.telefono
+        }
+        if (sanitizedFormData.email && sanitizedFormData.email.trim() !== '') {
+          updateData.email = sanitizedFormData.email
+        }
+        if (sanitizedFormData.fecha_nacimiento && sanitizedFormData.fecha_nacimiento.trim() !== '') {
+          updateData.fecha_nacimiento = sanitizedFormData.fecha_nacimiento
+        }
+        if (sanitizedFormData.genero && sanitizedFormData.genero.trim() !== '') {
+          updateData.genero = sanitizedFormData.genero as 'M' | 'F' | 'O'
+        }
+        if (sanitizedFormData.direccion && sanitizedFormData.direccion.trim() !== '') {
+          updateData.direccion = sanitizedFormData.direccion
+        }
+        if (sanitizedFormData.id_centro) {
+          updateData.id_centro = sanitizedFormData.id_centro
+        }
+        
+        // Verificar que hay al menos un campo para actualizar
+        if (Object.keys(updateData).length === 0) {
+          setError("Debe modificar al menos un campo para actualizar")
+          return
+        }
+        
         // Guardar datos pendientes y mostrar modal de confirmación
         setPendingUpdateData(updateData)
         setShowEditConfirmModal(true)

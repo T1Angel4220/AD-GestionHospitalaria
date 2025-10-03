@@ -35,21 +35,24 @@ const dbConfigs = {
     user: process.env.DB_USER || 'admin_central',
     password: process.env.DB_PASSWORD || 'SuperPasswordCentral123!',
     database: 'hospital_central',
-    port: process.env.DB_PORT || 3306
+    port: process.env.DB_PORT || 3306,
+    charset: 'utf8mb4'
   },
   guayaquil: {
     host: process.env.DB_GUAYAQUIL_HOST || 'mysql-guayaquil',
     user: process.env.DB_GUAYAQUIL_USER || 'admin_guayaquil',
     password: process.env.DB_GUAYAQUIL_PASSWORD || 'SuperPasswordGye123!',
     database: 'hospital_guayaquil',
-    port: process.env.DB_GUAYAQUIL_PORT || 3306
+    port: process.env.DB_GUAYAQUIL_PORT || 3306,
+    charset: 'utf8mb4'
   },
   cuenca: {
     host: process.env.DB_CUENCA_HOST || 'mysql-cuenca',
     user: process.env.DB_CUENCA_USER || 'admin_cuenca',
     password: process.env.DB_CUENCA_PASSWORD || 'SuperPasswordCuenca123!',
     database: 'hospital_cuenca',
-    port: process.env.DB_CUENCA_PORT || 3306
+    port: process.env.DB_CUENCA_PORT || 3306,
+    charset: 'utf8mb4'
   }
 };
 
