@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: ../../microservices/api-gateway
+    container_name: hospital-api-gateway
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      ADMIN_SERVICE_URL: http://${SERVICES_HOST}:3002
+      CONSULTAS_SERVICE_URL: http://${SERVICES_HOST}:3003
+      USERS_SERVICE_URL: http://${SERVICES_HOST}:3004
+      REPORTS_SERVICE_URL: http://${SERVICES_HOST}:3005
+      FRONTEND_URL: ${FRONTEND_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+    restart: unless-stopped
+
+  auth-service:
+    build: ../../microservices/auth-service
+    container_name: hospital-auth-service
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
+      DB_HOST: ${DB_CENTRAL_HOST}
+      DB_USER: admin_central
+      DB_PASSWORD: ${DB_CENTRAL_PASSWORD}
+      DB_PORT: 3306
+      DB_NAME: hospital_central
+    expose:
+      - "3001"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: edge-net
+
+

@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  admin-service:
+    build: ../../microservices/admin-service
+    container_name: hospital-admin-service
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      JWT_SECRET: ${JWT_SECRET}
+      DB_HOST: ${DB_CENTRAL_HOST}
+      DB_USER: admin_central
+      DB_PASSWORD: ${DB_CENTRAL_PASSWORD}
+      DB_PORT: 3306
+      DB_NAME: hospital_central
+      DB_GUAYAQUIL_HOST: ${DB_GYE_HOST}
+      DB_GUAYAQUIL_USER: admin_guayaquil
+      DB_GUAYAQUIL_PASSWORD: ${DB_GYE_PASSWORD}
+      DB_GUAYAQUIL_PORT: 3306
+      DB_GUAYAQUIL_NAME: hospital_guayaquil
+      DB_CUENCA_HOST: ${DB_CUENCA_HOST}
+      DB_CUENCA_USER: admin_cuenca
+      DB_CUENCA_PASSWORD: ${DB_CUENCA_PASSWORD}
+      DB_CUENCA_PORT: 3306
+      DB_CUENCA_NAME: hospital_cuenca
+    expose:
+      - "3002"
+    restart: unless-stopped
+
+  consultas-service:
+    build: ../../microservices/consultas-service
+    container_name: hospital-consultas-service
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      JWT_SECRET: ${JWT_SECRET}
+      DB_HOST: ${DB_CENTRAL_HOST}
+      DB_USER: admin_central
+      DB_PASSWORD: ${DB_CENTRAL_PASSWORD}
+      DB_PORT: 3306
+      DB_NAME: hospital_central
+      DB_GUAYAQUIL_HOST: ${DB_GYE_HOST}
+      DB_GUAYAQUIL_USER: admin_guayaquil
+      DB_GUAYAQUIL_PASSWORD: ${DB_GYE_PASSWORD}
+      DB_GUAYAQUIL_PORT: 3306
+      DB_GUAYAQUIL_NAME: hospital_guayaquil
+      DB_CUENCA_HOST: ${DB_CUENCA_HOST}
+      DB_CUENCA_USER: admin_cuenca
+      DB_CUENCA_PASSWORD: ${DB_CUENCA_PASSWORD}
+      DB_CUENCA_PORT: 3306
+      DB_CUENCA_NAME: hospital_cuenca
+    expose:
+      - "3003"
+    restart: unless-stopped
+
+  users-service:
+    build: ../../microservices/users-service
+    container_name: hospital-users-service
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      JWT_SECRET: ${JWT_SECRET}
+      DB_HOST: ${DB_CENTRAL_HOST}
+      DB_USER: admin_central
+      DB_PASSWORD: ${DB_CENTRAL_PASSWORD}
+      DB_PORT: 3306
+      DB_NAME: hospital_central
+      DB_GUAYAQUIL_HOST: ${DB_GYE_HOST}
+      DB_GUAYAQUIL_USER: admin_guayaquil
+      DB_GUAYAQUIL_PASSWORD: ${DB_GYE_PASSWORD}
+      DB_GUAYAQUIL_PORT: 3306
+      DB_GUAYAQUIL_NAME: hospital_guayaquil
+      DB_CUENCA_HOST: ${DB_CUENCA_HOST}
+      DB_CUENCA_USER: admin_cuenca
+      DB_CUENCA_PASSWORD: ${DB_CUENCA_PASSWORD}
+      DB_CUENCA_PORT: 3306
+      DB_CUENCA_NAME: hospital_cuenca
+    expose:
+      - "3004"
+    restart: unless-stopped
+
+  reports-service:
+    build: ../../microservices/reports-service
+    container_name: hospital-reports-service
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      JWT_SECRET: ${JWT_SECRET}
+      DB_HOST: ${DB_CENTRAL_HOST}
+      DB_USER: admin_central
+      DB_PASSWORD: ${DB_CENTRAL_PASSWORD}
+      DB_PORT: 3306
+      DB_NAME: hospital_central
+      DB_GUAYAQUIL_HOST: ${DB_GYE_HOST}
+      DB_GUAYAQUIL_USER: admin_guayaquil
+      DB_GUAYAQUIL_PASSWORD: ${DB_GYE_PASSWORD}
+      DB_GUAYAQUIL_PORT: 3306
+      DB_GUAYAQUIL_NAME: hospital_guayaquil
+      DB_CUENCA_HOST: ${DB_CUENCA_HOST}
+      DB_CUENCA_USER: admin_cuenca
+      DB_CUENCA_PASSWORD: ${DB_CUENCA_PASSWORD}
+      DB_CUENCA_PORT: 3306
+      DB_CUENCA_NAME: hospital_cuenca
+    expose:
+      - "3005"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: services-net
+
+

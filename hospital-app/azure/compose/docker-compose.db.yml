@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mysql-central:
+    image: mysql:8.0
+    container_name: hospital-mysql-central
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SuperRootPassword123!}
+      MYSQL_DATABASE: hospital_central
+      MYSQL_USER: admin_central
+      MYSQL_PASSWORD: ${DB_CENTRAL_PASSWORD:-SuperPasswordCentral123!}
+    ports:
+      - "3307:3306" # limitar por NSG a la subred
+    volumes:
+      - mysql_central_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect="SET NAMES utf8mb4"
+    restart: unless-stopped
+
+  mysql-guayaquil:
+    image: mysql:8.0
+    container_name: hospital-mysql-guayaquil
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SuperRootPassword123!}
+      MYSQL_DATABASE: hospital_guayaquil
+      MYSQL_USER: admin_guayaquil
+      MYSQL_PASSWORD: ${DB_GYE_PASSWORD:-SuperPasswordGye123!}
+    ports:
+      - "3308:3306" # limitar por NSG a la subred
+    volumes:
+      - mysql_guayaquil_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect="SET NAMES utf8mb4"
+    restart: unless-stopped
+
+  mysql-cuenca:
+    image: mysql:8.0
+    container_name: hospital-mysql-cuenca
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SuperRootPassword123!}
+      MYSQL_DATABASE: hospital_cuenca
+      MYSQL_USER: admin_cuenca
+      MYSQL_PASSWORD: ${DB_CUENCA_PASSWORD:-SuperPasswordCuenca123!}
+    ports:
+      - "3309:3306" # limitar por NSG a la subred
+    volumes:
+      - mysql_cuenca_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect="SET NAMES utf8mb4"
+    restart: unless-stopped
+
+volumes:
+  mysql_central_data:
+  mysql_guayaquil_data:
+  mysql_cuenca_data:
+
+
