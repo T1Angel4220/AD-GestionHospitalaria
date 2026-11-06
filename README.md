@@ -1,944 +1,344 @@
-# 🏥 Sistema de Gestión Hospitalaria - HospitalApp
+# 🏥 HospitalApp — Plataforma de Gestión Hospitalaria Distribuida
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-19.1.1-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)](https://www.typescriptlang.org/)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange.svg)](https://www.mysql.com/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docker.com/)
-[![License](https://img.shields.io/badge/License-ISC-yellow.svg)](LICENSE)
+<div align="center">
 
-## 📋 Descripción del Proyecto
+[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-5.1.0-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![React](https://img.shields.io/badge/React-19.1.1-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.1-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Azure](https://img.shields.io/badge/Azure-Multi--VM-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/)
 
-**HospitalApp** es un sistema integral de gestión hospitalaria desarrollado con **arquitectura de microservicios** que permite la administración de múltiples centros médicos distribuidos geográficamente. El sistema implementa bases de datos distribuidas, replicación de datos y servicios web para garantizar la escalabilidad, disponibilidad y mantenibilidad del servicio.
+**Sistema de gestión clínica y administrativa multi-sede desarrollado con arquitectura de microservicios, bases de datos relacionales distribuidas geográficamente y frontend reactivo moderno.**
 
-### 🎯 Características Principales
+[📖 ¿Qué es y qué hace el programa? (Guía Detallada)](PROYECTO_EXPLICACION.md) • [🏗️ Arquitectura](#-arquitectura-del-sistema) • [🚀 Inicio Rápido](#-inicio-rápido) • [🛡️ Seguridad](#-seguridad-y-variables-de-entorno) • [📚 Documentación](#-centro-de-documentación)
 
-- ✅ **Arquitectura de Microservicios** con Node.js y Express
-- ✅ **Bases de Datos Distribuidas** con MySQL (Central, Guayaquil, Cuenca)
-- ✅ **APIs RESTful** para administración y consultas médicas
-- ✅ **Interfaces de Usuario** diferenciadas por roles (Admin/Hospital)
-- ✅ **Sistema de Autenticación** con JWT y roles
-- ✅ **Reportes Avanzados** con exportación a PDF
-- ✅ **Gestión de Consultas** independiente por centro médico
-- ✅ **Containerización** con Docker y Docker Compose
-- ✅ **Logging y Monitoreo** con Winston
-- ✅ **Validaciones Robustas** en frontend y backend
+</div>
 
-## 🚀 Inicio Rápido
+---
 
-### Instalación con Docker (Recomendado)
+## 📌 Resumen Ejecutivo
 
-```bash
-# Clonar el repositorio
-git clone <repository-url>
-cd AD-GestionHospitalaria
+**HospitalApp** es una solución de software empresarial diseñada para redes hospitalarias que operan en múltiples centros de salud distribuidos regionalmente (**Sede Central Quito, Sede Guayaquil y Sede Cuenca**).
 
-# Ejecutar con Docker Compose
-cd hospital-app/microservices
-docker-compose up -d
+El sistema resuelve la complejidad del aislamiento geográfico y la sincronización de datos de salud mediante:
+- **Arquitectura de Microservicios:** 5 servicios de dominio desacoplados orquestados por un **API Gateway** centralizado.
+- **Bases de Datos Distribuidas:** Fragmentación de datos en 3 instancias independientes de MySQL 8.0, garantizando autonomía operativa regional y alta resiliencia.
+- **Frontend SPA Reactivo:** Desarrollado con **React 19**, **TypeScript**, **Vite** y **Tailwind CSS**, con interfaces especializadas según el rol de usuario (Administrador Global vs. Médico de Centro).
+- **Seguridad Corporativa:** Autenticación JWT stateless, RBAC (Role-Based Access Control), validación de cédula ecuatoriana (Módulo 10), protección contra inyecciones SQL mediante consultas parametrizadas y rate limiting.
+- **Analítica y Reportes:** Cuadro de mandos con gráficos interactivos en Recharts y exportación programática de expedientes en **PDF formal** con firmas de auditoría.
 
-# Ejecutar frontend
-cd ../frontend/vite-project
-npm install
-npm run dev
-```
+> 💡 **¿Buscas una explicación detallada del modelo de negocio, flujos clínicos y funcionamiento interno?**  
+> Consulta la guía completa en [PROYECTO_EXPLICACION.md](PROYECTO_EXPLICACION.md).
 
-### Acceso a la Aplicación
-
-- **Frontend**: http://localhost:5173
-- **API Gateway**: http://localhost:3000
-- **Servicios**: http://localhost:3001-3005
-
-## 📚 Documentación Completa
-
-Para información detallada sobre cada componente del sistema, consulta:
-
-- 📖 **[Documentación Principal](hospital-app/README.md)** - Guía completa del sistema
-- 🎨 **[Documentación Frontend](hospital-app/frontend/FRONTEND_DOCUMENTATION.md)** - React, TypeScript, Vite
-- 🔐 **[Documentación Seguridad](hospital-app/README_SEGURIDAD.md)** - Autenticación y autorización
-- 📋 **[Documentación Validaciones](hospital-app/README_VALIDACIONES.md)** - Validaciones y reglas de negocio
+---
 
 ## 🏗️ Arquitectura del Sistema
 
-### Diagrama de Arquitectura
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    FRONTEND (React + Vite)                 │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   Admin Panel   │  │  Hospital UI    │  │  Dashboard  │ │
-│  │   (React)       │  │  (React)        │  │  (React)    │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    API GATEWAY (Puerto 3000)               │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │  Auth Service   │  │  Admin Service  │  │  Reports    │ │
-│  │  (Puerto 3001)  │  │  (Puerto 3002)  │  │  Service    │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-│  ┌─────────────────┐  ┌─────────────────┐                  │
-│  │ Consultas Svc   │  │  Users Service  │                  │
-│  │  (Puerto 3003)  │  │  (Puerto 3004)  │                  │
-│  └─────────────────┘  └─────────────────┘                  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                DATABASES DISTRIBUTED                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │  Central DB     │  │  Guayaquil DB   │  │  Cuenca DB  │ │
-│  │  (Puerto 3307)  │  │  (Puerto 3308)  │  │  (Puerto 3309) │
-│  │  Quito          │  │  Guayaquil      │  │  Cuenca     │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Microservicios
-
-| Servicio | Puerto | Responsabilidad | Base de Datos |
-|----------|--------|-----------------|---------------|
-| **API Gateway** | 3000 | Enrutamiento, autenticación, proxy | - |
-| **Auth Service** | 3001 | Autenticación, usuarios, JWT | Todas las BD |
-| **Admin Service** | 3002 | Gestión de médicos, centros, especialidades | Todas las BD |
-| **Consultas Service** | 3003 | Consultas médicas, pacientes | Todas las BD |
-| **Users Service** | 3004 | Gestión de usuarios del sistema | Todas las BD |
-| **Reports Service** | 3005 | Reportes y estadísticas | Todas las BD |
-
-## 🛠️ Tecnologías Utilizadas
-
-### Backend (Microservicios)
-- **Node.js** (v18+) - Runtime de JavaScript
-- **Express.js** (v5.1.0) - Framework web
-- **TypeScript** (v5.9.2) - Tipado estático
-- **MySQL2** (v3.15.0) - Driver de base de datos
-- **JWT** (v9.0.2) - Autenticación
-- **bcryptjs** (v3.0.2) - Encriptación de contraseñas
-- **Winston** (v3.11.0) - Logging
-- **Docker** (v24+) - Containerización
-
-### Frontend
-- **React** (v19.1.1) - Biblioteca de UI
-- **TypeScript** (v5.8.3) - Tipado estático
-- **Vite** (v7.1.2) - Build tool y dev server
-- **Tailwind CSS** (v4.1.13) - Framework CSS
-- **Zustand** (v5.0.8) - Estado global
-- **Recharts** (v3.2.1) - Gráficos y visualizaciones
-- **jsPDF** (v3.0.3) - Generación de PDFs
-
-## 🚀 Tecnologías Utilizadas
-
-### Backend (Microservicios)
-- **Node.js** (v18+) - Runtime de JavaScript
-- **Express.js** (v5.1.0) - Framework web
-- **TypeScript** (v5.9.2) - Tipado estático
-- **MySQL2** (v3.15.0) - Driver de base de datos
-- **JWT** (v9.0.2) - Autenticación
-- **bcryptjs** (v3.0.2) - Encriptación de contraseñas
-- **CORS** (v2.8.5) - Cross-Origin Resource Sharing
-- **Winston** (v3.11.0) - Logging
-- **Express-validator** (v7.0.1) - Validaciones
-- **Express-rate-limit** (v7.1.5) - Rate limiting
-- **Helmet** (v7.1.0) - Seguridad HTTP
-
-### Frontend
-- **React** (v19.1.1) - Biblioteca de UI
-- **TypeScript** (v5.8.3) - Tipado estático
-- **Vite** (v7.1.2) - Build tool y dev server
-- **Tailwind CSS** (v4.1.13) - Framework CSS
-- **React Router** (v7.8.2) - Enrutamiento
-- **Zustand** (v5.0.8) - Estado global
-- **Recharts** (v3.2.1) - Gráficos y visualizaciones
-- **React Big Calendar** (v1.19.4) - Componente de calendario
-- **jsPDF** (v3.0.3) - Generación de PDFs
-- **Lucide React** (v0.542.0) - Iconos
-- **Moment.js** (v2.30.1) - Manipulación de fechas
-
-### Base de Datos y DevOps
-- **MySQL** (v8.0+) - Sistema de gestión de base de datos
-- **Docker** (v24+) - Containerización
-- **Docker Compose** (v2.0+) - Orquestación de contenedores
-- **Arquitectura Distribuida** - Múltiples instancias por región
-
-## 📁 Estructura del Proyecto
-
-```
-hospital-app/
-├── 📁 frontend/                    # Cliente React
-│   └── 📁 vite-project/
-│       ├── 📁 src/
-│       │   ├── 📁 api/             # Servicios de API
-│       │   │   ├── authApi.ts      # Autenticación
-│       │   │   ├── adminApi.ts     # Administración
-│       │   │   ├── consultasApi.ts # Consultas médicas
-│       │   │   ├── pacientesApi.ts # Pacientes
-│       │   │   ├── reportsApi.ts   # Reportes
-│       │   │   └── apiInterceptor.ts # Interceptor HTTP
-│       │   ├── 📁 components/      # Componentes reutilizables
-│       │   ├── 📁 pages/           # Páginas de la aplicación
-│       │   ├── 📁 hooks/           # Custom hooks
-│       │   ├── 📁 layouts/        # Layouts de páginas
-│       │   ├── 📁 routes/          # Configuración de rutas
-│       │   ├── 📁 store/           # Estado global (Zustand)
-│       │   ├── 📁 types/           # Definiciones de TypeScript
-│       │   └── 📁 utils/           # Utilidades y helpers
-│       ├── 📄 package.json         # Dependencias del frontend
-│       ├── 📄 vite.config.ts       # Configuración de Vite
-│       ├── 📄 tailwind.config.js   # Configuración de Tailwind
-│       └── 📄 Dockerfile           # Containerización frontend
-│
-├── 📁 microservices/               # Microservicios
-│   ├── 📁 api-gateway/             # Gateway principal
-│   │   ├── index.js                # Servidor principal
-│   │   ├── package.json            # Dependencias
-│   │   └── Dockerfile              # Containerización
-│   ├── 📁 auth-service/            # Servicio de autenticación
-│   │   ├── index.js                # Lógica de autenticación
-│   │   ├── package.json            # Dependencias
-│   │   └── Dockerfile              # Containerización
-│   ├── 📁 admin-service/           # Servicio de administración
-│   │   ├── index.js                # CRUD de médicos, centros, etc.
-│   │   ├── validation.js           # Validaciones
-│   │   ├── package.json            # Dependencias
-│   │   └── Dockerfile              # Containerización
-│   ├── 📁 consultas-service/       # Servicio de consultas
-│   │   ├── index.js                # Gestión de consultas médicas
-│   │   ├── package.json            # Dependencias
-│   │   └── Dockerfile              # Containerización
-│   ├── 📁 users-service/           # Servicio de usuarios
-│   │   ├── index.js                # Gestión de usuarios
-│   │   ├── package.json            # Dependencias
-│   │   └── Dockerfile              # Containerización
-│   ├── 📁 reports-service/         # Servicio de reportes
-│   │   ├── index.js                # Generación de reportes
-│   │   ├── 📁 logs/                # Archivos de log
-│   │   ├── package.json            # Dependencias
-│   │   └── Dockerfile              # Containerización
-│   ├── 📁 sql/                     # Scripts de base de datos
-│   │   ├── setup-central.sql       # Configuración BD Central
-│   │   ├── setup-guayaquil.sql     # Configuración BD Guayaquil
-│   │   ├── setup-cuenca.sql        # Configuración BD Cuenca
-│   │   ├── central.sql             # Estructura BD Central
-│   │   ├── guayaquil.sql           # Estructura BD Guayaquil
-│   │   ├── cuenca.sql              # Estructura BD Cuenca
-│   │   └── configure-utf8.sql      # Configuración UTF-8
-│   ├── 📄 docker-compose.yml       # Orquestación de servicios
-│   ├── 📄 insert-sample-data.js    # Datos de prueba
-│   └── 📄 reset-databases.js       # Reset de bases de datos
-│
-├── 📄 README.md                    # Este archivo
-├── 📄 README_SEGURIDAD.md          # Documentación de seguridad
-├── 📄 README_VALIDACIONES.md       # Documentación de validaciones
-└── 📄 setup-hospital.js            # Script de configuración inicial
-```
-
-## 🛠️ Instalación y Configuración
-
-### Prerrequisitos
-
-- **Node.js** v18 o superior
-- **MySQL** v8.0 o superior
-- **Docker** v24+ y **Docker Compose** v2.0+
-- **npm** o **yarn**
-
-### 1. Clonar el Repositorio
-
-```bash
-git clone <repository-url>
-cd hospital-app
-```
-
-### 2. Configuración con Docker (Recomendado)
-
-#### Iniciar todos los servicios
-
-```bash
-cd microservices
-docker-compose up -d
-```
-
-Este comando iniciará:
-- 3 bases de datos MySQL (Central, Guayaquil, Cuenca)
-- 5 microservicios (API Gateway, Auth, Admin, Consultas, Users, Reports)
-- Configuración automática de redes y volúmenes
-
-#### Verificar servicios
-
-```bash
-# Verificar contenedores
-docker-compose ps
-
-# Verificar logs
-docker-compose logs -f
-
-# Verificar conectividad
-curl http://localhost:3000/health
-```
-
-### 3. Configuración Manual (Desarrollo)
-
-#### Configurar Bases de Datos
-
-```sql
--- Servidor Central (Quito) - Puerto 3307
-CREATE DATABASE hospital_central;
-CREATE USER 'admin_central'@'%' IDENTIFIED BY 'SuperPasswordCentral123!';
-GRANT ALL PRIVILEGES ON hospital_central.* TO 'admin_central'@'%';
-
--- Servidor Guayaquil - Puerto 3308
-CREATE DATABASE hospital_guayaquil;
-CREATE USER 'admin_guayaquil'@'%' IDENTIFIED BY 'SuperPasswordGye123!';
-GRANT ALL PRIVILEGES ON hospital_guayaquil.* TO 'admin_guayaquil'@'%';
-
--- Servidor Cuenca - Puerto 3309
-CREATE DATABASE hospital_cuenca;
-CREATE USER 'admin_cuenca'@'%' IDENTIFIED BY 'SuperPasswordCuenca123!';
-GRANT ALL PRIVILEGES ON hospital_cuenca.* TO 'admin_cuenca'@'%';
-
-FLUSH PRIVILEGES;
-```
-
-#### Ejecutar Scripts de Base de Datos
-
-```bash
-# Ejecutar scripts de configuración
-mysql -u root -p < microservices/sql/setup-central.sql
-mysql -u root -p < microservices/sql/setup-guayaquil.sql
-mysql -u root -p < microservices/sql/setup-cuenca.sql
-
-# Ejecutar scripts de estructura
-mysql -u admin_central -p hospital_central < microservices/sql/central.sql
-mysql -u admin_guayaquil -p hospital_guayaquil < microservices/sql/guayaquil.sql
-mysql -u admin_cuenca -p hospital_cuenca < microservices/sql/cuenca.sql
-```
-
-#### Configurar Microservicios
-
-```bash
-# Instalar dependencias para todos los servicios
-cd microservices
-npm install
-
-# Configurar variables de entorno
-cp api-gateway/env.example api-gateway/.env
-cp auth-service/env.example auth-service/.env
-cp admin-service/env.example admin-service/.env
-cp consultas-service/env.example consultas-service/.env
-cp users-service/env.example users-service/.env
-cp reports-service/env.example reports-service/.env
-```
-
-#### Variables de Entorno (.env)
-
-```env
-# API Gateway
-NODE_ENV=development
-PORT=3000
-JWT_SECRET=SuperJWTSecret123!
-AUTH_SERVICE_URL=http://localhost:3001
-ADMIN_SERVICE_URL=http://localhost:3002
-CONSULTAS_SERVICE_URL=http://localhost:3003
-USERS_SERVICE_URL=http://localhost:3004
-REPORTS_SERVICE_URL=http://localhost:3005
-
-# Auth Service
-NODE_ENV=development
-PORT=3001
-JWT_SECRET=SuperJWTSecret123!
-DB_HOST=localhost
-DB_USER=admin_central
-DB_PASSWORD=SuperPasswordCentral123!
-DB_PORT=3307
-DB_NAME=hospital_central
-
-# Admin Service
-NODE_ENV=development
-PORT=3002
-JWT_SECRET=SuperJWTSecret123!
-DB_HOST=localhost
-DB_USER=admin_central
-DB_PASSWORD=SuperPasswordCentral123!
-DB_PORT=3307
-DB_NAME=hospital_central
-
-# Consultas Service
-NODE_ENV=development
-PORT=3003
-JWT_SECRET=SuperJWTSecret123!
-DB_HOST=localhost
-DB_USER=admin_central
-DB_PASSWORD=SuperPasswordCentral123!
-DB_PORT=3307
-DB_NAME=hospital_central
-
-# Users Service
-NODE_ENV=development
-PORT=3004
-JWT_SECRET=SuperJWTSecret123!
-DB_HOST=localhost
-DB_USER=admin_central
-DB_PASSWORD=SuperPasswordCentral123!
-DB_PORT=3307
-DB_NAME=hospital_central
-
-# Reports Service
-NODE_ENV=development
-PORT=3005
-JWT_SECRET=SuperJWTSecret123!
-DB_HOST=localhost
-DB_USER=admin_central
-DB_PASSWORD=SuperPasswordCentral123!
-DB_PORT=3307
-DB_NAME=hospital_central
-```
-
-#### Iniciar Microservicios
-
-```bash
-# Terminal 1 - API Gateway
-cd microservices/api-gateway
-npm start
-
-# Terminal 2 - Auth Service
-cd microservices/auth-service
-npm start
-
-# Terminal 3 - Admin Service
-cd microservices/admin-service
-npm start
-
-# Terminal 4 - Consultas Service
-cd microservices/consultas-service
-npm start
-
-# Terminal 5 - Users Service
-cd microservices/users-service
-npm start
-
-# Terminal 6 - Reports Service
-cd microservices/reports-service
-npm start
-```
-
-### 4. Configurar Frontend
-
-```bash
-cd frontend/vite-project
-
-# Instalar dependencias
-npm install
-
-# Configurar variables de entorno
-cp .env.example .env.local
-```
-
-#### Variables de Entorno Frontend (.env.local)
-
-```env
-VITE_API_URL=http://localhost:3000/api
-VITE_AUTH_URL=http://localhost:3001
-VITE_ADMIN_URL=http://localhost:3002
-VITE_CONSULTAS_URL=http://localhost:3003
-VITE_USERS_URL=http://localhost:3004
-VITE_REPORTS_URL=http://localhost:3005
-VITE_APP_NAME=Sistema de Gestión Hospitalaria
-VITE_APP_VERSION=1.0.0
-VITE_DEBUG=true
-```
-
-#### Ejecutar Frontend
-
-```bash
-# Terminal 7 - Frontend
-cd frontend/vite-project
-npm run dev
-```
-
-### 5. Verificar Instalación
-
-La aplicación estará disponible en:
-- **Frontend**: http://localhost:5173
-- **API Gateway**: http://localhost:3000
-- **Auth Service**: http://localhost:3001
-- **Admin Service**: http://localhost:3002
-- **Consultas Service**: http://localhost:3003
-- **Users Service**: http://localhost:3004
-- **Reports Service**: http://localhost:3005
-
-#### Endpoints de Verificación
-
-```bash
-# Verificar API Gateway
-curl http://localhost:3000/health
-
-# Verificar servicios individuales
-curl http://localhost:3001/health
-curl http://localhost:3002/health
-curl http://localhost:3003/health
-curl http://localhost:3004/health
-curl http://localhost:3005/health
-
-# Verificar conectividad entre servicios
-curl http://localhost:3000/api/test-services
-```
-
-## 🔐 Sistema de Autenticación
-
-### Roles de Usuario
-
-1. **Administrador** (`admin`)
-   - Acceso completo al sistema
-   - Gestión de centros médicos
-   - Gestión de médicos y empleados
-   - Acceso a reportes globales
-   - Gestión de usuarios
-   - Acceso a todas las bases de datos
-
-2. **Médico** (`medico`)
-   - Acceso limitado a su centro médico
-   - Gestión de consultas propias
-   - Visualización de pacientes de su centro
-   - Acceso a calendario personal
-   - Reportes de su centro específico
-
-### Flujo de Autenticación
+### Diagrama de Topología General
 
 ```mermaid
-graph TD
-    A[Usuario ingresa credenciales] --> B[API Gateway recibe request]
-    B --> C[Auth Service valida credenciales]
-    C --> D{¿Credenciales válidas?}
-    D -->|No| E[Error 401 - Credenciales inválidas]
-    D -->|Sí| F[Generar JWT Token]
-    F --> G[Enviar token al frontend]
-    G --> H[Almacenar token en localStorage]
-    H --> I[Redirigir según rol]
-    I --> J{¿Rol?}
-    J -->|Admin| K[Dashboard Administrativo]
-    J -->|Médico| L[Interfaz de Hospital]
+flowchart TB
+    subgraph CLIENTE["🌐 Capa Cliente (SPA)"]
+        UI["React 19 + TypeScript + Vite\nTailwind CSS • Zustand • Recharts\nPuerto 5173"]
+    end
+
+    subgraph PERIMETRO["🛡️ Capa Perimetral & Seguridad"]
+        GW["API Gateway (Express)\nPuerto 3000\n• Enrutamiento Inverso & Proxy\n• Verificación JWT\n• Rate Limiting & Winston Logging"]
+    end
+
+    subgraph MICROSERVICIOS["⚙️ Microservicios Desacoplados"]
+        AUTH["auth-service\nPuerto 3001\n• Login & JWT\n• Hasheo Bcrypt\n• Permisos"]
+        ADMIN["admin-service\nPuerto 3002\n• Centros Médicos\n• Especialidades\n• Personal & Médicos"]
+        CONS["consultas-service\nPuerto 3003\n• Citas Médicas\n• Pacientes Locales\n• Ficha Clínica"]
+        USERS["users-service\nPuerto 3004\n• Cuentas de Acceso\n• Roles de Usuario"]
+        REP["reports-service\nPuerto 3005\n• Consolidación Multi-BD\n• KPIs & Métricas\n• Exportación a PDF"]
+    end
+
+    subgraph DATOS["💾 Bases de Datos Relacionales Distribuidas (MySQL 8.0)"]
+        DB_CENTRAL[("MySQL Central (Quito)\nPuerto 3307\n• hospital_central\n• Usuarios, Centros, Catálogos")]
+        DB_GYE[("MySQL Guayaquil\nPuerto 3308\n• hospital_guayaquil\n• Pacientes & Consultas GYE")]
+        DB_CUE[("MySQL Cuenca\nPuerto 3309\n• hospital_cuenca\n• Pacientes & Consultas CUE")]
+    end
+
+    UI -->|"HTTP / REST (Bearer Token)"| GW
+
+    GW -->|"Proxy /api/auth"| AUTH
+    GW -->|"Proxy /api/admin"| ADMIN
+    GW -->|"Proxy /api/consultas"| CONS
+    GW -->|"Proxy /api/users"| USERS
+    GW -->|"Proxy /api/reports"| REP
+
+    AUTH --> DB_CENTRAL
+    ADMIN --> DB_CENTRAL
+    USERS --> DB_CENTRAL
+
+    CONS -->|"Sede 1 (Quito)"| DB_CENTRAL
+    CONS -->|"Sede 2 (Guayaquil)"| DB_GYE
+    CONS -->|"Sede 3 (Cuenca)"| DB_CUE
+
+    REP --> DB_CENTRAL
+    REP --> DB_GYE
+    REP --> DB_CUE
 ```
 
-### Seguridad Implementada
+---
 
-- **JWT Tokens** con expiración de 24 horas
-- **Encriptación de contraseñas** con bcryptjs
-- **Validación de tokens** en cada request
-- **Protección de rutas** por rol
-- **Rate limiting** para prevenir ataques
-- **CORS** configurado correctamente
-- **Helmet** para headers de seguridad
+## 🧩 Catálogo de Microservicios y Endpoints
 
-## 📊 Funcionalidades Principales
+| Microservicio | Puerto | Responsabilidad de Dominio | Base de Datos Objetivo | Endpoints Principales |
+|:---|:---:|:---|:---|:---|
+| **API Gateway** | `3000` | Punto de entrada único, proxy inverso, validación central de JWT y control de flujo. | N/A (Enruta a microservicios) | `/api/health`, `/api/*` |
+| **Auth Service** | `3001` | Autenticación, generación y verificación de JWT, encriptación `bcrypt` y logout. | `hospital_central` | `POST /login`<br>`POST /verify`<br>`POST /refresh` |
+| **Admin Service** | `3002` | Mantenimiento de centros médicos, especialidades clínicas, médicos y personal. | `hospital_central` | `GET/POST /medicos`<br>`GET/POST /centros`<br>`GET/POST /especialidades` |
+| **Consultas Service** | `3003` | Ciclo de vida de consultas médicas, citas en calendario y fichas de pacientes. | Enrutamiento dinámico según `X-Centro-Id` | `GET/POST /consultas`<br>`PUT /consultas/:id`<br>`GET/POST /pacientes` |
+| **Users Service** | `3004` | Gestión de cuentas de usuario, asignación de roles y estados operativos. | `hospital_central` | `GET/POST /users`<br>`PUT /users/:id`<br>`DELETE /users/:id` |
+| **Reports Service** | `3005` | Análisis estadístico multi-sede, consolidación de indicadores y exportación a PDF. | `hospital_central`<br>`hospital_guayaquil`<br>`hospital_cuenca` | `GET /stats`<br>`GET /pacientes-frecuentes`<br>`GET /pdf` |
 
-### 🏥 Gestión de Centros Médicos
-- ✅ CRUD completo de centros médicos
-- ✅ Asignación de personal por centro
-- ✅ Gestión de ubicaciones y direcciones
-- ✅ Estadísticas por centro
-- ✅ Distribución geográfica (Quito, Guayaquil, Cuenca)
+---
 
-### 👨‍⚕️ Gestión de Personal Médico
-- ✅ Registro de médicos con especialidades
-- ✅ Asignación a centros médicos
-- ✅ Gestión de empleados administrativos
-- ✅ Control de acceso por roles
-- ✅ Validaciones de integridad referencial
+## 🌐 Bases de Datos Distribuidas Geográficamente
 
-### 🩺 Sistema de Consultas Médicas
-- ✅ Creación y gestión de consultas
-- ✅ Estados de consulta (Pendiente, Programada, Completada, Cancelada)
-- ✅ Asignación de pacientes a médicos
-- ✅ Historial médico por paciente
-- ✅ Calendario de consultas
-- ✅ Validaciones de duración y fechas
+El sistema implementa una **partición geográfica de datos** para optimizar el rendimiento y garantizar la continuidad operativa local:
 
-### 📈 Sistema de Reportes
-- ✅ Reportes por médico
-- ✅ Estadísticas generales del centro
-- ✅ Pacientes más frecuentes
-- ✅ Gráficos y visualizaciones con Recharts
-- ✅ Exportación a PDF con jsPDF
-- ✅ Filtros por fecha y centro
+1. **`hospital_central` (Sede Quito - Puerto 3307):**
+   - Catálogo global de centros médicos y especialidades.
+   - Tabla unificada de usuarios, credenciales y roles.
+   - Directorio de médicos y empleados a nivel nacional.
+   - Registro local de consultas y pacientes de la sede Quito.
+2. **`hospital_guayaquil` (Sede Guayaquil - Puerto 3308):**
+   - Registro aislado de pacientes residentes en Guayaquil.
+   - Agenda médica y citas del centro Guayaquil.
+3. **`hospital_cuenca` (Sede Cuenca - Puerto 3309):**
+   - Registro aislado de pacientes residentes en Cuenca.
+   - Agenda médica y citas del centro Cuenca.
 
-### 👥 Gestión de Pacientes
-- ✅ Registro de pacientes
-- ✅ Historial médico
-- ✅ Consultas activas
-- ✅ Información de contacto
-- ✅ Validaciones de datos personales
+**Resolución Dinámica de Conexión:**  
+Los microservicios analizan la cabecera HTTP `X-Centro-Id` o el parámetro de consulta. A través de pools de conexiones persistentes con `mysql2/promise`, la consulta se redirige en memoria al contenedor MySQL correspondiente en tiempo constante $O(1)$.
 
-### 🔧 Gestión de Usuarios
-- ✅ Creación de usuarios del sistema
-- ✅ Asignación de roles y permisos
-- ✅ Gestión de accesos por centro
-- ✅ Validaciones de seguridad
+---
 
-## 🔌 API Endpoints
-
-### Autenticación (Auth Service - Puerto 3001)
-```
-POST   /login                    # Iniciar sesión
-POST   /register                 # Registrar usuario
-POST   /verify-token             # Verificar token
-GET    /usuarios                 # Listar usuarios
-POST   /usuarios                 # Crear usuario
-PUT    /usuarios/:id             # Actualizar usuario
-DELETE /usuarios/:id             # Eliminar usuario
-GET    /health                   # Estado del servicio
-```
-
-### Administración (Admin Service - Puerto 3002)
-```
-GET    /medicos                  # Listar médicos
-POST   /medicos                  # Crear médico
-PUT    /medicos/:id              # Actualizar médico
-DELETE /medicos/:id              # Eliminar médico
-GET    /medicos/centro/:id       # Médicos por centro
-
-GET    /empleados                # Listar empleados
-POST   /empleados                # Crear empleado
-PUT    /empleados/:id            # Actualizar empleado
-DELETE /empleados/:id            # Eliminar empleado
-
-GET    /centros                  # Listar centros médicos
-POST   /centros                  # Crear centro médico
-PUT    /centros/:id              # Actualizar centro médico
-DELETE /centros/:id              # Eliminar centro médico
-
-GET    /especialidades           # Listar especialidades
-POST   /especialidades           # Crear especialidad
-PUT    /especialidades/:id       # Actualizar especialidad
-DELETE /especialidades/:id       # Eliminar especialidad
-
-GET    /pacientes                # Listar pacientes
-POST   /pacientes                # Crear paciente
-PUT    /pacientes/:id            # Actualizar paciente
-DELETE /pacientes/:id            # Eliminar paciente
-```
-
-### Consultas Médicas (Consultas Service - Puerto 3003)
-```
-GET    /consultas                # Listar consultas
-POST   /consultas                # Crear consulta
-PUT    /consultas/:id            # Actualizar consulta
-DELETE /consultas/:id            # Eliminar consulta
-
-GET    /medicos-por-centro/:id   # Médicos por centro
-GET    /pacientes-por-centro/:id # Pacientes por centro
-GET    /pacientes                # Listar pacientes
-POST   /pacientes                # Crear paciente
-PUT    /pacientes/:id            # Actualizar paciente
-DELETE /pacientes/:id            # Eliminar paciente
-
-GET    /centros                  # Listar centros médicos
-```
-
-### Reportes (Reports Service - Puerto 3005)
-```
-GET    /reports/estadisticas           # Estadísticas generales
-GET    /reports/consultas-medico       # Resumen de consultas por médico
-GET    /reports/consultas-especialidad # Consultas por especialidad
-GET    /reports/consultas-centro      # Consultas por centro
-GET    /reports/pacientes-frecuentes   # Pacientes más frecuentes
-GET    /consultas/medico/:id           # Detalle de consultas por médico
-```
-
-### API Gateway (Puerto 3000)
-```
-GET    /health                   # Estado del gateway
-GET    /info                     # Información del sistema
-GET    /api/test-services        # Verificar conectividad con microservicios
-
-# Proxy a todos los servicios con prefijo /api
-POST   /api/auth/login           # Proxy a Auth Service
-GET    /api/admin/medicos        # Proxy a Admin Service
-GET    /api/consultas            # Proxy a Consultas Service
-GET    /api/reports/estadisticas # Proxy a Reports Service
-```
-
-## 🗄️ Modelo de Base de Datos
-
-### Entidades Principales
-
-```sql
--- Centros Médicos
-CREATE TABLE centros_medicos (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    nombre VARCHAR(100) NOT NULL,
-    ciudad VARCHAR(50) NOT NULL,
-    direccion VARCHAR(200),
-    telefono VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Especialidades Médicas
-CREATE TABLE especialidades (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    nombre VARCHAR(100) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Médicos
-CREATE TABLE medicos (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
-    cedula VARCHAR(20) NOT NULL UNIQUE,
-    telefono VARCHAR(20),
-    email VARCHAR(100),
-    id_especialidad INT NOT NULL,
-    id_centro INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_especialidad) REFERENCES especialidades(id),
-    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id)
-);
-
--- Empleados
-CREATE TABLE empleados (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
-    cargo VARCHAR(100) NOT NULL,
-    id_centro INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id)
-);
-
--- Pacientes
-CREATE TABLE pacientes (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
-    cedula VARCHAR(20) NOT NULL,
-    telefono VARCHAR(20),
-    email VARCHAR(100),
-    fecha_nacimiento DATE,
-    genero ENUM('M', 'F', 'O'),
-    direccion VARCHAR(200),
-    id_centro INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id),
-    UNIQUE KEY unique_cedula_centro (cedula, id_centro)
-);
-
--- Consultas Médicas
-CREATE TABLE consultas (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    id_centro INT NOT NULL,
-    id_medico INT NOT NULL,
-    id_paciente INT,
-    paciente_nombre VARCHAR(100) NOT NULL,
-    paciente_apellido VARCHAR(100) NOT NULL,
-    fecha DATETIME NOT NULL,
-    motivo TEXT NOT NULL,
-    diagnostico TEXT,
-    tratamiento TEXT,
-    estado ENUM('pendiente', 'programada', 'completada', 'cancelada') NOT NULL,
-    duracion_minutos INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id),
-    FOREIGN KEY (id_medico) REFERENCES medicos(id),
-    FOREIGN KEY (id_paciente) REFERENCES pacientes(id)
-);
-
--- Usuarios del Sistema
-CREATE TABLE usuarios (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    rol ENUM('admin', 'medico') NOT NULL,
-    id_centro INT NOT NULL,
-    id_medico INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_centro) REFERENCES centros_medicos(id),
-    FOREIGN KEY (id_medico) REFERENCES medicos(id)
-);
-```
-
-### Distribución de Datos
-
-- **Central (Quito)**: Datos administrativos centrales, usuarios admin
-- **Guayaquil**: Datos específicos del hospital de Guayaquil
-- **Cuenca**: Datos específicos del hospital de Cuenca
-
-## 🧪 Testing
-
-### Backend
-```bash
-# Test individual por servicio
-cd microservices/auth-service
-npm test
-
-cd microservices/admin-service
-npm test
-
-cd microservices/consultas-service
-npm test
-
-cd microservices/users-service
-npm test
-
-cd microservices/reports-service
-npm test
-```
+## 💻 Stack Tecnológico
 
 ### Frontend
-```bash
-cd frontend/vite-project
-npm run test
+- **React 19.1.1** — Biblioteca de interfaz basada en componentes funcionales modernos y Hooks.
+- **TypeScript 5.8.3** — Tipado estático riguroso en modelos, APIs y componentes.
+- **Vite 7.1.2** — Bundler de última generación para compilación ultrarrápida y Hot Module Replacement.
+- **Tailwind CSS 4.1.13** — Estilos basados en utilidades con diseño responsivo y tema visual clínico.
+- **Zustand 5.0.8** — Gestión de estado global ligera, predecible y sin boilerplate innecesario.
+- **Recharts 3.2.1** — Gráficos SVG interactivos para análisis estadístico.
+- **React Big Calendar 1.19.4** — Visualizador de agenda clínica por mes, semana, día y vista compacta.
+- **jsPDF 3.0.3 & AutoTable** — Motor de generación de reportes clínicos y ejecutivos en PDF.
+- **Lucide React** — Set moderno de iconografía vectorial.
+
+### Backend y Microservicios
+- **Node.js 18+ (LTS)** — Entorno de ejecución JavaScript del lado del servidor.
+- **Express.js 5.1.0** — Framework web minimalist y flexible para construcción de APIs RESTful.
+- **MySQL2 3.15.0** — Driver de alto rendimiento con soporte nativo de Promises y connection pooling.
+- **JSON Web Token (JWT) 9.0.2** — Autenticación stateless segura con firmas criptográficas.
+- **Bcryptjs 3.0.2** — Algoritmo de hash adaptativo para contraseñas con salt round 10.
+- **Express Validator 7.0.1** — Sanitización y validación declarativa de datos de entrada.
+- **Express Rate Limit 7.1.5** — Protección contra ataques de fuerza bruta y abusos de API.
+- **Winston 3.11.0** — Sistema de logging estructurado con rotación de archivos.
+
+### Infraestructura y DevOps
+- **Docker 24+ & Docker Compose** — Containerización completa de servicios y bases de datos.
+- **Nginx** — Reverse proxy y servidor web estático de producción con soporte SSL/TLS.
+- **Microsoft Azure** — Topología de producción sobre 4 Máquinas Virtuales en red virtual privada (VNet).
+
+---
+
+## 📂 Estructura del Repositorio
+
+```
+AD-GestionHospitalaria/
+├── 📄 PROYECTO_EXPLICACION.md         # 📘 Guía técnica y funcional detallada
+├── 📄 README.md                      # 📕 Documentación principal del repositorio
+├── 📄 setup-hospital.js              # ⚡ Orquestador unificado de inicio local
+├── 📄 package.json                   # Dependencias del script de orquestación
+├── 📄 .gitignore                     # Exclusión estricta de secrets, envs y temporales
+│
+└── 📁 hospital-app/                  # Código fuente del sistema
+    ├── 📄 README_SEGURIDAD.md        # Documentación de autenticación y seguridad
+    ├── 📄 README_VALIDACIONES.md     # Catálogo de validaciones de negocio y datos
+    │
+    ├── 📁 frontend/                  # Cliente Web (SPA)
+    │   └── 📁 vite-project/          # Proyecto React + TypeScript + Vite
+    │       ├── 📁 src/
+    │       │   ├── 📁 api/           # Clientes HTTP con interceptores Axios
+    │       │   ├── 📁 components/    # Componentes UI (Calendario, Tablas, Modales)
+    │       │   ├── 📁 contexts/      # Contextos de React (AuthContext, CentroContext)
+    │       │   ├── 📁 hooks/         # Custom Hooks (usePermissions, useRouteSecurity)
+    │       │   ├── 📁 pages/         # Páginas (Consultas, Pacientes, Reportes, etc.)
+    │       │   ├── 📁 store/         # Estado global con Zustand
+    │       │   └── 📁 types/         # Interfaces y tipos de TypeScript
+    │       ├── 📄 .env.example       # Plantilla de variables de entorno frontend
+    │       └── 📄 Dockerfile         # Imagen optimizada con Nginx multi-stage
+    │
+    ├── 📁 microservices/             # Servicios Backend
+    │   ├── 📁 api-gateway/           # Punto único de entrada (Puerto 3000)
+    │   ├── 📁 auth-service/          # Autenticación y JWT (Puerto 3001)
+    │   ├── 📁 admin-service/         # Gestión de entidades maestras (Puerto 3002)
+    │   ├── 📁 consultas-service/     # Gestión clínica y pacientes (Puerto 3003)
+    │   ├── 📁 users-service/         # Administración de accesos (Puerto 3004)
+    │   ├── 📁 reports-service/       # Analítica y generación PDF (Puerto 3005)
+    │   │
+    │   ├── 📁 sql/                   # Esquemas y semillas SQL para MySQL 8.0
+    │   │   ├── central.sql           # Estructura DB Central (Quito)
+    │   │   ├── guayaquil.sql         # Estructura DB Guayaquil
+    │   │   ├── cuenca.sql            # Estructura DB Cuenca
+    │   │   └── configure-utf8.sql    # Configuración UTF-8 mb4
+    │   │
+    │   ├── 📄 docker-compose.yml     # Orquestación de contenedores y redes
+    │   ├── 📄 insert-sample-data.js  # Semillero de datos de demostración
+    │   └── 📄 reset-databases.js     # Script de limpieza y reinicio de esquemas
+    │
+    └── 📁 azure/                     # Configuración de despliegue en la nube
+        ├── 📄 README_AZURE_DEPLOY.md # Guía paso a paso de despliegue en Azure
+        ├── 📁 compose/               # Docker Compose modulares por VM
+        ├── 📁 env/                   # Plantillas de variables de entorno (.sample)
+        └── 📁 nginx/                 # Archivos de configuración para Nginx
 ```
 
-### Docker
-```bash
-# Test de contenedores
-docker-compose up --build
-docker-compose down
+---
 
-# Test de conectividad
-docker-compose exec api-gateway curl http://auth-service:3001/health
+## 🚀 Inicio Rápido
+
+### Prerrequisitos
+- [Node.js](https://nodejs.org/) v18+ instalado.
+- [Docker Desktop](https://www.docker.com/) o Docker Engine v24+ en ejecución.
+- Git instalado.
+
+### 1. Clonar el Repositorio
+```bash
+git clone https://github.com/T1Angel4220/AD-GestionHospitalaria.git
+cd AD-GestionHospitalaria
 ```
 
-## 📦 Scripts Disponibles
+### 2. Configurar Variables de Entorno
+El repositorio incluye archivos `.env.example` en cada módulo para evitar la exposición de credenciales sensibles.
 
-### Microservicios
+Para iniciar localmente con Docker Compose no se requiere configuración manual adicional, ya que `docker-compose.yml` preconfigura las variables de red interna automáticamente. Si deseas ejecutar microservicios de forma individual fuera de Docker:
 ```bash
-# Desarrollo
-npm run dev          # Iniciar en modo desarrollo
-npm start            # Iniciar en producción
-npm run build        # Compilar TypeScript
-npm run lint         # Linter de código
-npm test             # Ejecutar tests
+# Copia la plantilla en el servicio correspondiente
+cp hospital-app/microservices/api-gateway/env.example hospital-app/microservices/api-gateway/.env
+cp hospital-app/frontend/vite-project/.env.example hospital-app/frontend/vite-project/.env
 ```
 
-### Frontend
+### 3. Puesta en Marcha con Script Unificado (Recomendado)
+El proyecto incluye un script de automatización que levanta los contenedores Docker, inicializa las bases de datos con sus esquemas, carga datos de prueba e inicia el frontend:
+
 ```bash
-npm run dev          # Servidor de desarrollo
-npm run build        # Construir para producción
-npm run preview      # Vista previa de producción
-npm run lint         # Linter de código
-npm run type-check   # Verificación de tipos
+# Instalar dependencias del orquestador
+npm install
+
+# Ejecutar el orquestador
+node setup-hospital.js
 ```
 
-### Docker
+### 4. Puesta en Marcha Manual con Docker Compose
+Si prefieres iniciar los servicios manualmente paso a paso:
+
 ```bash
-# Desarrollo
-docker-compose up -d              # Iniciar todos los servicios
-docker-compose down               # Detener todos los servicios
-docker-compose logs -f            # Ver logs en tiempo real
-docker-compose restart service    # Reiniciar servicio específico
+# 1. Levantar bases de datos y microservicios
+cd hospital-app/microservices
+docker compose up -d
 
-# Producción
-docker-compose -f docker-compose.prod.yml up -d
-docker-compose -f docker-compose.prod.yml down
-```
+# 2. Inicializar esquemas y datos de prueba
+node reset-databases.js
+node insert-sample-data.js
 
-## 🚀 Despliegue
-
-### Desarrollo Local
-```bash
-# Opción 1: Docker (Recomendado)
-cd microservices
-docker-compose up -d
-
+# 3. Iniciar el frontend
 cd ../frontend/vite-project
+npm install
 npm run dev
-
-# Opción 2: Manual
-# Iniciar cada microservicio en terminal separado
-# Luego iniciar frontend
 ```
 
-### Producción con Docker
-```bash
-# Construir imágenes
-docker-compose -f docker-compose.prod.yml build
+### 5. Acceso a la Aplicación
+Una vez inicializado el sistema:
+- 🌐 **Frontend de la Aplicación:** [http://localhost:5173](http://localhost:5173)
+- 🛡️ **API Gateway:** [http://localhost:3000](http://localhost:3000)
+- 🩺 **Microservicios Backend:** Puertos `3001` (Auth), `3002` (Admin), `3003` (Consultas), `3004` (Users), `3005` (Reports)
+- 💾 **Bases de Datos MySQL:** Puertos `3307` (Central), `3308` (Guayaquil), `3309` (Cuenca)
 
-# Iniciar servicios
-docker-compose -f docker-compose.prod.yml up -d
+---
 
-# Verificar estado
-docker-compose -f docker-compose.prod.yml ps
+## 🔑 Credenciales de Demostración
+
+El sistema se inicializa con cuentas de demostración preconfiguradas:
+
+| Rol | Correo Electrónico | Contraseña por Defecto | Sede / Centro Médico | Vistas Disponibles |
+|:---|:---|:---|:---|:---|
+| **Administrador** | `admin@hospital.com` | `admin123` | Acceso a todas las sedes | Panel Admin, Médicos, Especialidades, Centros, Usuarios, Reportes |
+| **Médico (Quito)** | `medico.central@hospital.com` | `medico123` | Hospital Central Quito | Consultas, Pacientes, Calendario Clínico, Perfil |
+| **Médico (Guayaquil)** | `medico.gye@hospital.com` | `medico123` | Hospital Guayaquil | Consultas, Pacientes, Calendario Clínico, Perfil |
+| **Médico (Cuenca)** | `medico.cuenca@hospital.com` | `medico123` | Hospital Cuenca | Consultas, Pacientes, Calendario Clínico, Perfil |
+
+---
+
+## 🛡️ Seguridad y Variables de Entorno
+
+Este repositorio sigue rigurosas directrices de seguridad para proyectos profesionales:
+- 🚫 **Cero Secretos en el Repositorio:** Ninguna clave privada, secret de JWT ni credencial de producción está commiteada en el control de versiones.
+- 📄 **Plantillas `.env.example`:** Todos los microservicios y ambientes en la nube disponen de plantillas `.sample` y `.example` con valores de muestra seguros.
+- 🔒 **`.gitignore` Exhaustivo:** Bloquea de manera automática archivos `.env`, `.env.local`, respaldos (`*.bak`), volcados temporales y archivos comprimidos (`*.zip`, `*.rar`, `*.tar.gz`).
+- 🛡️ **Validación de Datos y Sanitización:** Los controladores utilizan `express-validator` para prevenir inyecciones SQL y ataques XSS.
+- ⚡ **Rate Limiting:** El API Gateway limita el volumen de peticiones concurrentes para mitigar ataques de denegación de servicio (DoS) y fuerza bruta en `/login`.
+
+Para detalles técnicos sobre la implementación de tokens JWT, middlewares de rol e interceptores en el frontend, consulta la [Guía de Seguridad](hospital-app/README_SEGURIDAD.md).
+
+---
+
+## ☁️ Despliegue en la Nube (Azure Multi-VM)
+
+El proyecto está preparado para su despliegue en producción sobre **Microsoft Azure** utilizando una arquitectura aislada en red virtual (**VNet**) con 4 Máquinas Virtuales:
+
+```
+[ Internet ]
+     │
+     ├──► [ VM4: Frontend ] Nginx sirviendo React SPA build (dist/)
+     │
+     └──► [ VM3: Perímetro ] Nginx HTTPS Proxy ──► API Gateway (:3000) + Auth Service (:3001)
+                                                       │ (Red Privada 10.10.1.0/24)
+                                                       ├──► [ VM2: Servicios ] Admin, Consultas, Users, Reports
+                                                       │         │
+                                                       └─────────┴──► [ VM1: DBs ] 3 Contenedores MySQL con volúmenes persistentes
 ```
 
-### Variables de Entorno de Producción
+Para ver el paso a paso de aprovisionamiento con Azure CLI, certificados SSL con Certbot y scripts de instalación de Docker, consulta la [Guía de Despliegue en Azure](hospital-app/azure/README_AZURE_DEPLOY.md).
 
-```env
-NODE_ENV=production
-JWT_SECRET=secret_muy_seguro_produccion_2024
-DB_HOST=mysql-server-prod
-DB_USER=hospital_user_prod
-DB_PASS=password_super_seguro_prod
-DB_NAME=hospital_prod
-```
+---
 
-## 📚 Documentación de la API
+## 📚 Centro de Documentación
 
-### Swagger UI
-- **URL**: `http://localhost:3000/api-docs`
-- **Especificación OpenAPI**: `http://localhost:3000/api-docs.json`
+| Documento | Descripción | Audiencia |
+|:---|:---|:---|
+| 📘 **[PROYECTO_EXPLICACION.md](PROYECTO_EXPLICACION.md)** | **Explicación completa de negocio y arquitectura técnica: qué hace y cómo funciona.** | Evaluadores, Reclutadores, Arquitectos |
+| 🛡️ **[README_SEGURIDAD.md](hospital-app/README_SEGURIDAD.md)** | Autenticación JWT, hooks de permisos, interceptores de API y control de rutas. | Desarrolladores Backend & Seguridad |
+| 📋 **[README_VALIDACIONES.md](hospital-app/README_VALIDACIONES.md)** | Catálogo de reglas de negocio, validación de cédulas, fechas y tipos de datos. | Desarrolladores QA & Full Stack |
+| 🎨 **[FRONTEND_DOCUMENTATION.md](hospital-app/frontend/FRONTEND_DOCUMENTATION.md)** | Arquitectura de componentes React, Zustand store, Tailwind CSS y Recharts. | Desarrolladores Frontend |
+| ⚙️ **[README_MICROSERVICES.md](hospital-app/microservices/README_MICROSERVICES.md)** | Guía técnica interna de cada microservicio, puertos, variables y docker-compose. | Desarrolladores Backend & DevOps |
+| ☁️ **[README_AZURE_DEPLOY.md](hospital-app/azure/README_AZURE_DEPLOY.md)** | Guía de despliegue en Microsoft Azure con 4 Máquinas Virtuales y VNet privada. | DevOps & Cloud Engineers |
 
-### Características de la Documentación
-- **Interfaz interactiva** para probar endpoints
-- **Esquemas completos** de request/response
-- **Ejemplos de uso** para cada endpoint
-- **Autenticación integrada** con JWT
-- **Filtros y búsquedas** documentadas
+---
 
-## 📚 Documentación Adicional
+## 👥 Autores y Créditos
 
-- [Documentación del Frontend](frontend/FRONTEND_DOCUMENTATION.md)
-- [Guía de Seguridad](README_SEGURIDAD.md)
-- [Guía de Validaciones](README_VALIDACIONES.md)
+Este proyecto fue desarrollado colaborativamente por:
 
-## 🔧 Mantenimiento
+- **Angel Ayuquina** — *Full Stack Developer & Arquitectura de Software*
+- **Johan Rodríguez** — *Software Developer*
+- **Sebastian Ortíz** — *Software Developer*
+- **José Manzano** — *Software Developer*
 
-### Logs y Monitoreo
-```bash
-# Ver logs de todos los servicios
-docker-compose logs -f
+---
 
-# Ver logs de servicio específico
-docker-compose logs -f api-gateway
-docker-compose logs -f auth-service
+<div align="center">
 
-# Logs de archivo
-tail -f microservices/reports-service/logs/reports.log
-```
+**🏥 HospitalApp — Excelencia en Ingeniería de Software Clínico 🏥**
 
-### Backup de Bases de Datos
-```bash
-# Backup Central
-mysqldump -u admin_central -p hospital_central > backup_central_$(date +%Y%m%d).sql
+*Diseñado para portafolio técnico con estándares de producción.*
 
-# Backup Guayaquil
-mysqldump -u admin_guayaquil -p hospital_guayaquil > backup_guayaquil_$(date +%Y%m%d).sql
-
-# Backup Cuenca
-mysqldump -u admin_cuenca -p hospital_cuenca > backup_cuenca_$(date +%Y%m%d).sql
-```
-
-### Actualizaciones
-```bash
-# Actualizar dependencias
-npm update
-
-# Verificar vulnerabilidades
-npm audit
-
-# Fix automático
-npm audit fix
-
-# Rebuild Docker
-docker-compose build --no-cache
-``
+</div>

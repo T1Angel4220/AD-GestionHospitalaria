@@ -1,5 +1,32 @@
-**/node_modules
-pnpm-lock.yaml
-*/pnpm-lock.yaml
-**/dist
-backend/.env
+# Environment files & Secrets
+.env
+.env.*
+*.env
+*.env.local
+env.local
+*.local
+!*.env.sample
+!*.env.example
+!env.example
+!*.sample
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Logs
+logs/
+*.log
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.bak

@@ -177,11 +177,11 @@ docker compose -f docker-compose.services.yml ps
    - Ejemplo con tus IPs (sin dominio):
 ```bash
 # .env para docker-compose.edge.yml
-JWT_SECRET=SuperJWTSecret123!
+JWT_SECRET=<TU_JWT_SECRET>
 SERVICES_HOST=10.10.1.5
 DB_CENTRAL_HOST=10.10.1.4
-DB_CENTRAL_PASSWORD=SuperPasswordCentral123!
-FRONTEND_URL=http://20.1.147.26
+DB_CENTRAL_PASSWORD=<TU_PASSWORD_CENTRAL>
+FRONTEND_URL=http://<IP_PUBLICA_VM4>
 ```
 3. Levanta gateway + auth:
 ```bash
