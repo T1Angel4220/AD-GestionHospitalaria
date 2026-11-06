@@ -262,3 +262,4 @@ Una vez finalizado el proceso:
 <div align="center">
   <sub>Desarrollado como proyecto de ingeniería de software con arquitectura de sistemas distribuidos de alto impacto.</sub>
 </div>
+

@@ -323,22 +323,3 @@ Para ver el paso a paso de aprovisionamiento con Azure CLI, certificados SSL con
 | ☁️ **[README_AZURE_DEPLOY.md](hospital-app/azure/README_AZURE_DEPLOY.md)** | Guía de despliegue en Microsoft Azure con 4 Máquinas Virtuales y VNet privada. | DevOps & Cloud Engineers |
 
 ---
-
-## 👥 Autores y Créditos
-
-Este proyecto fue desarrollado colaborativamente por:
-
-- **Angel Ayuquina** — *Full Stack Developer & Arquitectura de Software*
-- **Johan Rodríguez** — *Software Developer*
-- **Sebastian Ortíz** — *Software Developer*
-- **José Manzano** — *Software Developer*
-
----
-
-<div align="center">
-
-**🏥 HospitalApp — Excelencia en Ingeniería de Software Clínico 🏥**
-
-*Diseñado para portafolio técnico con estándares de producción.*
-
-</div>
